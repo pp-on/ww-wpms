@@ -1,6 +1,3 @@
-# Project-specific files
-CLAUDE.md
-
 # Environment configuration
 .env
 .env.local
