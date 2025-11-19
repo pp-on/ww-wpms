@@ -1,0 +1,49 @@
+# Project-specific files
+CLAUDE.md
+
+# Environment configuration
+.env
+.env.local
+.env.production
+
+# License keys
+.keys
+keys.local
+
+# Logs
+*.log
+webwerk.log
+webwerk-install.log
+webwerk-update.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# WordPress specific
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+wp-content/backup-db/
+wp-content/backups/
+wp-content/upgrade/
+wp-content/advanced-cache.php
+wp-content/wp-cache-config.php

@@ -1,0 +1,277 @@
+#!/bin/bash
+#
+# Webwerk WordPress Management Dispatcher v2.0
+# Part of Webwerk WordPress Management Suite
+# Focused on Barrierefreiheit (Accessibility)
+#
+# Description: Main dispatcher for WordPress management scripts
+# Author: Webwerk Team
+# License: MIT
+#
+
+set -euo pipefail
+
+# Get script directory (resolve symlinks to actual location)
+readonly SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+readonly LOG_FILE="${PWD}/webwerk.log"
+
+#===============================================================================
+# LOGGING FUNCTIONS
+#===============================================================================
+
+log_info() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $*" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $*" | tee -a "$LOG_FILE" >&2
+}
+
+log_warning() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $*" | tee -a "$LOG_FILE" >&2
+}
+
+#===============================================================================
+# CONFIGURATION LOADING
+#===============================================================================
+
+load_environment() {
+    # Load .env file if it exists
+    if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+        log_info "Loading configuration from .env"
+        set -a  # automatically export all variables
+        # shellcheck source=/dev/null
+        source "${SCRIPT_DIR}/.env"
+        set +a
+    else
+        log_warning ".env file not found! Using defaults or environment variables"
+    fi
+}
+
+load_license_keys() {
+    # Load ~/.keys if it exists
+    if [[ -f "$HOME/.keys" ]]; then
+        log_info "Loading license keys from ~/.keys"
+        set -a
+        # shellcheck source=/dev/null
+        source "$HOME/.keys"
+        set +a
+    else
+        log_warning "~/.keys not found! License keys must be added manually"
+        log_warning "Create ~/.keys file with your license keys (keep it out of repository)"
+    fi
+}
+
+load_helper_functions() {
+    # Source wphelpfunctions.sh from utils directory
+    if [[ -f "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh" ]]; then
+        # shellcheck source=./scripts/utils/wphelpfunctions.sh
+        source "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh"
+        log_info "Loaded helper functions from scripts/utils/"
+    else
+        log_error "wphelpfunctions.sh not found at ${SCRIPT_DIR}/scripts/utils/"
+        log_error "Expected file structure: scripts/utils/wphelpfunctions.sh"
+        exit 1
+    fi
+}
+
+validate_configuration() {
+    # Check if using DDEV mode
+    local using_ddev=false
+    for arg in "$@"; do
+        if [[ "$arg" == "--ddev" || "$arg" == "--mode=ddev" ]]; then
+            using_ddev=true
+            break
+        fi
+    done
+    
+    # Validate required configuration
+    local missing_config=()
+    
+    if [[ "$using_ddev" == true ]]; then
+        # For DDEV mode, we only need basic config, not host system DB/WP-CLI
+        log_info "DDEV mode detected - using container configuration"
+        [[ -z "${WP_CLI_PATH:-}" ]] && WP_CLI_PATH="wp"  # Default for DDEV
+    else
+        # Check essential variables for non-DDEV installations
+        [[ -z "${DB_USER:-}" ]] && missing_config+=("DB_USER")
+        [[ -z "${DB_PASSWORD:-}" ]] && missing_config+=("DB_PASSWORD")
+        [[ -z "${DB_HOST:-}" ]] && missing_config+=("DB_HOST")
+        [[ -z "${WP_CLI_PATH:-}" ]] && missing_config+=("WP_CLI_PATH")
+        
+        if [[ ${#missing_config[@]} -gt 0 ]]; then
+            log_error "Missing required configuration: ${missing_config[*]}"
+            log_error "Please check your .env file or set environment variables"
+            exit 1
+        fi
+        
+        # Validate WP-CLI only for non-DDEV mode
+        if ! command -v "$WP_CLI_PATH" &> /dev/null; then
+            log_error "WP-CLI not found at: $WP_CLI_PATH"
+            log_error "Please install WP-CLI or update WP_CLI_PATH in .env"
+            exit 1
+        fi
+    fi
+    
+    log_info "Configuration validation passed"
+}
+
+#===============================================================================
+# COMMAND HANDLERS
+#===============================================================================
+
+show_help() {
+    cat << EOF
+Webwerk WordPress Management Suite v2.0
+========================================
+
+USAGE: $0 COMMAND [OPTIONS]
+
+COMMANDS:
+  install    Install new WordPress site
+  update     Update WordPress core and plugins
+  mod        Modify/manage existing WordPress sites
+  debug      Install WordPress with debug mode enabled
+
+EXAMPLES:
+  $0 install --mode=full --wp-title="My Site"
+  $0 update --sites=site1,site2 --all
+  $0 mod --sites=mysite --enable-debug
+  $0 debug --mode=ddev
+
+CONFIGURATION:
+  Configuration is loaded from:
+  1. ${SCRIPT_DIR}/.env (main configuration)
+  2. ~/.keys (license keys - keep out of repository)
+
+  Current configuration:
+  - Database Host: ${DB_HOST:-'not set'}
+  - Database User: ${DB_USER:-'not set'}
+  - WP-CLI Path: ${WP_CLI_PATH:-'not set'}
+  - Git User: ${GIT_USER:-'not set'}
+
+FILES:
+  ${SCRIPT_DIR}/.env                     Main configuration file
+  ~/.keys                               License keys (ACF_PRO_LICENSE, etc.)
+  ${SCRIPT_DIR}/scripts/install/        Installation scripts
+  ${SCRIPT_DIR}/scripts/update/         Update scripts
+  ${SCRIPT_DIR}/scripts/mod/            Modification scripts
+
+For command-specific help, use: $0 COMMAND --help
+
+Project: https://github.com/webwerk/wordpress-tools
+EOF
+}
+
+show_status() {
+    log_info "Webwerk WordPress Management Suite Status"
+    echo "----------------------------------------"
+    echo "Script Directory: $SCRIPT_DIR"
+    echo "Configuration File: ${SCRIPT_DIR}/.env $(if [[ -f "${SCRIPT_DIR}/.env" ]]; then echo "(✓)"; else echo "(✗)"; fi)"
+    echo "License Keys: ~/.keys $(if [[ -f "$HOME/.keys" ]]; then echo "(✓)"; else echo "(✗)"; fi)"
+    echo "Database Host: ${DB_HOST:-'not configured'}"
+    echo "Database User: ${DB_USER:-'not configured'}"
+    echo "WP-CLI: ${WP_CLI_PATH:-'not configured'} $(if command -v "${WP_CLI_PATH:-wp}" &> /dev/null; then echo "(✓)"; else echo "(✗)"; fi)"
+    echo "Git User: ${GIT_USER:-'not configured'}"
+    echo "Log File: $LOG_FILE"
+    echo ""
+    
+    # Check script files
+    echo "Script Files:"
+    local scripts=(
+        "scripts/install/wplocalinstall.sh"
+        "scripts/install/wpfunctionsinstall.sh"
+        "scripts/update/wpupdate.sh"
+        "scripts/mod/wpmod.sh"
+        "scripts/utils/wphelpfunctions.sh"
+    )
+    
+    for script in "${scripts[@]}"; do
+        if [[ -f "${SCRIPT_DIR}/${script}" ]]; then
+            echo "  ✓ $script"
+        else
+            echo "  ✗ $script (missing)"
+        fi
+    done
+}
+
+#===============================================================================
+# MAIN EXECUTION
+#===============================================================================
+
+main() {
+    local command="${1:-}"
+    
+    # Handle special cases before loading configuration
+    case "$command" in
+        "" | "--help" | "-h")
+            show_help
+            exit 0
+            ;;
+        "status")
+            # Load config for status display
+            load_environment
+            load_license_keys
+            show_status
+            exit 0
+            ;;
+    esac
+    
+    # Load all configuration
+    log_info "Starting Webwerk WordPress Management Suite v2.0"
+    load_environment
+    load_license_keys
+    validate_configuration "$command" "$@"
+    load_helper_functions
+    
+    # Remove command from arguments
+    shift
+    
+    # Execute command
+    case "$command" in
+        "install")
+            if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
+                log_info "Executing WordPress installation"
+                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "$@"
+            else
+                log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
+                exit 1
+            fi
+            ;;
+        "update")
+            if [[ -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
+                log_info "Executing WordPress update"
+                exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" "$@"
+            else
+                log_error "Update script not found: ${SCRIPT_DIR}/scripts/update/wpupdate.sh"
+                exit 1
+            fi
+            ;;
+        "mod")
+            if [[ -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
+                log_info "Executing WordPress modification"
+                exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
+            else
+                log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
+                exit 1
+            fi
+            ;;
+        "debug")
+            if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
+                log_info "Executing WordPress installation with debug mode"
+                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --debug "$@"
+            else
+                log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
+                exit 1
+            fi
+            ;;
+        *)
+            log_error "Unknown command: $command"
+            log_error "Use '$0 --help' for usage information"
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function with all arguments
+main "$@"
