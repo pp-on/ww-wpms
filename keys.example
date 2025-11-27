@@ -1,0 +1,45 @@
+# WordPress Plugin License Keys
+#
+# IMPORTANT: This file should be copied to ~/.keys (your home directory)
+# DO NOT commit ~/.keys to version control!
+#
+# Usage:
+#   cp keys.template ~/.keys
+#   chmod 600 ~/.keys
+#   nano ~/.keys  # Edit and add your actual license keys
+#
+# The webwerk script will automatically load these keys from ~/.keys
+#
+
+#===============================================================================
+# ADVANCED CUSTOM FIELDS (ACF) PRO
+#===============================================================================
+
+# ACF Pro license key
+# Get your license from: https://www.advancedcustomfields.com/my-account/
+ACF_PRO_LICENSE=your_acf_pro_license_key_here
+
+#===============================================================================
+# WP MIGRATE DB PRO
+#===============================================================================
+
+# WP Migrate DB Pro license key
+# Get your license from: https://deliciousbrains.com/my-account/
+WPMDB_LICENCE=your_wpmdb_license_key_here
+
+#===============================================================================
+# AKEEBA BACKUP
+#===============================================================================
+
+# Akeeba Download ID
+# Get your Download ID from: https://www.akeeba.com/my-downloads.html
+AKEEBA_DOWNLOAD_ID=your_akeeba_download_id_here
+
+#===============================================================================
+# ADDITIONAL PLUGIN LICENSES
+#===============================================================================
+
+# Add any additional plugin license keys below
+# Example:
+# GRAVITY_FORMS_LICENSE=your_gravity_forms_license_here
+# WPML_LICENSE=your_wpml_license_here
