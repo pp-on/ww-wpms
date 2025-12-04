@@ -36,14 +36,19 @@ init_config() {
     
     # Construct repository URL if not explicitly set
     if [[ -z "${REPO_URL:-}" ]]; then
-        case "${GIT_PROTOCOL:-https}" in
-            "https")
-                REPO_URL="https://${GIT_HOST:-github.com}/${GIT_USER:-pfennigparade}/${CURRENT_DIR}.git"
-                ;;
-            "ssh")
-                REPO_URL="git@${GIT_HOST:-github.com}:${GIT_USER:-pfennigparade}/${CURRENT_DIR}.git"
-                ;;
-        esac
+        # If GIT_SSH_HOST is set, use SSH config host alias (includes user from ~/.ssh/config)
+        if [[ -n "${GIT_SSH_HOST:-}" ]]; then
+            REPO_URL="${GIT_SSH_HOST}:pfennigparade/${CURRENT_DIR}.git"
+        else
+            case "${GIT_PROTOCOL:-https}" in
+                "https")
+                    REPO_URL="https://${GIT_HOST:-github.com}/${GIT_USER:-pfennigparade}/${CURRENT_DIR}.git"
+                    ;;
+                "ssh")
+                    REPO_URL="git@${GIT_HOST:-github.com}:${GIT_USER:-pfennigparade}/${CURRENT_DIR}.git"
+                    ;;
+            esac
+        fi
     fi
     
     log_info "Configuration initialized for: $CURRENT_DIR"
@@ -437,6 +442,7 @@ GIT OPTIONS:
   --repo-url=URL        Full repository URL to clone
   --git-user=USER       GitHub username (default: pfennigparade)
   --git-protocol=PROTO  Git protocol: https or ssh (default: https)
+  --git-host=HOST, -G   SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
 
 OTHER OPTIONS:
   --wp-cli=PATH         Path to WP-CLI executable (default: wp)
@@ -447,6 +453,7 @@ OTHER OPTIONS:
 EXAMPLES:
   $0 --mode=full --wp-title="My Site"
   $0 --mode=ddev --repo-url=https://github.com/user/repo.git
+  $0 --mode=ddev --git-host=arbeit
   $0 --mode=minimal --db-host=127.0.0.1
 
 CONFIGURATION FILES:
@@ -500,6 +507,9 @@ parse_arguments() {
                 ;;
             --git-protocol=*)
                 GIT_PROTOCOL="${arg#*=}"
+                ;;
+            --git-host=*|-G)
+                GIT_SSH_HOST="${arg#*=}"
                 ;;
             --wp-cli=*)
                 WP_CLI_PATH="${arg#*=}"
