@@ -418,22 +418,31 @@ show_help() {
 WordPress Local Installation Script v2.0
 =========================================
 
+NOTE: This script is typically called via the webwerk dispatcher.
+      Use 'webwerk --help' for the recommended interface.
+
 TLDR:
-  # Quick DDEV install with SSH host alias
-  $0 --mode=ddev -G arbeit
+  # Quick DDEV install with SSH host alias (via webwerk)
+  webwerk ddev install -G arbeit
 
-  # Full install with custom title
-  $0 --mode=full --wp-title="My Site"
+  # Full install with custom title (via webwerk)
+  webwerk full install --wp-title="My Site"
 
-  # Minimal install without repo
-  $0 --mode=minimal
+  # Minimal install without repo (via webwerk)
+  webwerk minimal install
 
-USAGE: $0 [OPTIONS]
+USAGE:
+  Via webwerk (recommended):
+    webwerk [full|minimal|ddev] install [OPTIONS]
+
+  Direct call (advanced):
+    $0 [full|minimal|ddev] [OPTIONS]
+    $0 --mode=[full|minimal|ddev] [OPTIONS]  (backward compatibility)
 
 INSTALLATION MODES:
-  --mode=full     Full WordPress installation with git repository (default)
-  --mode=minimal  Minimal WordPress installation without git repository
-  --mode=ddev     DDEV-based WordPress installation
+  full      Full WordPress installation with git repository (default)
+  minimal   Minimal WordPress installation without git repository
+  ddev      DDEV-based WordPress installation
 
 DATABASE OPTIONS:
   --db-host=HOST        Database hostname (default: localhost)
@@ -462,10 +471,14 @@ OTHER OPTIONS:
   --help                Show this help message
 
 EXAMPLES:
-  $0 --mode=full --wp-title="My Site"
-  $0 --mode=ddev --repo-url=https://github.com/user/repo.git
-  $0 --mode=ddev -G arbeit
-  $0 --mode=minimal --db-host=127.0.0.1
+  Via webwerk (recommended):
+    webwerk full install --wp-title="My Site"
+    webwerk ddev install -G arbeit
+    webwerk minimal install --db-host=127.0.0.1
+
+  Direct call (backward compatible):
+    $0 full --wp-title="My Site"
+    $0 --mode=full --wp-title="My Site"
 
 CONFIGURATION FILES:
   .env          Environment variables (optional)
@@ -476,7 +489,31 @@ EOF
 }
 
 parse_arguments() {
-    local mode="full"
+    # First argument is the installation mode (full/minimal/ddev)
+    local mode="${1:-full}"
+
+    # Validate mode
+    case "$mode" in
+        full|minimal|ddev)
+            # Valid mode, continue
+            ;;
+        --*)
+            # Old-style flag passed as first argument, default to full mode
+            mode="full"
+            # Don't shift, process this as a regular argument
+            ;;
+        *)
+            log_error "Invalid installation mode: $mode"
+            log_error "Valid modes: full, minimal, ddev"
+            exit 1
+            ;;
+    esac
+
+    # If mode was consumed, shift it
+    if [[ "$mode" != "--"* ]]; then
+        shift
+    fi
+
     local skip_next=false
 
     while [[ $# -gt 0 ]]; do
@@ -488,6 +525,7 @@ parse_arguments() {
 
         case $1 in
             --mode=*)
+                # Keep backward compatibility with --mode flag
                 mode="${1#*=}"
                 ;;
             --db-host=*)

@@ -66,7 +66,7 @@ load_helper_functions() {
     # Source wphelpfunctions.sh from utils directory
     if [[ -f "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh" ]]; then
         # shellcheck source=./scripts/utils/wphelpfunctions.sh
-        source "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh"
+        source "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh" || true
         log_info "Loaded helper functions from scripts/utils/"
     else
         log_error "wphelpfunctions.sh not found at ${SCRIPT_DIR}/scripts/utils/"
@@ -79,15 +79,15 @@ validate_configuration() {
     # Check if using DDEV mode
     local using_ddev=false
     for arg in "$@"; do
-        if [[ "$arg" == "--ddev" || "$arg" == "--mode=ddev" ]]; then
+        if [[ "$arg" == "ddev" || "$arg" == "--ddev" || "$arg" == "--mode=ddev" ]]; then
             using_ddev=true
             break
         fi
     done
-    
+
     # Validate required configuration
     local missing_config=()
-    
+
     if [[ "$using_ddev" == true ]]; then
         # For DDEV mode, we only need basic config, not host system DB/WP-CLI
         log_info "DDEV mode detected - using container configuration"
@@ -98,13 +98,13 @@ validate_configuration() {
         [[ -z "${DB_PASSWORD:-}" ]] && missing_config+=("DB_PASSWORD")
         [[ -z "${DB_HOST:-}" ]] && missing_config+=("DB_HOST")
         [[ -z "${WP_CLI_PATH:-}" ]] && missing_config+=("WP_CLI_PATH")
-        
+
         if [[ ${#missing_config[@]} -gt 0 ]]; then
             log_error "Missing required configuration: ${missing_config[*]}"
             log_error "Please check your .env file or set environment variables"
             exit 1
         fi
-        
+
         # Validate WP-CLI only for non-DDEV mode
         if ! command -v "$WP_CLI_PATH" &> /dev/null; then
             log_error "WP-CLI not found at: $WP_CLI_PATH"
@@ -112,7 +112,7 @@ validate_configuration() {
             exit 1
         fi
     fi
-    
+
     log_info "Configuration validation passed"
 }
 
@@ -128,16 +128,22 @@ Webwerk WordPress Management Suite v2.0
 USAGE: $0 COMMAND [OPTIONS]
 
 COMMANDS:
-  install    Install new WordPress site
-  update     Update WordPress core and plugins
-  mod        Modify/manage existing WordPress sites
-  debug      Install WordPress with debug mode enabled
+  full install     Full WordPress installation with git repository
+  minimal install  Minimal WordPress installation without git repository
+  ddev install     DDEV-based WordPress installation
+  update           Update WordPress core and plugins
+  mod              Modify/manage existing WordPress sites
+
+OPTIONS:
+  --debug          Enable debug mode (works with all commands)
 
 EXAMPLES:
-  $0 install --mode=full --wp-title="My Site"
+  $0 full install --wp-title="My Site"
+  $0 ddev install -G arbeit
+  $0 minimal install
+  $0 full install --debug --wp-title="Debug Site"
   $0 update --sites=site1,site2 --all
   $0 mod --sites=mysite --enable-debug
-  $0 debug --mode=ddev
 
 CONFIGURATION:
   Configuration is loaded from:
@@ -201,7 +207,7 @@ show_status() {
 
 main() {
     local command="${1:-}"
-    
+
     # Handle special cases before loading configuration
     case "$command" in
         "" | "--help" | "-h")
@@ -216,23 +222,32 @@ main() {
             exit 0
             ;;
     esac
-    
+
     # Load all configuration
     log_info "Starting Webwerk WordPress Management Suite v2.0"
     load_environment
     load_license_keys
     validate_configuration "$command" "$@"
     load_helper_functions
-    
-    # Remove command from arguments
+
+    # Remove first argument (command/mode)
     shift
-    
+
     # Execute command
     case "$command" in
-        "install")
+        "full" | "minimal" | "ddev")
+            # Installation modes - expect "install" as next argument
+            local subcommand="${1:-}"
+            if [[ "$subcommand" != "install" ]]; then
+                log_error "Expected 'install' after '$command', got: ${subcommand:-nothing}"
+                log_error "Usage: $0 $command install [OPTIONS]"
+                exit 1
+            fi
+            shift  # Remove "install" from arguments
+
             if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
-                log_info "Executing WordPress installation"
-                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "$@"
+                log_info "Executing WordPress installation (mode: $command)"
+                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "$command" "$@"
             else
                 log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
                 exit 1
@@ -253,15 +268,6 @@ main() {
                 exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
             else
                 log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
-                exit 1
-            fi
-            ;;
-        "debug")
-            if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
-                log_info "Executing WordPress installation with debug mode"
-                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --debug "$@"
-            else
-                log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
                 exit 1
             fi
             ;;

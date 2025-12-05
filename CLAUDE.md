@@ -51,13 +51,13 @@ webwerk status
 
 ```bash
 # Full installation with repository cloning
-./webwerk install --mode=full --wp-title="Accessible Website"
+./webwerk full install --wp-title="Accessible Website"
 
-# Minimal WordPress-only installation  
-./webwerk install --mode=minimal --wp-title="Simple Site"
+# Minimal WordPress-only installation
+./webwerk minimal install --wp-title="Simple Site"
 
 # DDEV containerized development
-./webwerk install --mode=ddev --wp-title="DDEV Site"
+./webwerk ddev install --wp-title="DDEV Site"
 ```
 
 ### Updates and Management
@@ -125,9 +125,9 @@ Test all installation modes before making changes:
 
 ```bash
 # Test each mode
-./webwerk install --mode=full --wp-title="Test Full"
-./webwerk install --mode=minimal --wp-title="Test Minimal"  
-./webwerk install --mode=ddev --wp-title="Test DDEV"
+./webwerk full install --wp-title="Test Full"
+./webwerk minimal install --wp-title="Test Minimal"
+./webwerk ddev install --wp-title="Test DDEV"
 
 # Test update functionality
 ./webwerk update --sites=testsite

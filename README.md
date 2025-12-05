@@ -136,10 +136,10 @@ chmod 600 ~/.keys
 
 ```bash
 # Install new WordPress site
-./webwerk install --mode=full --wp-title="My Accessible Site"
+./webwerk full install --wp-title="My Accessible Site"
 
 # Install with DDEV
-./webwerk install --mode=ddev
+./webwerk ddev install
 
 # Update WordPress sites
 ./webwerk update --all-sites
@@ -215,7 +215,7 @@ AKEEBA_DOWNLOAD_ID=your_akeeba_id
 ### Full Installation
 Complete WordPress setup with repository cloning:
 ```bash
-./webwerk install --mode=full --wp-title="Accessible Website"
+./webwerk full install --wp-title="Accessible Website"
 ```
 
 Features:
@@ -232,7 +232,7 @@ Features:
 ### Minimal Installation
 WordPress without repository:
 ```bash
-./webwerk install --mode=minimal --wp-title="Simple Site"
+./webwerk minimal install --wp-title="Simple Site"
 ```
 
 Features:
@@ -246,7 +246,7 @@ Features:
 ### DDEV Installation
 Containerized development with DDEV:
 ```bash
-./webwerk install --mode=ddev --wp-title="DDEV Site"
+./webwerk ddev install --wp-title="DDEV Site"
 ```
 
 Features:
