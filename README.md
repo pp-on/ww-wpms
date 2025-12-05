@@ -191,7 +191,8 @@ WP_LOCALE=de_DE
 
 # Git
 GIT_USER=your_github_username
-GIT_PROTOCOL=https
+GIT_PROTOCOL=ssh
+GIT_SSH_HOST=arbeit  # SSH host alias from ~/.ssh/config (optional)
 
 # Development
 LOCAL_URL_BASE=arbeit.local/repos
@@ -270,7 +271,10 @@ Features:
 # Custom repository
 ./webwerk install --repo-url=https://github.com/user/repo.git
 
-# SSH repository cloning
+# SSH repository cloning with SSH host alias
+./webwerk install --git-host=arbeit
+
+# SSH repository cloning (traditional)
 ./webwerk install --git-protocol=ssh
 
 # Install in specific directory
@@ -620,7 +624,10 @@ ddev import-db --src=backup.sql.gz
 # Update repository on existing site
 ./webwerk mod --sites=corporate-site --git-pull
 
-# Use SSH for private repositories
+# Use SSH host alias for private repositories
+./webwerk install --mode=full --git-host=arbeit
+
+# Use SSH for private repositories (traditional)
 ./webwerk install --mode=full \
     --repo-url=git@github.com:mycompany/private-theme.git \
     --git-protocol=ssh

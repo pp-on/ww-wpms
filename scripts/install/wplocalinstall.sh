@@ -418,6 +418,16 @@ show_help() {
 WordPress Local Installation Script v2.0
 =========================================
 
+TLDR:
+  # Quick DDEV install with SSH host alias
+  $0 --mode=ddev --git-host=arbeit
+
+  # Full install with custom title
+  $0 --mode=full --wp-title="My Site"
+
+  # Minimal install without repo
+  $0 --mode=minimal
+
 USAGE: $0 [OPTIONS]
 
 INSTALLATION MODES:
