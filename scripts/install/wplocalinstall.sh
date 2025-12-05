@@ -177,12 +177,18 @@ install_ddev_wordpress() {
     WP_URL="${CURRENT_DIR}.ddev.site"
     WP_CLI_PATH="ddev wp"
     
-    # Initialize DDEV
-    log_info "Initializing DDEV configuration"
-    ddev config --project-type=wordpress --docroot=. --project-name="$CURRENT_DIR"
-    
-    log_info "Starting DDEV containers"
-    ddev start
+    # Check if DDEV is already configured
+    if [[ -f ".ddev/config.yaml" ]]; then
+        log_info "DDEV configuration found, starting existing containers"
+        ddev start
+    else
+        # Initialize DDEV
+        log_info "Initializing DDEV configuration"
+        ddev config --project-type=wordpress --docroot=. --project-name="$CURRENT_DIR"
+
+        log_info "Starting DDEV containers"
+        ddev start
+    fi
     
     download_wordpress
     create_ddev_config
