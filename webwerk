@@ -131,6 +131,7 @@ COMMANDS:
   full install     Full WordPress installation with git repository
   minimal install  Minimal WordPress installation without git repository
   ddev install     DDEV-based WordPress installation
+  ddev remove      Remove DDEV containers and configuration
   update           Update WordPress core and plugins
   mod              Modify/manage existing WordPress sites
 
@@ -140,6 +141,7 @@ OPTIONS:
 EXAMPLES:
   $0 full install --wp-title="My Site"
   $0 ddev install -G arbeit
+  $0 ddev remove
   $0 minimal install
   $0 full install --debug --wp-title="Debug Site"
   $0 update --sites=site1,site2 --all
@@ -235,7 +237,7 @@ main() {
 
     # Execute command
     case "$command" in
-        "full" | "minimal" | "ddev")
+        "full" | "minimal")
             # Installation modes - expect "install" as next argument
             local subcommand="${1:-}"
             if [[ "$subcommand" != "install" ]]; then
@@ -252,6 +254,46 @@ main() {
                 log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
                 exit 1
             fi
+            ;;
+        "ddev")
+            # DDEV mode - expect "install" or "remove" as next argument
+            local subcommand="${1:-}"
+            case "$subcommand" in
+                "install")
+                    shift  # Remove "install" from arguments
+                    if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
+                        log_info "Executing WordPress installation (mode: ddev)"
+                        exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "ddev" "$@"
+                    else
+                        log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
+                        exit 1
+                    fi
+                    ;;
+                "remove")
+                    shift  # Remove "remove" from arguments
+                    log_info "Removing DDEV containers and configuration"
+
+                    # Check if DDEV is configured
+                    if [[ ! -f ".ddev/config.yaml" ]]; then
+                        log_warning "No DDEV configuration found in current directory"
+                        exit 0
+                    fi
+
+                    # Stop and remove DDEV containers
+                    log_info "Stopping DDEV containers..."
+                    ddev stop
+
+                    log_info "Removing DDEV containers..."
+                    ddev delete -O
+
+                    log_success "DDEV containers removed successfully"
+                    ;;
+                *)
+                    log_error "Expected 'install' or 'remove' after 'ddev', got: ${subcommand:-nothing}"
+                    log_error "Usage: $0 ddev [install|remove] [OPTIONS]"
+                    exit 1
+                    ;;
+            esac
             ;;
         "update")
             if [[ -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
