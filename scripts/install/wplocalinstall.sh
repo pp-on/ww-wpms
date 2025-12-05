@@ -420,7 +420,7 @@ WordPress Local Installation Script v2.0
 
 TLDR:
   # Quick DDEV install with SSH host alias
-  $0 --mode=ddev --git-host=arbeit
+  $0 --mode=ddev -G arbeit
 
   # Full install with custom title
   $0 --mode=full --wp-title="My Site"
@@ -452,7 +452,8 @@ GIT OPTIONS:
   --repo-url=URL        Full repository URL to clone
   --git-user=USER       GitHub username (default: pfennigparade)
   --git-protocol=PROTO  Git protocol: https or ssh (default: https)
-  --git-host=HOST, -G   SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
+  --git-host=HOST       SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
+  -G HOST               Short form of --git-host
 
 OTHER OPTIONS:
   --wp-cli=PATH         Path to WP-CLI executable (default: wp)
@@ -463,7 +464,7 @@ OTHER OPTIONS:
 EXAMPLES:
   $0 --mode=full --wp-title="My Site"
   $0 --mode=ddev --repo-url=https://github.com/user/repo.git
-  $0 --mode=ddev --git-host=arbeit
+  $0 --mode=ddev -G arbeit
   $0 --mode=minimal --db-host=127.0.0.1
 
 CONFIGURATION FILES:
@@ -476,57 +477,72 @@ EOF
 
 parse_arguments() {
     local mode="full"
-    
-    for arg in "$@"; do
-        case $arg in
+    local skip_next=false
+
+    while [[ $# -gt 0 ]]; do
+        if [[ "$skip_next" == true ]]; then
+            skip_next=false
+            shift
+            continue
+        fi
+
+        case $1 in
             --mode=*)
-                mode="${arg#*=}"
+                mode="${1#*=}"
                 ;;
             --db-host=*)
-                DB_HOST="${arg#*=}"
+                DB_HOST="${1#*=}"
                 ;;
             --db-user=*)
-                DB_USER="${arg#*=}"
+                DB_USER="${1#*=}"
                 ;;
             --db-password=*)
-                DB_PASSWORD="${arg#*=}"
+                DB_PASSWORD="${1#*=}"
                 ;;
             --db-name=*)
-                DB_NAME="${arg#*=}"
+                DB_NAME="${1#*=}"
                 ;;
             --wp-url=*)
-                WP_URL="${arg#*=}"
+                WP_URL="${1#*=}"
                 ;;
             --wp-title=*)
-                WP_TITLE="${arg#*=}"
+                WP_TITLE="${1#*=}"
                 ;;
             --wp-admin-user=*)
-                WP_ADMIN_USER="${arg#*=}"
+                WP_ADMIN_USER="${1#*=}"
                 ;;
             --wp-admin-pass=*)
-                WP_ADMIN_PASSWORD="${arg#*=}"
+                WP_ADMIN_PASSWORD="${1#*=}"
                 ;;
             --wp-admin-email=*)
-                WP_ADMIN_EMAIL="${arg#*=}"
+                WP_ADMIN_EMAIL="${1#*=}"
                 ;;
             --repo-url=*)
-                REPO_URL="${arg#*=}"
+                REPO_URL="${1#*=}"
                 ;;
             --git-user=*)
-                GIT_USER="${arg#*=}"
+                GIT_USER="${1#*=}"
                 ;;
             --git-protocol=*)
-                GIT_PROTOCOL="${arg#*=}"
+                GIT_PROTOCOL="${1#*=}"
                 ;;
-            --git-host=*|-G)
-                GIT_SSH_HOST="${arg#*=}"
+            --git-host=*)
+                GIT_SSH_HOST="${1#*=}"
+                ;;
+            -G)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "-G requires an argument (SSH host alias)"
+                    exit 1
+                fi
+                GIT_SSH_HOST="$2"
+                skip_next=true
                 ;;
             --wp-cli=*)
-                WP_CLI_PATH="${arg#*=}"
+                WP_CLI_PATH="${1#*=}"
                 ;;
             --target-dir=*)
-                cd "${arg#*=}" || {
-                    log_error "Cannot change to directory: ${arg#*=}"
+                cd "${1#*=}" || {
+                    log_error "Cannot change to directory: ${1#*=}"
                     exit 1
                 }
                 ;;
@@ -538,13 +554,14 @@ parse_arguments() {
                 exit 0
                 ;;
             *)
-                log_error "Unknown argument: $arg"
+                log_error "Unknown argument: $1"
                 log_error "Use --help for usage information"
                 exit 1
                 ;;
         esac
+        shift
     done
-    
+
     # Set installation mode
     INSTALL_MODE="$mode"
 }
