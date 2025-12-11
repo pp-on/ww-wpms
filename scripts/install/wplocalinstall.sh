@@ -94,8 +94,19 @@ trap 'handle_error $LINENO' ERR
 # Validate requirements
 validate_requirements() {
     local missing_deps=()
-    
-    # Check required commands
+
+    # For DDEV mode, only check for ddev command
+    if [[ "${INSTALL_MODE:-}" == "ddev" ]]; then
+        if ! command -v ddev &> /dev/null; then
+            log_error "DDEV is not installed. Please install DDEV first:"
+            log_error "https://ddev.readthedocs.io/en/stable/"
+            exit 1
+        fi
+        log_success "DDEV found, skipping other dependency checks"
+        return 0
+    fi
+
+    # Check required commands for non-DDEV installations
     local required_commands=("php" "mysql" "git")
     local cmd
     for cmd in "${required_commands[@]}"; do
@@ -103,31 +114,37 @@ validate_requirements() {
             missing_deps+=("$cmd")
         fi
     done
-    
+
     # Check WP-CLI
     if ! command -v "$WP_CLI_PATH" &> /dev/null; then
         missing_deps+=("wp-cli")
     fi
-    
+
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
         log_error "Missing required dependencies: ${missing_deps[*]}"
         log_error "Please install missing dependencies and try again"
         exit 1
     fi
-    
+
     log_success "All requirements validated"
 }
 
 # Validate database connection
 validate_database() {
+    # Skip database validation for DDEV (database runs in container)
+    if [[ "${INSTALL_MODE:-}" == "ddev" ]]; then
+        log_info "DDEV mode - skipping host database validation"
+        return 0
+    fi
+
     log_info "Validating database connection..."
-    
+
     if ! mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" -e "SELECT 1;" &>/dev/null; then
         log_error "Cannot connect to database with provided credentials"
         log_error "Host: $DB_HOST, User: $DB_USER"
         exit 1
     fi
-    
+
     log_success "Database connection validated"
 }
 
@@ -631,10 +648,10 @@ main() {
     validate_requirements
     validate_database
     
-    # Source required helper functions
+    # Source required helper functions (if not already loaded by dispatcher)
     if [[ -f "${SCRIPT_DIR}/../utils/wphelpfunctions.sh" ]]; then
         # shellcheck source=../utils/wphelpfunctions.sh
-        source "${SCRIPT_DIR}/../utils/wphelpfunctions.sh"
+        source "${SCRIPT_DIR}/../utils/wphelpfunctions.sh" || true
     else
         log_error "Required file wphelpfunctions.sh not found in ${SCRIPT_DIR}/../utils/"
         exit 1

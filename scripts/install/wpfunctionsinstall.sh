@@ -15,9 +15,16 @@ set -euo pipefail
 # SCRIPT METADATA
 #===============================================================================
 
-readonly SCRIPT_VERSION="2.0"
-readonly SCRIPT_NAME="WordPress Installation Functions"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Only set if not already defined (avoid readonly conflicts)
+if [[ -z "${SCRIPT_VERSION:-}" ]]; then
+    readonly SCRIPT_VERSION="2.0"
+fi
+if [[ -z "${SCRIPT_NAME:-}" ]]; then
+    readonly SCRIPT_NAME="WordPress Installation Functions"
+fi
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
 #===============================================================================
 # LOGGING FUNCTIONS
@@ -712,7 +719,8 @@ install_minimal_wordpress() {
 }
 
 # DDEV WordPress installation
-install_ddev_wordpress() {
+# DEPRECATED: This function is replaced by install_ddev_wordpress() in wplocalinstall.sh
+_deprecated_install_ddev_wordpress() {
     log_info "Starting DDEV WordPress installation"
     
     # Override database settings for DDEV
