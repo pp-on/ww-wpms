@@ -141,6 +141,9 @@ chmod 600 ~/.keys
 # Install with DDEV
 ./webwerk ddev install
 
+# Modify DDEV site
+./webwerk ddev mod --force-https
+
 # Update WordPress sites
 ./webwerk update --all-sites
 
@@ -317,6 +320,9 @@ Features:
 
 # Update repository
 ./webwerk mod --sites=mysite --git-pull
+
+# Force HTTPS on site
+./webwerk mod --sites=mysite --force-https
 ```
 
 ## 🏗️ Architecture
@@ -508,6 +514,11 @@ Full DDEV support for containerized development:
 
 # Access site
 open https://mysite.ddev.site
+
+# Modify DDEV site (runs commands inside container)
+./webwerk ddev mod --force-https
+./webwerk ddev mod --enable-debug
+./webwerk ddev mod --setup-acf-license
 
 # WP-CLI in container
 ddev wp --info
