@@ -588,7 +588,7 @@ EOF
 # Toggle WordPress debug mode
 wp_debug() {
     local switch="${1:-on}"
-    
+
     if [[ "$switch" = "off" ]]; then
         "${WP_CLI_PATH}" config set --raw WP_DEBUG false
         "${WP_CLI_PATH}" config set --raw WP_DEBUG_LOG false
@@ -600,6 +600,47 @@ wp_debug() {
         "${WP_CLI_PATH}" config set --raw WP_DEBUG_DISPLAY false
         out "Debugging is on" 4
     fi
+}
+
+# Force HTTPS on WordPress site
+wp_force_https() {
+    out "Forcing HTTPS for WordPress site" 2
+
+    # Remove existing HTTPS-related defines to avoid duplicates
+    sed -i '/FORCE_SSL_ADMIN/d' wp-config.php 2>/dev/null || true
+    sed -i '/WP_HOME/d' wp-config.php 2>/dev/null || true
+    sed -i '/WP_SITEURL/d' wp-config.php 2>/dev/null || true
+    sed -i '/HTTP_X_FORWARDED_PROTO/d' wp-config.php 2>/dev/null || true
+
+    # Get current site URL
+    local site_url
+    site_url=$("${WP_CLI_PATH}" option get siteurl 2>/dev/null || echo "")
+
+    if [[ -z "$site_url" ]]; then
+        out "Warning: Could not detect site URL" 3
+        site_url="https://\$_SERVER['HTTP_HOST']"
+    else
+        # Convert to HTTPS if not already
+        site_url="${site_url/http:/https:}"
+        out "Site URL: $site_url" 2
+    fi
+
+    # Add HTTPS forcing code to wp-config.php
+    cat <<'EOF' >> wp-config.php
+
+// Force HTTPS - Added by webwerk mod script
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    $_SERVER['HTTPS'] = 'on';
+}
+define('FORCE_SSL_ADMIN', true);
+EOF
+
+    # Update site URLs to HTTPS using WP-CLI
+    "${WP_CLI_PATH}" option update home "$site_url" 2>/dev/null || true
+    "${WP_CLI_PATH}" option update siteurl "$site_url" 2>/dev/null || true
+
+    out "HTTPS forcing enabled successfully" 4
+    out "Site URL updated to: $site_url" 2
 }
 
 #===============================================================================
@@ -725,7 +766,7 @@ export -f os_detection
 export -f list_wp_plugins copy_plugins remove_plugins install_plugins wp_update
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
 export -f wp_new_user wp_rights
-export -f htaccess wp_hide_errors wp_debug
+export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se
 export -f wp_getCPT assign_env
 
