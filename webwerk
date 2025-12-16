@@ -131,6 +131,7 @@ COMMANDS:
   full install     Full WordPress installation with git repository
   minimal install  Minimal WordPress installation without git repository
   ddev install     DDEV-based WordPress installation
+  ddev mod         Modify DDEV WordPress site (uses 'ddev wp' commands)
   ddev remove      Remove DDEV containers and configuration
   update           Update WordPress core and plugins
   mod              Modify/manage existing WordPress sites
@@ -288,9 +289,30 @@ main() {
 
                     log_success "DDEV containers removed successfully"
                     ;;
+                "mod")
+                    shift  # Remove "mod" from arguments
+                    log_info "Running WordPress modification (mode: ddev)"
+
+                    # Check if DDEV is running
+                    if ! ddev status >/dev/null 2>&1; then
+                        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
+                        exit 1
+                    fi
+
+                    # Set DDEV-specific environment variables
+                    export WP_CLI_PATH="ddev wp"
+                    export WORDPRESS_BASE_DIR="."
+
+                    if [[ -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
+                        bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
+                    else
+                        log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
+                        exit 1
+                    fi
+                    ;;
                 *)
-                    log_error "Expected 'install' or 'remove' after 'ddev', got: ${subcommand:-nothing}"
-                    log_error "Usage: $0 ddev [install|remove] [OPTIONS]"
+                    log_error "Expected 'install', 'remove', or 'mod' after 'ddev', got: ${subcommand:-nothing}"
+                    log_error "Usage: $0 ddev [install|remove|mod] [OPTIONS]"
                     exit 1
                     ;;
             esac
