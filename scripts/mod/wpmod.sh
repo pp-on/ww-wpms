@@ -177,6 +177,7 @@ WORDPRESS CONFIGURATION:
   -z, --hide-errors           Hide WordPress errors
   -r, --disable-search-engine-indexing  Disable search engine indexing
   --htaccess                  Create/update .htaccess file
+  -S, --force-https           Force HTTPS (updates wp-config.php and site URLs)
 
 OTHER OPTIONS:
   -w, --location-wp PATH      Set WP-CLI path (default: ${WP_CLI_PATH})
@@ -260,6 +261,9 @@ parse_arguments() {
                 ;;
             --htaccess)
                 htaccess
+                ;;
+            -S|--force-https)
+                wp_force_https
                 ;;
             -x|--wp-debug)
                 shift
