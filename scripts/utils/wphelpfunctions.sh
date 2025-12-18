@@ -328,28 +328,46 @@ wp_update() {
     local plugin="$1"
     local countdown=4
     local site
-    
+    local target_dir
+    local return_dir
+
     for site in "${sites[@]}"; do
         out "$site" 1
-        out "check $plugin if there is one, update it"
-        cd "${WORDPRESS_BASE_DIR}$site"
-        
+        out "check $plugin if there is one, update it" 2
+
+        # Handle current directory case (for DDEV mode)
+        if [[ "$site" == "." || "${WORDPRESS_BASE_DIR}${site}" == "." ]]; then
+            target_dir="."
+        else
+            target_dir="${WORDPRESS_BASE_DIR}${site}"
+        fi
+
+        # Only change directory if needed
+        if [[ "$target_dir" != "." ]]; then
+            return_dir=$(pwd)
+            cd "$target_dir"
+        fi
+
         if [[ "$plugin" != "all" ]]; then
             out "found $plugin! Updating..." 2
-            "${WP_CLI_PATH}" plugin update "$plugin"
+            ${WP_CLI_PATH} plugin update "$plugin"
         else
             out "updating all plugins" 2
-            "${WP_CLI_PATH}" plugin list --update=available
-            
+            ${WP_CLI_PATH} plugin list --update=available
+
             while [[ "$countdown" -ge 0 ]]; do
                 out "$countdown" 4
                 sleep 1
                 (( countdown-- ))
             done
-            
-            "${WP_CLI_PATH}" plugin update --all
+
+            ${WP_CLI_PATH} plugin update --all
         fi
-        cd - &>/dev/null
+
+        # Return to original directory if we changed it
+        if [[ -n "${return_dir:-}" ]]; then
+            cd "$return_dir"
+        fi
     done
 }
 

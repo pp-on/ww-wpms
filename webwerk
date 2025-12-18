@@ -132,6 +132,7 @@ COMMANDS:
   minimal install  Minimal WordPress installation without git repository
   ddev install     DDEV-based WordPress installation
   ddev mod         Modify DDEV WordPress site (uses 'ddev wp' commands)
+  ddev update      Update DDEV WordPress site (uses 'ddev wp' commands)
   ddev remove      Remove DDEV containers and configuration
   update           Update WordPress core and plugins
   mod              Modify/manage existing WordPress sites
@@ -142,6 +143,8 @@ OPTIONS:
 EXAMPLES:
   $0 full install --wp-title="My Site"
   $0 ddev install -G arbeit
+  $0 ddev mod -S
+  $0 ddev update --all
   $0 ddev remove
   $0 minimal install
   $0 full install --debug --wp-title="Debug Site"
@@ -310,9 +313,55 @@ main() {
                         exit 1
                     fi
                     ;;
+                "update")
+                    shift  # Remove "update" from arguments
+                    log_info "Running WordPress update (mode: ddev)"
+
+                    # Check if DDEV is running
+                    if ! ddev status >/dev/null 2>&1; then
+                        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
+                        exit 1
+                    fi
+
+                    # Set DDEV-specific environment variables
+                    export WP_CLI_PATH="ddev wp"
+                    export WORDPRESS_BASE_DIR="."
+
+                    # Initialize sites array for wp_update function (can't export arrays in bash)
+                    sites=(".")
+
+                    # Parse --plugins argument, default to "all"
+                    local plugins_to_update="all"
+                    while [[ $# -gt 0 ]]; do
+                        case $1 in
+                            --plugins=*)
+                                plugins_to_update="${1#*=}"
+                                shift
+                                ;;
+                            *)
+                                shift
+                                ;;
+                        esac
+                    done
+
+                    # Update plugins
+                    if [[ "$plugins_to_update" == "all" ]]; then
+                        log_info "Updating all plugins..."
+                        wp_update "all"
+                    else
+                        # Split comma-separated list and update each plugin
+                        IFS=',' read -ra PLUGINS <<< "$plugins_to_update"
+                        for plugin in "${PLUGINS[@]}"; do
+                            log_info "Updating plugin: $plugin"
+                            wp_update "$plugin"
+                        done
+                    fi
+
+                    log_info "DDEV update completed successfully"
+                    ;;
                 *)
-                    log_error "Expected 'install', 'remove', or 'mod' after 'ddev', got: ${subcommand:-nothing}"
-                    log_error "Usage: $0 ddev [install|remove|mod] [OPTIONS]"
+                    log_error "Expected 'install', 'remove', 'mod', or 'update' after 'ddev', got: ${subcommand:-nothing}"
+                    log_error "Usage: $0 ddev [install|remove|mod|update] [OPTIONS]"
                     exit 1
                     ;;
             esac
