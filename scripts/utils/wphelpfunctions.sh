@@ -433,7 +433,7 @@ wp_key_acf_pro() {
 wp_key_migrate() {
     wp_license_plugins "WPMDB"
     out "activating pull setting" 4
-    "${WP_CLI_PATH}" migrate setting update pull on
+    ${WP_CLI_PATH} migrate setting update pull on
 }
 
 # Setup Akeeba Download ID
@@ -442,13 +442,13 @@ wp_key_akeeba() {
         out "AKEEBA_DOWNLOAD_ID not found in environment" 3
         return 1
     fi
-    
+
     out "Setting up Akeeba Download ID" 2
-    
-    # Add to database via WP-CLI
-    if "${WP_CLI_PATH}" option update akeeba_download_id "$AKEEBA_DOWNLOAD_ID" 2>/dev/null; then
+
+    # Add to database via WP-CLI (no quotes around WP_CLI_PATH for "ddev wp" support)
+    if ${WP_CLI_PATH} option update akeeba_download_id "$AKEEBA_DOWNLOAD_ID" 2>/dev/null; then
         out "Akeeba Download ID added to database" 4
-        
+
         # Also add to wp-config.php as backup
         if ! grep -q "AKEEBA_DOWNLOAD_ID" wp-config.php 2>/dev/null; then
             local akeeba_config
@@ -460,7 +460,7 @@ EOM
             echo "$akeeba_config" >> ./wp-config.php
             out "Akeeba Download ID also added to wp-config.php" 2
         fi
-        
+
         sleep 1
         out "Akeeba setup completed" 4
         return 0
