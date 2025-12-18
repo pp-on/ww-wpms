@@ -62,7 +62,7 @@ anzahl=0
 # User management defaults
 wp_user="${WP_MOD_DEFAULT_USER:-test}"
 wp_password="${WP_MOD_DEFAULT_PASSWORD:-}"
-wp_email="${WP_MOD_DEFAULT_EMAIL:-${WP_ADMIN_EMAIL}}"
+wp_email="${WP_MOD_DEFAULT_EMAIL:-${WP_ADMIN_EMAIL:-}}"
 
 # Note: Helper functions are loaded by the webwerk dispatcher
 # No need to source wphelpfunctions.sh again - functions are already available
@@ -348,26 +348,29 @@ parse_arguments() {
 
 main() {
     log_info "Starting $SCRIPT_NAME v$SCRIPT_VERSION"
-    
+
     # Initialize colors
     colors
-    
+
+    # Initialize sites array with current directory as default
+    # This will be used if no -a or -s flags are provided
+    sites=("${WORDPRESS_BASE_DIR}")
+
     # Parse command line arguments
     parse_arguments "$@"
-    
+
     # Find wp-config.php if needed
     find_wp_config
-    
-    # If no site selection method was used, use current directory
+
+    # Update sites array if no explicit site selection was made
     if [[ $proc_sites -eq 0 ]]; then
-        sites+=("${WORDPRESS_BASE_DIR}")
         log_info "No sites specified, using current directory: ${WORDPRESS_BASE_DIR}"
     fi
-    
+
     # Set verbose mode for search functions
     verbose=1
     export verbose
-    
+
     log_success "$SCRIPT_NAME completed successfully"
 }
 

@@ -604,29 +604,50 @@ wp_debug() {
 
 # Force HTTPS on WordPress site
 wp_force_https() {
-    out "Forcing HTTPS for WordPress site" 2
+    local site
+    local target_dir
+    local return_dir
 
-    # Remove existing HTTPS-related defines to avoid duplicates
-    sed -i '/FORCE_SSL_ADMIN/d' wp-config.php 2>/dev/null || true
-    sed -i '/WP_HOME/d' wp-config.php 2>/dev/null || true
-    sed -i '/WP_SITEURL/d' wp-config.php 2>/dev/null || true
-    sed -i '/HTTP_X_FORWARDED_PROTO/d' wp-config.php 2>/dev/null || true
+    for site in "${sites[@]}"; do
+        out "Forcing HTTPS for WordPress site: $site" 2
 
-    # Get current site URL
-    local site_url
-    site_url=$("${WP_CLI_PATH}" option get siteurl 2>/dev/null || echo "")
+        # Handle current directory case (for DDEV mode)
+        if [[ "$site" == "." || "${WORDPRESS_BASE_DIR}${site}" == "." ]]; then
+            target_dir="."
+        else
+            target_dir="${WORDPRESS_BASE_DIR}${site}"
+        fi
 
-    if [[ -z "$site_url" ]]; then
-        out "Warning: Could not detect site URL" 3
-        site_url="https://\$_SERVER['HTTP_HOST']"
-    else
-        # Convert to HTTPS if not already
-        site_url="${site_url/http:/https:}"
-        out "Site URL: $site_url" 2
-    fi
+        # Only change directory if needed
+        if [[ "$target_dir" != "." ]]; then
+            return_dir=$(pwd)
+            cd "$target_dir"
+        fi
 
-    # Add HTTPS forcing code to wp-config.php
-    cat <<'EOF' >> wp-config.php
+        # Remove existing HTTPS-related code block to avoid duplicates
+        # Remove the entire block added by this script
+        sed -i '/Force HTTPS - Added by webwerk mod script/,/FORCE_SSL_ADMIN/d' wp-config.php 2>/dev/null || true
+
+        # Also remove any orphaned lines from previous failed runs
+        sed -i '/FORCE_SSL_ADMIN/d' wp-config.php 2>/dev/null || true
+        sed -i '/WP_HOME/d' wp-config.php 2>/dev/null || true
+        sed -i '/WP_SITEURL/d' wp-config.php 2>/dev/null || true
+
+        # Get current site URL using WP-CLI (works with both regular wp and ddev wp)
+        local site_url
+        site_url=$(${WP_CLI_PATH} option get siteurl 2>/dev/null || echo "")
+
+        if [[ -z "$site_url" ]]; then
+            out "Warning: Could not detect site URL" 3
+            site_url="https://\$_SERVER['HTTP_HOST']"
+        else
+            # Convert to HTTPS if not already
+            site_url="${site_url/http:/https:}"
+            out "Site URL: $site_url" 2
+        fi
+
+        # Add HTTPS forcing code to wp-config.php
+        cat <<'EOF' >> wp-config.php
 
 // Force HTTPS - Added by webwerk mod script
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
@@ -635,12 +656,18 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
 define('FORCE_SSL_ADMIN', true);
 EOF
 
-    # Update site URLs to HTTPS using WP-CLI
-    "${WP_CLI_PATH}" option update home "$site_url" 2>/dev/null || true
-    "${WP_CLI_PATH}" option update siteurl "$site_url" 2>/dev/null || true
+        # Update site URLs to HTTPS using WP-CLI
+        ${WP_CLI_PATH} option update home "$site_url" 2>/dev/null || true
+        ${WP_CLI_PATH} option update siteurl "$site_url" 2>/dev/null || true
 
-    out "HTTPS forcing enabled successfully" 4
-    out "Site URL updated to: $site_url" 2
+        out "HTTPS forcing enabled successfully" 4
+        out "Site URL updated to: $site_url" 2
+
+        # Return to original directory if we changed it
+        if [[ -n "${return_dir:-}" ]]; then
+            cd "$return_dir"
+        fi
+    done
 }
 
 #===============================================================================
@@ -775,5 +802,5 @@ colors
 out "$SCRIPT_NAME v$SCRIPT_VERSION loaded successfully" 4
 
 # Conditional output based on flags
-[[ "${print:-0}" = "1" ]] && print_sites
-[[ "${total:-0}" = "1" ]] && echo -e "\n=======\nTotal ${anzahl:-0} WP-Sites"
+[[ "${print:-0}" = "1" ]] && print_sites || true
+[[ "${total:-0}" = "1" ]] && echo -e "\n=======\nTotal ${anzahl:-0} WP-Sites" || true
