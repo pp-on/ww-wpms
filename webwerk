@@ -31,6 +31,10 @@ log_warning() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $*" | tee -a "$LOG_FILE" >&2
 }
 
+log_success() {
+    echo -e "\e[32m[$(date +'%Y-%m-%d %H:%M:%S')] SUCCESS: $*\e[0m" | tee -a "$LOG_FILE"
+}
+
 #===============================================================================
 # CONFIGURATION LOADING
 #===============================================================================
@@ -143,8 +147,12 @@ OPTIONS:
 EXAMPLES:
   $0 full install --wp-title="My Site"
   $0 ddev install -G arbeit
+  $0 ddev install -n                      # Use nip.io (no hosts file needed)
   $0 ddev mod -S
-  $0 ddev update --all
+  $0 ddev update                          # Update all plugins (default)
+  $0 ddev update --core                   # Update core and all plugins
+  $0 ddev update --plugins=plugin1,plugin2  # Update specific plugins
+  $0 ddev update --dry-run                # Show what would be updated
   $0 ddev remove
   $0 minimal install
   $0 full install --debug --wp-title="Debug Site"
@@ -330,12 +338,23 @@ main() {
                     # Initialize sites array for wp_update function (can't export arrays in bash)
                     sites=(".")
 
-                    # Parse --plugins argument, default to "all"
+                    # Parse arguments
                     local plugins_to_update="all"
+                    local update_core=false
+                    local dry_run=false
+
                     while [[ $# -gt 0 ]]; do
                         case $1 in
                             --plugins=*)
                                 plugins_to_update="${1#*=}"
+                                shift
+                                ;;
+                            --core)
+                                update_core=true
+                                shift
+                                ;;
+                            --dry-run)
+                                dry_run=true
                                 shift
                                 ;;
                             *)
@@ -344,17 +363,55 @@ main() {
                         esac
                     done
 
-                    # Update plugins
-                    if [[ "$plugins_to_update" == "all" ]]; then
-                        log_info "Updating all plugins..."
-                        wp_update "all"
+                    # Show current WordPress version
+                    log_info "Current WordPress version:"
+                    ${WP_CLI_PATH} core version
+
+                    # Check for core updates
+                    if [[ "$update_core" == "true" ]] || [[ "$plugins_to_update" == "all" ]]; then
+                        log_info "Checking for WordPress core updates..."
+                        if ${WP_CLI_PATH} core check-update 2>&1 | grep -q "Success"; then
+                            log_info "WordPress core is up to date"
+                        else
+                            log_info "Core updates available:"
+                            ${WP_CLI_PATH} core check-update
+
+                            if [[ "$dry_run" == "false" ]] && [[ "$update_core" == "true" ]]; then
+                                log_info "Updating WordPress core..."
+                                ${WP_CLI_PATH} core update
+                                log_info "Updated to version:"
+                                ${WP_CLI_PATH} core version
+                            fi
+                        fi
+                    fi
+
+                    # Show available plugin updates
+                    log_info "Checking for plugin updates..."
+                    local available_updates
+                    available_updates=$(${WP_CLI_PATH} plugin list --update=available --format=count)
+
+                    if [[ "$available_updates" -gt 0 ]]; then
+                        log_info "$available_updates plugin(s) have updates available:"
+                        ${WP_CLI_PATH} plugin list --update=available --fields=name,version,update_version
+
+                        if [[ "$dry_run" == "true" ]]; then
+                            log_info "[DRY RUN] Would update the plugins listed above"
+                        else
+                            # Update plugins
+                            if [[ "$plugins_to_update" == "all" ]]; then
+                                log_info "Updating all plugins..."
+                                ${WP_CLI_PATH} plugin update --all
+                            else
+                                # Split comma-separated list and update each plugin
+                                IFS=',' read -ra PLUGINS <<< "$plugins_to_update"
+                                for plugin in "${PLUGINS[@]}"; do
+                                    log_info "Updating plugin: $plugin"
+                                    ${WP_CLI_PATH} plugin update "$plugin"
+                                done
+                            fi
+                        fi
                     else
-                        # Split comma-separated list and update each plugin
-                        IFS=',' read -ra PLUGINS <<< "$plugins_to_update"
-                        for plugin in "${PLUGINS[@]}"; do
-                            log_info "Updating plugin: $plugin"
-                            wp_update "$plugin"
-                        done
+                        log_info "All plugins are up to date"
                     fi
 
                     log_info "DDEV update completed successfully"
