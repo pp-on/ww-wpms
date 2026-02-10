@@ -116,7 +116,7 @@ validate_requirements() {
     done
 
     # Check WP-CLI
-    if ! command -v "$WP_CLI_PATH" &> /dev/null; then
+    if ! command -v ${WP_CLI_PATH%% *} &> /dev/null; then
         missing_deps+=("wp-cli")
     fi
 
