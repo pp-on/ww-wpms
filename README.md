@@ -509,8 +509,11 @@ Full DDEV support for containerized development:
 
 ### DDEV Commands
 ```bash
-# Start DDEV site
-./webwerk install --mode=ddev
+# Install DDEV site
+./webwerk ddev install                      # Standard install (auto-adds /etc/hosts entry)
+./webwerk ddev install -G arbeit            # With SSH host for repo cloning
+./webwerk ddev install -n                   # Use nip.io instead of ddev.site
+./webwerk ddev install -W                   # Also add entry to Windows hosts file
 
 # Access site
 open https://mysite.ddev.site
@@ -519,6 +522,12 @@ open https://mysite.ddev.site
 ./webwerk ddev mod --force-https
 ./webwerk ddev mod --enable-debug
 ./webwerk ddev mod --setup-acf-license
+
+# Update plugins
+./webwerk ddev update                       # Update all plugins
+./webwerk ddev update --core                # Update core + plugins
+./webwerk ddev update --plugins=x,y         # Update specific plugins
+./webwerk ddev update --dry-run             # Preview updates
 
 # WP-CLI in container
 ddev wp --info
