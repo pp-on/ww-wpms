@@ -95,9 +95,9 @@ reset_wordpress_database() {
     log_info "Resetting WordPress database: $db_name"
     
     # Try WP-CLI database reset first
-    if command -v "$WP_CLI_PATH" >/dev/null 2>&1; then
+    if command -v ${WP_CLI_PATH%% *} >/dev/null 2>&1; then
         log_debug "Attempting WP-CLI database reset"
-        if "$WP_CLI_PATH" db reset --yes 2>/dev/null; then
+        if ${WP_CLI_PATH} db reset --yes 2>/dev/null; then
             log_success "Database reset via WP-CLI"
             return 0
         else
@@ -124,8 +124,8 @@ test_database_connection() {
     log_info "Testing database connection"
     
     # Try WP-CLI database check first
-    if command -v "$WP_CLI_PATH" >/dev/null 2>&1; then
-        if "$WP_CLI_PATH" db check 2>/dev/null; then
+    if command -v ${WP_CLI_PATH%% *} >/dev/null 2>&1; then
+        if ${WP_CLI_PATH} db check 2>/dev/null; then
             log_success "Database connection successful (WP-CLI)"
             return 0
         else
@@ -162,7 +162,7 @@ download_wordpress_core() {
         return 0
     fi
     
-    if "$WP_CLI_PATH" core download --locale="$locale" --force; then
+    if ${WP_CLI_PATH} core download --locale="$locale" --force; then
         # Verify download
         if [[ -f "wp-config-sample.php" && -f "index.php" && -d "wp-includes" ]]; then
             log_success "WordPress core downloaded and verified"
@@ -195,7 +195,7 @@ create_wordpress_config() {
     fi
     
     # Create wp-config.php
-    if "$WP_CLI_PATH" config create \
+    if ${WP_CLI_PATH} config create \
         --dbname="$db_name" \
         --dbuser="$db_user" \
         --dbpass="$db_password" \
@@ -316,7 +316,7 @@ install_wordpress_core() {
     log_info "Admin User: $admin_user"
     log_info "Admin Email: $admin_email"
     
-    if "$WP_CLI_PATH" core install \
+    if ${WP_CLI_PATH} core install \
         --url="$site_url" \
         --title="$site_title" \
         --admin_user="$admin_user" \
@@ -326,12 +326,12 @@ install_wordpress_core() {
         
         # Set WordPress language if not English
         if [[ "$WP_LOCALE" != "en_US" ]]; then
-            "$WP_CLI_PATH" language core install "$WP_LOCALE" --activate 2>/dev/null || \
+            ${WP_CLI_PATH} language core install "$WP_LOCALE" --activate 2>/dev/null || \
                 log_warning "Failed to set language to $WP_LOCALE"
         fi
         
         # Set timezone
-        "$WP_CLI_PATH" option update timezone_string "$WP_TIMEZONE" 2>/dev/null || \
+        ${WP_CLI_PATH} option update timezone_string "$WP_TIMEZONE" 2>/dev/null || \
             log_warning "Failed to set timezone"
         
         log_success "WordPress installed successfully"
@@ -392,9 +392,9 @@ clone_git_repository() {
 activate_all_plugins() {
     log_info "Activating all available plugins"
     
-    if "$WP_CLI_PATH" plugin activate --all 2>/dev/null; then
+    if ${WP_CLI_PATH} plugin activate --all 2>/dev/null; then
         local active_count
-        active_count=$("$WP_CLI_PATH" plugin list --status=active --format=count 2>/dev/null || echo "unknown")
+        active_count=$(${WP_CLI_PATH} plugin list --status=active --format=count 2>/dev/null || echo "unknown")
         log_success "All plugins activated (total active: $active_count)"
         return 0
     else
@@ -484,7 +484,7 @@ setup_akeeba_download_id() {
     log_info "Setting up Akeeba Download ID in database"
     
     # Add to database
-    if "$WP_CLI_PATH" option update akeeba_download_id "$AKEEBA_DOWNLOAD_ID" 2>/dev/null; then
+    if ${WP_CLI_PATH} option update akeeba_download_id "$AKEEBA_DOWNLOAD_ID" 2>/dev/null; then
         log_success "Akeeba Download ID added to database"
         
         # Also add to wp-config.php as backup
@@ -588,7 +588,7 @@ disable_search_engine_indexing() {
     if [[ "${DISABLE_SEARCH_INDEXING}" == "true" ]]; then
         log_info "Disabling search engine indexing for development"
         
-        if "$WP_CLI_PATH" option update blog_public 0 2>/dev/null; then
+        if ${WP_CLI_PATH} option update blog_public 0 2>/dev/null; then
             log_success "Search engine indexing disabled"
             return 0
         else
