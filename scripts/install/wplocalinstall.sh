@@ -185,27 +185,73 @@ install_minimal_wordpress() {
 # Install WordPress with DDEV
 install_ddev_wordpress() {
     log_info "Starting DDEV WordPress installation for: $CURRENT_DIR"
-    
+
     # Override settings for DDEV
     DB_USER="db"
     DB_PASSWORD="db"
     DB_NAME="db"
     DB_HOST="db"
-    WP_URL="${CURRENT_DIR}.ddev.site"
     WP_CLI_PATH="ddev wp"
-    
+
+    # Set URL based on nip.io flag
+    if [[ "${USE_NIP_IO:-false}" == true ]]; then
+        WP_URL="${CURRENT_DIR}.127.0.0.1.nip.io"
+        log_info "Using nip.io for DNS (no hosts file required)"
+    else
+        WP_URL="${CURRENT_DIR}.ddev.site"
+    fi
+
     # Check if DDEV is already configured
     if [[ -f ".ddev/config.yaml" ]]; then
-        log_info "DDEV configuration found, starting existing containers"
-        ddev start
+        log_info "DDEV configuration found"
+        # Update config for nip.io if requested
+        if [[ "${USE_NIP_IO:-false}" == true ]]; then
+            log_info "Updating DDEV config for nip.io"
+            ddev config --project-tld="127.0.0.1.nip.io" \
+                --additional-fqdns="${CURRENT_DIR}.127.0.0.1.nip.io"
+        fi
     else
-        # Initialize DDEV
+        # Initialize DDEV - disable settings management if using nip.io
         log_info "Initializing DDEV configuration"
-        ddev config --project-type=wordpress --docroot=. --project-name="$CURRENT_DIR"
-
-        log_info "Starting DDEV containers"
-        ddev start
+        if [[ "${USE_NIP_IO:-false}" == true ]]; then
+            ddev config --project-type=wordpress --docroot=. --project-name="$CURRENT_DIR" \
+                --additional-fqdns="${CURRENT_DIR}.127.0.0.1.nip.io" \
+                --disable-settings-management
+        else
+            ddev config --project-type=wordpress --docroot=. --project-name="$CURRENT_DIR"
+        fi
     fi
+
+    # Ensure hosts entry exists for nip.io (needed when corporate DNS blocks nip.io)
+    if [[ "${USE_NIP_IO:-false}" == true ]]; then
+        local nip_hostname="${CURRENT_DIR}.127.0.0.1.nip.io"
+        if ! grep -q "$nip_hostname" /etc/hosts 2>/dev/null; then
+            log_info "Adding $nip_hostname to /etc/hosts (corporate DNS workaround)"
+            echo "127.0.0.1 $nip_hostname" | sudo tee -a /etc/hosts >/dev/null
+        fi
+    else
+        # Always add ddev.site entry to WSL /etc/hosts
+        local ddev_hostname="${CURRENT_DIR}.ddev.site"
+        if ! grep -q "$ddev_hostname" /etc/hosts 2>/dev/null; then
+            log_info "Adding $ddev_hostname to /etc/hosts"
+            echo "127.0.0.1 $ddev_hostname" | sudo tee -a /etc/hosts >/dev/null
+        fi
+    fi
+
+    # Add entry to Windows hosts file if -W flag is set
+    if [[ "${USE_WINDOWS_HOSTS:-false}" == true ]]; then
+        local win_hosts="/mnt/c/Windows/System32/drivers/etc/hosts"
+        local hostname="${WP_URL}"
+        if [[ -f "$win_hosts" ]] && ! grep -q "$hostname" "$win_hosts" 2>/dev/null; then
+            log_info "Adding $hostname to Windows hosts file"
+            echo "127.0.0.1 $hostname" | sudo tee -a "$win_hosts" >/dev/null && \
+                log_success "Added $hostname to Windows hosts file" || \
+                log_warning "Could not write to Windows hosts file (admin rights required)"
+        fi
+    fi
+
+    log_info "Starting DDEV containers"
+    ddev start
     
     download_wordpress
     create_ddev_config
@@ -490,6 +536,7 @@ GIT OPTIONS:
 OTHER OPTIONS:
   --wp-cli=PATH         Path to WP-CLI executable (default: wp)
   --target-dir=DIR      Target installation directory (default: current dir)
+  -n, --nip-io          Use nip.io for DNS (no hosts file needed, DDEV mode only)
   --debug               Enable debug mode
   --help                Show this help message
 
@@ -497,6 +544,7 @@ EXAMPLES:
   Via webwerk (recommended):
     webwerk full install --wp-title="My Site"
     webwerk ddev install -G arbeit
+    webwerk ddev install -n                        # Use nip.io (no admin rights needed)
     webwerk minimal install --db-host=127.0.0.1
 
   Direct call (backward compatible):
@@ -512,6 +560,10 @@ EOF
 }
 
 parse_arguments() {
+    # Initialize optional flags
+    USE_NIP_IO=false
+    USE_WINDOWS_HOSTS=false
+
     # First argument is the installation mode (full/minimal/ddev)
     local mode="${1:-full}"
 
@@ -606,6 +658,12 @@ parse_arguments() {
                     log_error "Cannot change to directory: ${1#*=}"
                     exit 1
                 }
+                ;;
+            -n|--nip-io)
+                USE_NIP_IO=true
+                ;;
+            -W|--windows-hosts)
+                USE_WINDOWS_HOSTS=true
                 ;;
             --debug)
                 set -x
