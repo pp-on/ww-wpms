@@ -20,6 +20,7 @@ readonly INSTALL_DIR="${HOME}/.local/bin"
 readonly LINK_PATH="${INSTALL_DIR}/webwerk"
 readonly DDEV_LAUNCH_SRC="${SCRIPT_DIR}/ddev/commands/host/launch"
 readonly DDEV_LAUNCH_DEST="${HOME}/.ddev/commands/host/launch"
+readonly COMPLETIONS_SRC="${SCRIPT_DIR}/completions"
 
 # Logging functions
 log_info() {
@@ -53,6 +54,40 @@ install_ddev_commands() {
     cp "$DDEV_LAUNCH_SRC" "$DDEV_LAUNCH_DEST"
     chmod +x "$DDEV_LAUNCH_DEST"
     log_success "Installed custom DDEV launch command (WSL xdg-open fix)"
+}
+
+# Install shell completions for "ddev wp"
+install_completions() {
+    # Fish
+    local fish_dir="${HOME}/.config/fish/completions"
+    local fish_dest="${fish_dir}/ddev-wp.fish"
+    if [[ ! -f "$fish_dest" ]]; then
+        if command -v fish >/dev/null 2>&1; then
+            mkdir -p "$fish_dir"
+            cp "${COMPLETIONS_SRC}/ddev-wp.fish" "$fish_dest"
+            log_success "Installed fish completion for 'ddev wp'"
+        fi
+    else
+        log_info "Fish completion for 'ddev wp' already installed, skipping"
+    fi
+
+    # Bash
+    local bash_completion_dir="${HOME}/.bash_completion.d"
+    local bash_dest="${bash_completion_dir}/ddev-wp.bash"
+    if [[ ! -f "$bash_dest" ]]; then
+        mkdir -p "$bash_completion_dir"
+        cp "${COMPLETIONS_SRC}/ddev-wp.bash" "$bash_dest"
+        # Source the completion dir from .bashrc if not already done
+        local bashrc="${HOME}/.bashrc"
+        if ! grep -q "bash_completion.d" "$bashrc" 2>/dev/null; then
+            echo '' >> "$bashrc"
+            echo '# Load custom bash completions' >> "$bashrc"
+            echo 'for f in ~/.bash_completion.d/*.bash; do source "$f"; done' >> "$bashrc"
+        fi
+        log_success "Installed bash completion for 'ddev wp'"
+    else
+        log_info "Bash completion for 'ddev wp' already installed, skipping"
+    fi
 }
 
 # Main installation function
@@ -109,6 +144,9 @@ install_webwerk() {
     
     # Install DDEV command overrides
     install_ddev_commands
+
+    # Install shell completions
+    install_completions
 
     # Show configuration reminder
     log_info "Don't forget to configure your environment:"
