@@ -18,6 +18,8 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly WEBWERK_SCRIPT="${SCRIPT_DIR}/webwerk"
 readonly INSTALL_DIR="${HOME}/.local/bin"
 readonly LINK_PATH="${INSTALL_DIR}/webwerk"
+readonly DDEV_LAUNCH_SRC="${SCRIPT_DIR}/ddev/commands/host/launch"
+readonly DDEV_LAUNCH_DEST="${HOME}/.ddev/commands/host/launch"
 
 # Logging functions
 log_info() {
@@ -34,6 +36,23 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}[ERROR]${COLOR_OFF} $*" >&2
+}
+
+# Install DDEV global command overrides
+install_ddev_commands() {
+    local dest_dir
+    dest_dir="$(dirname "$DDEV_LAUNCH_DEST")"
+
+    # Skip if already installed
+    if grep -q "WAYLAND_DISPLAY" "$DDEV_LAUNCH_DEST" 2>/dev/null; then
+        log_info "DDEV launch command already customized, skipping"
+        return 0
+    fi
+
+    mkdir -p "$dest_dir"
+    cp "$DDEV_LAUNCH_SRC" "$DDEV_LAUNCH_DEST"
+    chmod +x "$DDEV_LAUNCH_DEST"
+    log_success "Installed custom DDEV launch command (WSL xdg-open fix)"
 }
 
 # Main installation function
@@ -88,6 +107,9 @@ install_webwerk() {
         log_info "You may need to restart your terminal or update your PATH"
     fi
     
+    # Install DDEV command overrides
+    install_ddev_commands
+
     # Show configuration reminder
     log_info "Don't forget to configure your environment:"
     log_info "1. Copy .env.example to .env and edit your settings"
