@@ -506,8 +506,9 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
     
-    # Validate required tools
-    if ! command -v "${WP_CLI_PATH}" >/dev/null 2>&1; then
+    # Validate required tools (handle "ddev wp" as multi-word command)
+    local wp_binary="${WP_CLI_PATH%% *}"
+    if ! command -v "$wp_binary" >/dev/null 2>&1; then
         log_error "WP-CLI not found at: ${WP_CLI_PATH}"
         exit 1
     fi
