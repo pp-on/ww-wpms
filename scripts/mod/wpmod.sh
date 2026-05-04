@@ -176,6 +176,7 @@ WORDPRESS CONFIGURATION:
   -x, --wp-debug MODE         Enable/disable debug mode (on/off)
   -z, --hide-errors           Hide WordPress errors
   -r, --disable-search-engine-indexing  Disable search engine indexing
+  --enable-search-engine-indexing       Enable search engine indexing
   --htaccess                  Create/update .htaccess file
   -S, --force-https           Force HTTPS (updates wp-config.php and site URLs)
 
@@ -286,6 +287,9 @@ parse_arguments() {
                 ;;
             -r|--disable-search-engine-indexing)
                 wp_block_se
+                ;;
+            --enable-search-engine-indexing)
+                wp_enable_se
                 ;;
             -i|--install-plugin)
                 shift

@@ -740,6 +740,12 @@ wp_block_se() {
     "${WP_CLI_PATH}" option update blog_public 0
 }
 
+# Enable search engine indexing
+wp_enable_se() {
+    out "Enabling search engine indexing for $(basename "$PWD")"
+    "${WP_CLI_PATH}" option update blog_public 1
+}
+
 #===============================================================================
 # CUSTOM POST TYPE EXPORT
 #===============================================================================
