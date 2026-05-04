@@ -40,12 +40,18 @@ log_success() {
 #===============================================================================
 
 load_environment() {
-    # Load .env file if it exists
+    local env_file=""
     if [[ -f "${SCRIPT_DIR}/.env" ]]; then
-        log_info "Loading configuration from .env"
-        set -a  # automatically export all variables
+        env_file="${SCRIPT_DIR}/.env"
+    elif [[ -f "$HOME/.env" ]]; then
+        env_file="$HOME/.env"
+    fi
+
+    if [[ -n "$env_file" ]]; then
+        log_info "Loading configuration from $env_file"
+        set -a
         # shellcheck source=/dev/null
-        source "${SCRIPT_DIR}/.env"
+        source "$env_file"
         set +a
     else
         log_warning ".env file not found! Using defaults or environment variables"
