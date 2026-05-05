@@ -316,13 +316,22 @@ install_wordpress_core() {
     log_info "Admin User: $admin_user"
     log_info "Admin Email: $admin_email"
     
-    if ${WP_CLI_PATH} core install \
+    local install_cmd="core install"
+    local extra_flags=""
+    if [[ "${WP_MULTISITE:-false}" == "true" ]]; then
+        install_cmd="core multisite-install"
+        log_info "Multisite mode enabled"
+        [[ "${WP_MULTISITE_SUBDOMAINS:-false}" == "true" ]] && extra_flags="--subdomains"
+    fi
+
+    if ${WP_CLI_PATH} $install_cmd \
         --url="$site_url" \
         --title="$site_title" \
         --admin_user="$admin_user" \
         --admin_password="$WP_ADMIN_PASSWORD" \
         --admin_email="$admin_email" \
-        --skip-email; then
+        --skip-email \
+        $extra_flags; then
         
         # Set WordPress language if not English
         if [[ "$WP_LOCALE" != "en_US" ]]; then

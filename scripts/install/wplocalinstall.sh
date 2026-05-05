@@ -320,15 +320,30 @@ install_wordpress() {
     log_info "Site URL: $WP_URL"
     log_info "Admin User: $WP_ADMIN_USER"
     log_info "Admin Email: $WP_ADMIN_EMAIL"
-    
-    $WP_CLI_PATH core install \
-        --url="$WP_URL" \
-        --title="$WP_TITLE" \
-        --admin_user="$WP_ADMIN_USER" \
-        --admin_password="$WP_ADMIN_PASSWORD" \
-        --admin_email="$WP_ADMIN_EMAIL" \
-        --skip-email
-    
+
+    if [[ "${WP_MULTISITE:-false}" == "true" ]]; then
+        log_info "Multisite mode enabled"
+        local subdomains_flag=""
+        [[ "${WP_MULTISITE_SUBDOMAINS:-false}" == "true" ]] && subdomains_flag="--subdomains"
+
+        $WP_CLI_PATH core multisite-install \
+            --url="$WP_URL" \
+            --title="$WP_TITLE" \
+            --admin_user="$WP_ADMIN_USER" \
+            --admin_password="$WP_ADMIN_PASSWORD" \
+            --admin_email="$WP_ADMIN_EMAIL" \
+            --skip-email \
+            $subdomains_flag
+    else
+        $WP_CLI_PATH core install \
+            --url="$WP_URL" \
+            --title="$WP_TITLE" \
+            --admin_user="$WP_ADMIN_USER" \
+            --admin_password="$WP_ADMIN_PASSWORD" \
+            --admin_email="$WP_ADMIN_EMAIL" \
+            --skip-email
+    fi
+
     log_success "WordPress installed successfully"
     log_info "Admin credentials - User: $WP_ADMIN_USER, Password: $WP_ADMIN_PASSWORD"
 }
@@ -609,6 +624,8 @@ OTHER OPTIONS:
   --lemp, --nginx       Generate nginx.conf (LEMP stack, default)
   --lamp, --apache      Generate .htaccess instead of nginx.conf (LAMP stack)
   --production          Add security hardening to nginx.conf (deny xmlrpc, headers, etc.)
+  --multisite           Install as WordPress Multisite (wp core multisite-install)
+  --subdomains          Use subdomain network (default: subdirectory); requires --multisite
   --debug               Enable debug mode
   --help                Show this help message
 
@@ -745,6 +762,12 @@ parse_arguments() {
                 ;;
             --production)
                 NGINX_PRODUCTION=true
+                ;;
+            --multisite)
+                WP_MULTISITE=true
+                ;;
+            --subdomains)
+                WP_MULTISITE_SUBDOMAINS=true
                 ;;
             --debug)
                 set -x
