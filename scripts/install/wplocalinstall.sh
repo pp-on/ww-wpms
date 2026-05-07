@@ -549,7 +549,7 @@ set_permissions() {
     log_info "Setting file permissions"
     
     # Set proper ownership (adjust as needed for your system)
-    if command -v chown &> /dev/null && [[ -n "${WEBSERVER_USER:-}" ]]; then
+    if command -v chown &> /dev/null && [[ -n "${WEBSERVER_USER:-}" ]] && [[ "$EUID" -eq 0 ]]; then
         chown -R "$WEBSERVER_USER:$WEBSERVER_USER" wp-content/
         log_success "Ownership set to $WEBSERVER_USER"
     fi

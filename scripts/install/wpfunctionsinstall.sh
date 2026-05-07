@@ -689,8 +689,8 @@ disable_search_engine_indexing() {
 set_file_permissions() {
     log_info "Setting file permissions"
     
-    # Set ownership if configured
-    if [[ -n "${WEBSERVER_USER:-}" ]] && command -v chown &> /dev/null; then
+    # Set ownership if configured and running as root
+    if [[ -n "${WEBSERVER_USER:-}" ]] && command -v chown &> /dev/null && [[ "$EUID" -eq 0 ]]; then
         if chown -R "$WEBSERVER_USER:$WEBSERVER_GROUP" . 2>/dev/null; then
             log_success "Ownership set to $WEBSERVER_USER:$WEBSERVER_GROUP"
         else
