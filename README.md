@@ -198,7 +198,9 @@ GIT_PROTOCOL=ssh
 GIT_SSH_HOST=arbeit  # SSH host alias from ~/.ssh/config (optional)
 
 # Development
-LOCAL_URL_BASE=arbeit.local/repos
+# Base URL for local installs — WordPress siteurl will be: LOCAL_URL_BASE/<dirname>
+# Must match an existing nginx/apache vhost with PHP-FPM support.
+LOCAL_URL_BASE=netcup.local
 DISABLE_SEARCH_INDEXING=true
 ```
 
@@ -282,6 +284,10 @@ Features:
 
 # Install in specific directory
 ./webwerk install --target-dir=/path/to/site --wp-title="Remote Site"
+
+# Override LOCAL_URL_BASE for this install (WordPress siteurl = <base>/<dirname>)
+./webwerk full install -G arbeit --base-url=netcup.local
+./webwerk full install -G arbeit -b netcup.local
 ```
 
 ### Update Commands
