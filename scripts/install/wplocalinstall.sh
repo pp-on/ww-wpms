@@ -605,6 +605,8 @@ DATABASE OPTIONS:
 
 WORDPRESS OPTIONS:
   --wp-url=URL          WordPress site URL
+  --base-url=URL        Base URL for local dev (sets LOCAL_URL_BASE, e.g. netcup.local)
+  -b URL                Short form of --base-url
   --wp-title=TITLE      WordPress site title
   --wp-admin-user=USER  WordPress admin username (default: admin)
   --wp-admin-pass=PASS  WordPress admin password (auto-generated if not set)
@@ -706,6 +708,17 @@ parse_arguments() {
                 ;;
             --wp-url=*)
                 WP_URL="${1#*=}"
+                ;;
+            --base-url=*)
+                LOCAL_URL_BASE="${1#*=}"
+                ;;
+            -b)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "-b requires an argument (base URL)"
+                    exit 1
+                fi
+                LOCAL_URL_BASE="$2"
+                skip_next=true
                 ;;
             --wp-title=*)
                 WP_TITLE="${1#*=}"
