@@ -58,6 +58,7 @@ wp_config_path=""
 proc_sites=0
 sites=()
 anzahl=0
+WORDPRESS_BASE_DIR="${WORDPRESS_BASE_DIR:-$PWD}"
 
 # User management defaults
 wp_user="${WP_MOD_DEFAULT_USER:-test}"
@@ -109,6 +110,26 @@ setup_akeeba_download_id() {
         log_error "Failed to configure Akeeba Download ID"
         return 1
     fi
+}
+
+# Run wp search-replace across all WordPress installs in WORDPRESS_BASE_DIR
+do_search_replace() {
+    local old="$1"
+    local new="$2"
+    local count=0
+
+    while IFS= read -r config; do
+        local site_dir
+        site_dir="$(dirname "$config")"
+        log_info "[$site_dir] replacing '$old' → '$new'"
+        if $WP_CLI_PATH --path="$site_dir" search-replace "$old" "$new" --report-changed-only; then
+            ((count++)) || true
+        else
+            log_error "Failed: $site_dir"
+        fi
+    done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php")
+
+    log_success "Done — $count site(s) updated"
 }
 
 # Setup all license keys for current site
@@ -171,6 +192,9 @@ USER MANAGEMENT:
   -U, --wp-user USER          Set username for new user (default: ${wp_user})
   -P, --wp-password PASS      Set password for new user
   -E, --wp-email EMAIL        Set email for new user (default: ${wp_email})
+
+DATABASE:
+  -R, --search-replace OLD NEW  Run wp search-replace across selected sites
 
 WORDPRESS CONFIGURATION:
   -x, --wp-debug MODE         Enable/disable debug mode (on/off)
@@ -331,6 +355,13 @@ parse_arguments() {
                 shift
                 WP_CLI_PATH="$1"
                 export WP_CLI_PATH
+                ;;
+            -R|--search-replace)
+                shift
+                local _sr_old="$1"
+                shift
+                local _sr_new="$1"
+                do_search_replace "$_sr_old" "$_sr_new"
                 ;;
             -h|--help)
                 show_help
