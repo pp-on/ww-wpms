@@ -185,6 +185,21 @@ process_sites() {
     fi
 }
 
+# Process all sites non-interactively (no y/N prompts)
+process_sites_all() {
+    local search_dir="${1:-${WORDPRESS_BASE_DIR}}"
+    search_dir="${search_dir%/}"
+    sites=()
+    local site site_name
+    for site in "$search_dir"/*/; do
+        if [[ -d "$site/wp-content/" ]]; then
+            site_name="${site##"$search_dir/"}"
+            site_name="${site_name%%/}"
+            sites+=("$site_name")
+        fi
+    done
+}
+
 # Print selected sites
 print_sites() {
     echo -e "${Yellow}----------------"
@@ -812,7 +827,7 @@ assign_env() {
 
 # Export all functions for use by other scripts
 export -f colors out txt
-export -f searchwp process_dirs process_sites print_sites
+export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
 export -f list_wp_plugins copy_plugins remove_plugins install_plugins wp_update
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
