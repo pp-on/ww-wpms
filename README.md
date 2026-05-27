@@ -329,6 +329,12 @@ Features:
 
 # Force HTTPS on site
 ./webwerk mod --sites=mysite --force-https
+
+# Select all sites without interactive prompts
+./webwerk mod -A --update all
+
+# Health check — verify wp core is-installed for every site
+./webwerk mod -H
 ```
 
 ## 🏗️ Architecture
@@ -379,9 +385,10 @@ The Webwerk WordPress Management Suite follows a modular architecture with clear
 
 **Site Discovery** (`wphelpfunctions.sh`)
 ```bash
-searchwp()           # Find WordPress installations
-process_sites()      # Process multiple sites in batch
-validate_wp_site()   # Verify WordPress installation
+searchwp()               # Find WordPress installations
+process_sites()          # Process multiple sites in batch (interactive)
+process_sites_all()      # Process all sites non-interactively (no prompts)
+validate_wp_site()       # Verify WordPress installation
 ```
 
 **Plugin Management**
