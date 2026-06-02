@@ -68,18 +68,13 @@ out() {
     local label_length=${#label}
     local side_length=$(( (total_width - label_length) / 2 ))
 
-    # Build full line
-    local line=""
-    for ((i = 0; i < total_width; i++)); do
-        line+="$line_char"
-    done
+    # Build lines with printf instead of character-by-character loops
+    local line
+    line=$(printf "%${total_width}s" | tr ' ' "$line_char")
 
-    # Build centered label line
-    local centered_line=""
-    for ((i = 0; i < side_length; i++)); do
-        centered_line+="$line_char"
-    done
-    centered_line+="$label"
+    local prefix
+    prefix=$(printf "%${side_length}s" | tr ' ' "$line_char")
+    local centered_line="${prefix}${label}"
     while [[ ${#centered_line} -lt $total_width ]]; do
         centered_line+="$line_char"
     done
@@ -94,7 +89,7 @@ out() {
 txt() {
     local line="$1"
     local color_code="$2"
-    
+
     case $color_code in
         y) line="${Yellow}${line}" ;;
         r) line="${Red}${line}" ;;
@@ -114,11 +109,11 @@ txt() {
 searchwp() {
     local search_dir="${1:-${WORDPRESS_SEARCH_DIR:-.}}"
     local site
-    
-    for site in $(ls -d "$search_dir"*/); do
+
+    for site in "$search_dir"*/; do
         if [[ -d "$site/wp-content/" ]]; then
             site=${site##"$search_dir"}
-            [[ "$verbose" = "1" ]] && sleep 1 && echo "Found $site"
+            [[ "$verbose" = "1" ]] && echo "Found $site"
             sites+=("$site")
             (( anzahl++ ))
         fi
@@ -130,12 +125,12 @@ process_dirs() {
     local dirs="$1"
     local site
     local remaining_dirs="$dirs"
-    
+
     if [[ -n "$dirs" ]]; then
         while [[ "$remaining_dirs" != "$site" ]]; do
             site=${remaining_dirs%%,*}
             remaining_dirs=${remaining_dirs#"$site",}
-            
+
             # Validate directory exists
             while [[ ! -d "${WORDPRESS_BASE_DIR}$site" ]]; do
                 echo "${WORDPRESS_BASE_DIR}$site not found! Type [n]ew name or [c]ontinue..."
@@ -156,7 +151,7 @@ process_dirs() {
                         ;;
                 esac
             done
-            
+
             [[ -n "$site" ]] && sites+=("$site")
         done
     fi
@@ -166,16 +161,16 @@ process_dirs() {
 process_sites() {
     local search_dir="${1:-${WORDPRESS_BASE_DIR}}"
     local site
-    
+
     if [[ -z "${sites:-}" ]]; then
-        for site in $(ls -d "$search_dir"*/); do
+        for site in "$search_dir"*/; do
             if [[ -d "$site/wp-content/" ]]; then
                 local site_name=${site##"$search_dir"}
                 echo "Found $site_name"
                 echo "Should it be processed? [y/N] "
                 read -r answer
                 echo -e "\n--------------"
-                
+
                 if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
                     site_name=${site_name%%/}
                     sites+=("$site_name")
@@ -203,8 +198,7 @@ process_sites_all() {
 # Print selected sites
 print_sites() {
     echo -e "${Yellow}----------------"
-    sleep 1
-    echo -e "${#sites[@]} selected websites" 
+    echo -e "${#sites[@]} selected websites"
     echo "----------------"
     for site in "${sites[@]}"; do
         echo -e "${Cyan}$site"
@@ -221,15 +215,16 @@ os_detection() {
     local show_output="${1:-0}"
     local uname_output
     local detected_os
-    
+
     uname_output="$(uname -a)"
-    
-    case $(echo "${uname_output}" | tr '[:upper:]' '[:lower:]') in
-        linux)
-            detected_os="$(cat /etc/os-release | grep '_NAME' | cut -d '=' -f2)"
+    local lower="${uname_output,,}"
+
+    case "$lower" in
+        *wsl*|*microsoft*)
+            detected_os="$(grep '^PRETTY_NAME' /etc/os-release | cut -d '=' -f2 | tr -d '"') (WSL)"
             ;;
-        *wsl*|*buntu*)
-            detected_os="$(cat /etc/os-release | sed -n '1p' | cut -d '"' -f2)"
+        *buntu*|linux*)
+            detected_os="$(grep '^PRETTY_NAME' /etc/os-release | cut -d '=' -f2 | tr -d '"')"
             ;;
         msys*|cygwin*|mingw*)
             detected_os="Git_Bash"
@@ -238,7 +233,7 @@ os_detection() {
             detected_os="Unknown"
             ;;
     esac
-    
+
     [[ "$show_output" -eq 1 ]] && out "$detected_os" 1
     echo "$detected_os"
 }
@@ -251,18 +246,95 @@ os_detection() {
 list_wp_plugins() {
     local site
     local continue_key
-    
+
     for site in "${sites[@]}"; do
-        echo -e "${Green}----------------"
-        cd "${WORDPRESS_BASE_DIR}$site" &>/dev/null
-        echo -e "$site"
-        echo -e "----------------${Color_Off}"
-        
-        "${WP_CLI_PATH}" plugin list --color
-        echo -e "${Yellow} $("${WP_CLI_PATH}" plugin list --format=count) Plugins"
-        echo -e "${Purple}To continue press any key and enter...${Color_Off}"
-        read -r continue_key
-        cd - &>/dev/null
+        (
+            cd "${WORDPRESS_BASE_DIR}$site" || exit 1
+            echo -e "${Green}----------------"
+            echo -e "$site"
+            echo -e "----------------${Color_Off}"
+
+            local plugin_count
+            plugin_count=$("${WP_CLI_PATH}" plugin list --format=count)
+            "${WP_CLI_PATH}" plugin list --color
+            echo -e "${Yellow} ${plugin_count} Plugins"
+            echo -e "${Purple}To continue press any key and enter...${Color_Off}"
+            read -r continue_key
+        )
+    done
+}
+
+list_wp_themes() {
+    local theme_arg="${1:-}"
+    local site
+
+    for site in "${sites[@]}"; do
+        local site_path
+        if [[ "$site" = /* ]]; then
+            site_path="$site"
+        else
+            site_path="${WORDPRESS_BASE_DIR}/${site}"
+        fi
+
+        (
+            cd "$site_path" || exit 0
+
+            echo -e "${Green}----------------"
+            echo -e "$site"
+            echo -e "----------------${Color_Off}"
+
+            local themes
+            mapfile -t themes < <("${WP_CLI_PATH}" theme list --field=name 2>/dev/null)
+            "${WP_CLI_PATH}" theme list --fields=name,status,title --color
+
+            if [[ ${#themes[@]} -eq 0 ]]; then
+                echo "No themes found."
+                exit 0
+            fi
+
+            echo ""
+            local i
+            for ((i=0; i<${#themes[@]}; i++)); do
+                echo "  $((i+1))) ${themes[$i]}"
+            done
+
+            local target=""
+            if [[ -n "$theme_arg" ]]; then
+                if [[ "$theme_arg" =~ ^[0-9]+$ ]]; then
+                    local idx=$(( theme_arg - 1 ))
+                    if [[ $idx -ge 0 && $idx -lt ${#themes[@]} ]]; then
+                        target="${themes[$idx]}"
+                    else
+                        echo -e "${Red}Invalid theme number: $theme_arg${Color_Off}"
+                        exit 0
+                    fi
+                else
+                    target="$theme_arg"
+                fi
+            else
+                echo -e "${Purple}Activate which theme? (number/name, or Enter to skip): ${Color_Off}"
+                local choice
+                read -r choice
+                if [[ -z "$choice" ]]; then
+                    echo "Skipped."
+                    exit 0
+                fi
+                if [[ "$choice" =~ ^[0-9]+$ ]]; then
+                    local idx=$(( choice - 1 ))
+                    if [[ $idx -ge 0 && $idx -lt ${#themes[@]} ]]; then
+                        target="${themes[$idx]}"
+                    else
+                        echo -e "${Red}Invalid number${Color_Off}"
+                        exit 0
+                    fi
+                else
+                    target="$choice"
+                fi
+            fi
+
+            echo -e "${Yellow}Activating: $target${Color_Off}"
+            "${WP_CLI_PATH}" theme activate "$target"
+        )
     done
 }
 
@@ -270,25 +342,22 @@ list_wp_plugins() {
 copy_plugins() {
     local from="$1"
     local plugin_name target site
-    
+
     plugin_name=$(basename "$from")
-    
+
     for site in "${sites[@]}"; do
         out "${site}" 1
         target="${WORDPRESS_BASE_DIR}${site}/wp-content/plugins/"
-        
+
         if [[ -d "${target}${plugin_name}" ]]; then
             out "${plugin_name} already exists" 3
         else
             out "copying ${plugin_name} from ${from}" 2
             cp "$from" "${target}" -r
-            sleep 1
             echo "Done"
-            
+
             out "Activating $plugin_name" 2
-            cd "${WORDPRESS_BASE_DIR}${site}"
-            "${WP_CLI_PATH}" plugin activate "$plugin_name"
-            cd - &>/dev/null
+            ( cd "${WORDPRESS_BASE_DIR}${site}" && "${WP_CLI_PATH}" plugin activate "$plugin_name" )
         fi
     done
 }
@@ -298,23 +367,23 @@ remove_plugins() {
     local plugin_name="$1"
     local pause="${2:-0}"
     local site continue_key
-    
+
     for site in "${sites[@]}"; do
         out "$site" 1
-        cd "${WORDPRESS_BASE_DIR}${site}/wp-content/plugins"
-        
-        if [[ -d "$plugin_name" ]]; then
-            out "Removing $plugin_name" 2
-            "${WP_CLI_PATH}" plugin delete "$plugin_name"
-            sleep 1
-            echo "Done"
-        fi
-        
+        (
+            cd "${WORDPRESS_BASE_DIR}${site}/wp-content/plugins" || exit 1
+
+            if [[ -d "$plugin_name" ]]; then
+                out "Removing $plugin_name" 2
+                "${WP_CLI_PATH}" plugin delete "$plugin_name"
+                echo "Done"
+            fi
+        )
+
         if [[ "$pause" -eq 1 ]]; then
             echo -e "${Purple}To continue press any key and enter...${Color_Off}"
             read -r continue_key
         fi
-        cd - &>/dev/null
     done
 }
 
@@ -322,67 +391,53 @@ remove_plugins() {
 install_plugins() {
     local plugin_name="$1"
     local site
-    
+
     for site in "${sites[@]}"; do
         out "${site}" 1
-        cd "${WORDPRESS_BASE_DIR}${site}"
-        
-        local target="wp-content/plugins/"
-        if [[ -d "${target}${plugin_name}" ]]; then
-            out "${plugin_name} already exists" 3
-        else
-            "${WP_CLI_PATH}" plugin install "$plugin_name"
-            "${WP_CLI_PATH}" plugin activate "$plugin_name"
-        fi
-        cd - &>/dev/null
+        (
+            cd "${WORDPRESS_BASE_DIR}${site}" || exit 1
+
+            local target="wp-content/plugins/"
+            if [[ -d "${target}${plugin_name}" ]]; then
+                out "${plugin_name} already exists" 3
+            else
+                "${WP_CLI_PATH}" plugin install "$plugin_name"
+                "${WP_CLI_PATH}" plugin activate "$plugin_name"
+            fi
+        )
     done
 }
 
 # Update plugins
 wp_update() {
     local plugin="$1"
-    local countdown=4
     local site
     local target_dir
-    local return_dir
 
     for site in "${sites[@]}"; do
         out "$site" 1
         out "check $plugin if there is one, update it" 2
 
-        # Handle current directory case (for DDEV mode)
         if [[ "$site" == "." || "${WORDPRESS_BASE_DIR}${site}" == "." ]]; then
             target_dir="."
         else
             target_dir="${WORDPRESS_BASE_DIR}${site}"
         fi
 
-        # Only change directory if needed
-        if [[ "$target_dir" != "." ]]; then
-            return_dir=$(pwd)
-            cd "$target_dir"
-        fi
+        (
+            if [[ "$target_dir" != "." ]]; then
+                cd "$target_dir" || exit 1
+            fi
 
-        if [[ "$plugin" != "all" ]]; then
-            out "found $plugin! Updating..." 2
-            ${WP_CLI_PATH} plugin update "$plugin"
-        else
-            out "updating all plugins" 2
-            ${WP_CLI_PATH} plugin list --update=available
-
-            while [[ "$countdown" -ge 0 ]]; do
-                out "$countdown" 4
-                sleep 1
-                (( countdown-- ))
-            done
-
-            ${WP_CLI_PATH} plugin update --all
-        fi
-
-        # Return to original directory if we changed it
-        if [[ -n "${return_dir:-}" ]]; then
-            cd "$return_dir"
-        fi
+            if [[ "$plugin" != "all" ]]; then
+                out "found $plugin! Updating..." 2
+                ${WP_CLI_PATH} plugin update "$plugin"
+            else
+                out "updating all plugins" 2
+                ${WP_CLI_PATH} plugin list --update=available
+                ${WP_CLI_PATH} plugin update --all
+            fi
+        )
     done
 }
 
@@ -394,7 +449,7 @@ wp_update() {
 wp_license_plugins() {
     local plugin="$1"
     local license
-    
+
     case "$plugin" in
         "ACF_PRO")
             if [[ -n "${ACF_PRO_LICENSE:-}" ]]; then
@@ -425,16 +480,14 @@ EOM
             return 1
             ;;
     esac
-    
+
     out "activating ${plugin}_LICENSE" 2
-    sleep 1
-    
+
     # Add license only if not found
     if grep -q "$plugin" wp-config.php; then
         echo "${plugin}_LICENSE already exists"
     else
         echo "$license" >> ./wp-config.php
-        sleep 1
         out "done" 4
     fi
 }
@@ -460,11 +513,9 @@ wp_key_akeeba() {
 
     out "Setting up Akeeba Download ID" 2
 
-    # Add to database via WP-CLI (no quotes around WP_CLI_PATH for "ddev wp" support)
     if ${WP_CLI_PATH} option update akeeba_download_id "$AKEEBA_DOWNLOAD_ID" 2>/dev/null; then
         out "Akeeba Download ID added to database" 4
 
-        # Also add to wp-config.php as backup
         if ! grep -q "AKEEBA_DOWNLOAD_ID" wp-config.php 2>/dev/null; then
             local akeeba_config
             read -r -d '' akeeba_config <<- EOM
@@ -476,7 +527,6 @@ EOM
             out "Akeeba Download ID also added to wp-config.php" 2
         fi
 
-        sleep 1
         out "Akeeba setup completed" 4
         return 0
     else
@@ -488,30 +538,27 @@ EOM
 # Setup all license keys at once
 wp_setup_all_licenses() {
     local setup_count=0
-    
+
     out "Setting up all available license keys" 1
-    
-    # Try ACF Pro
+
     if [[ -n "${ACF_PRO_LICENSE:-}" ]]; then
         if wp_key_acf_pro; then
             ((setup_count++))
         fi
     fi
-    
-    # Try WP Migrate DB
+
     if [[ -n "${WPMDB_LICENCE:-}" ]]; then
         if wp_key_migrate; then
             ((setup_count++))
         fi
     fi
-    
-    # Try Akeeba
+
     if [[ -n "${AKEEBA_DOWNLOAD_ID:-}" ]]; then
         if wp_key_akeeba; then
             ((setup_count++))
         fi
     fi
-    
+
     if [[ $setup_count -gt 0 ]]; then
         out "$setup_count license keys configured successfully" 4
     else
@@ -529,15 +576,12 @@ wp_new_user() {
     local password="$2"
     local email="$3"
     local site
-    
+
     out "creating user ${username}"
-    sleep 1
-    
+
     for site in "${sites[@]}"; do
         out "$site" 1
-        cd "${WORDPRESS_BASE_DIR}$site"
-        "${WP_CLI_PATH}" user create "$username" "$email" --user_pass="$password" --role=administrator
-        cd - &>/dev/null
+        ( cd "${WORDPRESS_BASE_DIR}$site" && "${WP_CLI_PATH}" user create "$username" "$email" --user_pass="$password" --role=administrator )
     done
 }
 
@@ -550,12 +594,12 @@ wp_rights() {
     local site
     local webserver_user="${WEBSERVER_USER:-www-data}"
     local webserver_group="${WEBSERVER_GROUP:-www-data}"
-    
+
     for site in "${sites[@]}"; do
         out "changing ownership ${site}"
         chown "$webserver_user:$webserver_group" "${WORDPRESS_BASE_DIR}${site}/wp-content" -Rvf
         chmod -Rv "${UPLOAD_PERMISSIONS:-755}" "${WORDPRESS_BASE_DIR}${site}/wp-content/uploads"
-    done 
+    done
 }
 
 #===============================================================================
@@ -565,14 +609,14 @@ wp_rights() {
 # Create basic .htaccess for SEO
 htaccess() {
     local parent_dir current_dir target_directory
-    
+
     parent_dir=$(dirname "$PWD")
     parent_dir=${parent_dir##*/}
     current_dir=${PWD##*/}
     target_directory="/$parent_dir/$current_dir"
 
     out "creating .htaccess with $target_directory" 2
-    
+
     cat << EOF > .htaccess
 <IfModule mod_rewrite.c>
 RewriteEngine On
@@ -592,10 +636,9 @@ RewriteRule ^index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . $target_directory/index.php [L]
-</IfModule>	
+</IfModule>
 EOF
-    
-    sleep 1
+
     chmod "${HTACCESS_FILE_PERMISSIONS:-644}" .htaccess
     echo "Done"
 }
@@ -609,7 +652,7 @@ wp_hide_errors() {
     out "hiding errors" 4
     # Remove DEBUG lines
     sed -i '/DEBUG/d' wp-config.php
-    
+
     cat <<EOF >> wp-config.php
 ini_set('display_errors','Off');
 ini_set('error_reporting', E_ALL );
@@ -639,48 +682,40 @@ wp_debug() {
 wp_force_https() {
     local site
     local target_dir
-    local return_dir
 
     for site in "${sites[@]}"; do
         out "Forcing HTTPS for WordPress site: $site" 2
 
-        # Handle current directory case (for DDEV mode)
         if [[ "$site" == "." || "${WORDPRESS_BASE_DIR}${site}" == "." ]]; then
             target_dir="."
         else
             target_dir="${WORDPRESS_BASE_DIR}${site}"
         fi
 
-        # Only change directory if needed
-        if [[ "$target_dir" != "." ]]; then
-            return_dir=$(pwd)
-            cd "$target_dir"
-        fi
+        (
+            if [[ "$target_dir" != "." ]]; then
+                cd "$target_dir" || exit 1
+            fi
 
-        # Remove existing HTTPS-related code block to avoid duplicates
-        # Remove the entire block added by this script
-        sed -i '/Force HTTPS - Added by webwerk mod script/,/FORCE_SSL_ADMIN/d' wp-config.php 2>/dev/null || true
+            # Remove existing HTTPS-related block and orphaned lines in one pass
+            sed -i -e '/Force HTTPS - Added by webwerk mod script/,/FORCE_SSL_ADMIN/d' \
+                   -e '/FORCE_SSL_ADMIN/d' \
+                   -e '/WP_HOME/d' \
+                   -e '/WP_SITEURL/d' \
+                   wp-config.php 2>/dev/null || true
 
-        # Also remove any orphaned lines from previous failed runs
-        sed -i '/FORCE_SSL_ADMIN/d' wp-config.php 2>/dev/null || true
-        sed -i '/WP_HOME/d' wp-config.php 2>/dev/null || true
-        sed -i '/WP_SITEURL/d' wp-config.php 2>/dev/null || true
+            local site_url
+            site_url=$(${WP_CLI_PATH} option get siteurl 2>/dev/null || echo "")
 
-        # Get current site URL using WP-CLI (works with both regular wp and ddev wp)
-        local site_url
-        site_url=$(${WP_CLI_PATH} option get siteurl 2>/dev/null || echo "")
+            if [[ -z "$site_url" ]]; then
+                out "Warning: Could not detect site URL" 3
+                site_url="https://\$_SERVER['HTTP_HOST']"
+            else
+                site_url="${site_url/http:/https:}"
+                out "Site URL: $site_url" 2
+            fi
 
-        if [[ -z "$site_url" ]]; then
-            out "Warning: Could not detect site URL" 3
-            site_url="https://\$_SERVER['HTTP_HOST']"
-        else
-            # Convert to HTTPS if not already
-            site_url="${site_url/http:/https:}"
-            out "Site URL: $site_url" 2
-        fi
-
-        # Add HTTPS forcing code to wp-config.php
-        cat <<'EOF' >> wp-config.php
+            cat <<'EOF' >> wp-config.php
 
 // Force HTTPS - Added by webwerk mod script
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
@@ -689,17 +724,12 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
 define('FORCE_SSL_ADMIN', true);
 EOF
 
-        # Update site URLs to HTTPS using WP-CLI
-        ${WP_CLI_PATH} option update home "$site_url" 2>/dev/null || true
-        ${WP_CLI_PATH} option update siteurl "$site_url" 2>/dev/null || true
+            ${WP_CLI_PATH} option update home "$site_url" 2>/dev/null || true
+            ${WP_CLI_PATH} option update siteurl "$site_url" 2>/dev/null || true
 
-        out "HTTPS forcing enabled successfully" 4
-        out "Site URL updated to: $site_url" 2
-
-        # Return to original directory if we changed it
-        if [[ -n "${return_dir:-}" ]]; then
-            cd "$return_dir"
-        fi
+            out "HTTPS forcing enabled successfully" 4
+            out "Site URL updated to: $site_url" 2
+        )
     done
 }
 
@@ -710,14 +740,14 @@ EOF
 # Update repositories
 update_repo() {
     local site
-    
+
     for site in "${sites[@]}"; do
         out "${site}" 1
-        cd "${WORDPRESS_BASE_DIR}${site}/wp-content" &>/dev/null
-        out "updating repository..." 1
-        sleep 1
-        git pull 1>/dev/null
-        cd - &>/dev/null
+        (
+            cd "${WORDPRESS_BASE_DIR}${site}/wp-content" || exit 1
+            out "updating repository..." 1
+            git pull 1>/dev/null
+        )
     done
 }
 
@@ -725,24 +755,25 @@ update_repo() {
 git_wp() {
     local subcommand="$1"
     local site
-    
+
     for site in "${sites[@]}"; do
         out "${site}" 1
-        cd "${WORDPRESS_BASE_DIR}${site}/wp-content" &>/dev/null
-        
-        case "$subcommand" in
-            pull)
-                git pull
-                ;;
-            log)
-                git log --graph --max-count=10
-                ;;
-            *)
-                echo "Unknown git command: $subcommand"
-                ;;
-        esac
-        cd - &>/dev/null
-    done 
+        (
+            cd "${WORDPRESS_BASE_DIR}${site}/wp-content" || exit 1
+
+            case "$subcommand" in
+                pull)
+                    git pull
+                    ;;
+                log)
+                    git log --graph --max-count=10
+                    ;;
+                *)
+                    echo "Unknown git command: $subcommand"
+                    ;;
+            esac
+        )
+    done
 }
 
 #===============================================================================
@@ -769,7 +800,8 @@ wp_enable_se() {
 wp_getCPT() {
     local cpts=""
     local cpts_sql
-    
+    OPTIND=1
+
     # Parse arguments
     while getopts "c:" opt; do
         case $opt in
@@ -814,11 +846,11 @@ wp_getCPT() {
 assign_env() {
     declare -n var="$1"
     local value="$2"
-    
-    out "$var" 1
-    out "${!var}" 2
+
+    out "$1" 1      # variable name
+    out "$var" 2    # current value
     var="$value"
-    out "$var" 1
+    out "$var" 1    # new value
 }
 
 #===============================================================================
@@ -829,15 +861,13 @@ assign_env() {
 export -f colors out txt
 export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
-export -f list_wp_plugins copy_plugins remove_plugins install_plugins wp_update
+export -f list_wp_plugins list_wp_themes copy_plugins remove_plugins install_plugins wp_update
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
-export -f update_repo git_wp wp_block_se
+export -f update_repo git_wp wp_block_se wp_enable_se
 export -f wp_getCPT assign_env
 
-# Initialize colors and show loading message
-colors
 out "$SCRIPT_NAME v$SCRIPT_VERSION loaded successfully" 4
 
 # Conditional output based on flags

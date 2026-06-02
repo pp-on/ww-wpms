@@ -20,7 +20,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 ### Key Scripts
 
 - **`webwerk:1`** - Main entry point with command routing and configuration loading
-- **`scripts/utils/wphelpfunctions.sh:1`** - Core utility library with 700+ lines of shared functions
+- **`scripts/utils/wphelpfunctions.sh:1`** - Core utility library with 850+ lines of shared functions
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/mod/wpmod.sh`** - Site modification tools
@@ -100,7 +100,8 @@ The suite automatically detects:
 - **Plugin Management**: `wp_update()`, `copy_plugins()`, `install_plugins()`
 - **License Management**: `wp_setup_all_licenses()`, `wp_key_acf_pro()`, `wp_key_migrate()`
 - **User Management**: `wp_new_user()` - Administrator account creation
-- **Debug Control**: `wp_debug()`, `wp_hide_errors()` - Development mode toggling
+- **Debug Control**: `wp_debug()`, `wp_hide_errors()`, `wp_force_https()` - Development mode and HTTPS
+- **SEO Management**: `wp_block_se()`, `wp_enable_se()` - Search engine indexing control
 - **Git Integration**: `update_repo()`, `git_wp()` - Repository synchronization
 
 ### Configuration Variables

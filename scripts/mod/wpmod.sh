@@ -184,6 +184,7 @@ INFORMATION & DISPLAY:
   -p, --print                  Print selected sites
   -H, --health-check           Check all sites with wp core is-installed
   -l, --list                   List plugins for selected sites
+  -T, --themes [NUM|NAME]      List themes; optionally activate by number or name
   -o, --os-detection           Show operating system information
   -c, --colors                 Initialize color scheme
 
@@ -302,6 +303,14 @@ parse_arguments() {
             -l|--list)
                 list_wp_plugins
                 ;;
+            -T|--themes)
+                if [[ $# -gt 1 && "${2}" != -* ]]; then
+                    shift
+                    list_wp_themes "$1"
+                else
+                    list_wp_themes
+                fi
+                ;;
             -s|--sites)
                 shift
                 process_dirs "$1"
@@ -414,9 +423,7 @@ main() {
     # Initialize colors
     colors
 
-    # Initialize sites array with current directory as default
-    # This will be used if no -a or -s flags are provided
-    sites=("${WORDPRESS_BASE_DIR}")
+    sites=()
 
     # Parse command line arguments
     parse_arguments "$@"
@@ -426,6 +433,7 @@ main() {
 
     # Update sites array if no explicit site selection was made
     if [[ $proc_sites -eq 0 ]]; then
+        sites=("${WORDPRESS_BASE_DIR}")
         log_info "No sites specified, using current directory: ${WORDPRESS_BASE_DIR}"
     fi
 

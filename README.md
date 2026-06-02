@@ -172,7 +172,7 @@ webwerk/
     ├── mod/
     │   └── wpmod.sh              # Site modification
     └── utils/
-        └── wphelpfuntions.sh     # Shared helper functions
+        └── wphelpfunctions.sh    # Shared helper functions
 ```
 
 ## ⚙️ Configuration
@@ -374,7 +374,7 @@ The Webwerk WordPress Management Suite follows a modular architecture with clear
 - Plugin copying and activation
 
 **Utilities Module** (`scripts/utils/`)
-- `wphelpfunctions.sh`: 700+ lines of shared functions
+- `wphelpfunctions.sh`: 850+ lines of shared functions
 - Site discovery and WordPress detection
 - Database operations
 - Git integration
@@ -388,7 +388,7 @@ The Webwerk WordPress Management Suite follows a modular architecture with clear
 searchwp()               # Find WordPress installations
 process_sites()          # Process multiple sites in batch (interactive)
 process_sites_all()      # Process all sites non-interactively (no prompts)
-validate_wp_site()       # Verify WordPress installation
+process_dirs()           # Process comma-separated site list
 ```
 
 **Plugin Management**
@@ -408,21 +408,26 @@ wp_key_migrate()         # Configure WP Migrate DB license
 **User Management**
 ```bash
 wp_new_user()        # Create new WordPress admin user
-wp_reset_password()  # Reset user password
+wp_rights()          # Set correct file permissions
 ```
 
 **Debug Control**
 ```bash
-wp_debug()           # Enable/disable debug mode
-wp_hide_errors()     # Control error display
-wp_log_errors()      # Configure error logging
+wp_debug()           # Enable/disable debug mode (on/off)
+wp_hide_errors()     # Suppress error display in wp-config.php
+wp_force_https()     # Enforce HTTPS and update siteurl/home
 ```
 
 **Git Integration**
 ```bash
-update_repo()        # Update repository from remote
-git_wp()             # Git operations for WordPress
-commit_updates()     # Commit update changes
+update_repo()        # Pull latest changes in wp-content
+git_wp()             # Git operations for WordPress (pull/log)
+```
+
+**SEO Management**
+```bash
+wp_block_se()        # Disable search engine indexing
+wp_enable_se()       # Enable search engine indexing
 ```
 
 ### Configuration System
