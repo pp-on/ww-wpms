@@ -428,13 +428,11 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
 
-    # Find wp-config.php if needed
-    find_wp_config
-
     # Update sites array if no explicit site selection was made
     if [[ $proc_sites -eq 0 ]]; then
         sites=("${WORDPRESS_BASE_DIR}")
         log_info "No sites specified, using current directory: ${WORDPRESS_BASE_DIR}"
+        find_wp_config
     fi
 
     # Set verbose mode for search functions
