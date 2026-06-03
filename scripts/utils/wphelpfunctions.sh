@@ -123,38 +123,27 @@ searchwp() {
 # Process comma-separated directories
 process_dirs() {
     local dirs="$1"
-    local site
-    local remaining_dirs="$dirs"
+    [[ -z "$dirs" ]] && return
 
-    if [[ -n "$dirs" ]]; then
-        while [[ "$remaining_dirs" != "$site" ]]; do
-            site=${remaining_dirs%%,*}
-            remaining_dirs=${remaining_dirs#"$site",}
+    local site answer
+    local -a site_list
+    IFS=',' read -ra site_list <<< "$dirs"
 
-            # Validate directory exists
-            while [[ ! -d "${WORDPRESS_BASE_DIR}$site" ]]; do
-                echo "${WORDPRESS_BASE_DIR}$site not found! Type [n]ew name or [c]ontinue..."
-                read -r answer
-                case "$answer" in
-                    n)
-                        echo "----------------"
-                        echo "Enter new name: "
-                        read -r site
-                        echo "----------------"
-                        ;;
-                    c)
-                        site=""
-                        break
-                        ;;
-                    *)
-                        continue
-                        ;;
-                esac
-            done
+    for site in "${site_list[@]}"; do
+        site="${site%%/}"
+        [[ -z "$site" ]] && continue
 
-            [[ -n "$site" ]] && sites+=("$site")
+        while [[ ! -d "${WORDPRESS_BASE_DIR}/${site}" ]]; do
+            echo "${WORDPRESS_BASE_DIR}/${site} not found — [n]ew name or [c]ontinue: "
+            read -r answer
+            case "$answer" in
+                n) read -rp "New name: " site ;;
+                c) site=""; break ;;
+            esac
         done
-    fi
+
+        [[ -n "$site" ]] && sites+=("$site")
+    done
 }
 
 # Process sites interactively
