@@ -135,23 +135,31 @@ chmod 600 ~/.keys
 ### 2. Basic Usage
 
 ```bash
-# Install new WordPress site
-./webwerk full install --wp-title="My Accessible Site"
+# Install new WordPress site (full mode is default)
+webwerk install --wp-title="My Accessible Site"
 
 # Install with DDEV
-./webwerk ddev install
+webwerk install ddev
 
 # Modify DDEV site
-./webwerk ddev mod --force-https
+webwerk ddev mod -S
 
-# Update WordPress sites
-./webwerk update --all-sites
+# Update WordPress sites (interactive, prompt per site)
+webwerk update -a
+
+# Update all sites automatically
+webwerk update -A
 
 # Manage existing sites
-./webwerk mod --sites=mysite --enable-debug
+webwerk mod -s mysite -x on
 
 # Check system status
-./webwerk status
+webwerk status
+
+# Get help for any subcommand
+webwerk update -h
+webwerk mod -h
+webwerk install -h
 ```
 
 ## 📁 Project Structure
@@ -220,7 +228,9 @@ AKEEBA_DOWNLOAD_ID=your_akeeba_id
 ### Full Installation
 Complete WordPress setup with repository cloning:
 ```bash
-./webwerk full install --wp-title="Accessible Website"
+webwerk install --wp-title="Accessible Website"
+# or explicitly:
+webwerk install full --wp-title="Accessible Website"
 ```
 
 Features:
@@ -237,7 +247,7 @@ Features:
 ### Minimal Installation
 WordPress without repository:
 ```bash
-./webwerk minimal install --wp-title="Simple Site"
+webwerk install minimal --wp-title="Simple Site"
 ```
 
 Features:
@@ -251,7 +261,7 @@ Features:
 ### DDEV Installation
 Containerized development with DDEV:
 ```bash
-./webwerk ddev install --wp-title="DDEV Site"
+webwerk install ddev --wp-title="DDEV Site"
 ```
 
 Features:
@@ -267,46 +277,69 @@ Features:
 ### Installation Commands
 
 ```bash
-# Basic installation
-./webwerk install --wp-title="My Site"
+# Full install (default)
+webwerk install --wp-title="My Site"
+webwerk install full --wp-title="My Site"
+
+# Minimal install (no repo, no plugins)
+webwerk install minimal --wp-title="Simple Site"
+
+# DDEV install
+webwerk install ddev --wp-title="DDEV Site"
+webwerk install ddev -G arbeit          # with SSH host alias for repo cloning
+webwerk install ddev -n                 # use nip.io (no /etc/hosts admin rights needed)
 
 # Custom database settings
-./webwerk install --db-host=127.0.0.1 --db-user=custom --db-password=secret
+webwerk install --db-host=127.0.0.1 --db-user=custom --db-password=secret
 
-# Custom repository
-./webwerk install --repo-url=https://github.com/user/repo.git
+# SSH repository cloning
+webwerk install -G arbeit               # SSH host alias from ~/.ssh/config
+webwerk install --git-protocol=ssh
 
-# SSH repository cloning with SSH host alias
-./webwerk install --git-host=arbeit
+# Override base URL (WordPress siteurl = <base>/<dirname>)
+webwerk install -G arbeit -b netcup.local
 
-# SSH repository cloning (traditional)
-./webwerk install --git-protocol=ssh
-
-# Install in specific directory
-./webwerk install --target-dir=/path/to/site --wp-title="Remote Site"
-
-# Override LOCAL_URL_BASE for this install (WordPress siteurl = <base>/<dirname>)
-./webwerk full install -G arbeit --base-url=netcup.local
-./webwerk full install -G arbeit -b netcup.local
+# Show help
+webwerk install -h
 ```
 
 ### Update Commands
 
+Core is updated by default. Combined short flags are supported (e.g. `-Ayg`).
+
 ```bash
-# Update all sites
-./webwerk update --all-sites
+# Interactive: prompt y/n/x per site
+webwerk update -a
+
+# Auto all sites, pause between each (any key = next, x = exit)
+webwerk update -A
+
+# Auto all, no prompts at all
+webwerk update -Ay
 
 # Update specific sites
-./webwerk update --sites=site1,site2,site3
+webwerk update -s site1,site2
 
-# Update with git commits
-./webwerk update --sites=mysite --git --summary
+# Patch-level only (e.g. 8.1.1 → 8.1.2)
+webwerk update -Am
 
-# Minor updates only
-./webwerk update --sites=mysite --minor
+# Skip core update
+webwerk update -Ac
+
+# With git commits (one per plugin)
+webwerk update -Ag
+
+# With single summary git commit
+webwerk update -Ag --sum
+
+# With git commit + push
+webwerk update -Agp
 
 # Exclude specific plugins
-./webwerk update --exclude-plugins=plugin1,plugin2
+webwerk update -A -x plugin1,plugin2
+
+# Show all options
+webwerk update -h
 ```
 
 ### Management Commands
@@ -528,24 +561,25 @@ Full DDEV support for containerized development:
 ### DDEV Commands
 ```bash
 # Install DDEV site
-./webwerk ddev install                      # Standard install (auto-adds /etc/hosts entry)
-./webwerk ddev install -G arbeit            # With SSH host for repo cloning
-./webwerk ddev install -n                   # Use nip.io instead of ddev.site
-./webwerk ddev install -W                   # Also add entry to Windows hosts file
+webwerk install ddev                        # standard install
+webwerk install ddev -G arbeit             # with SSH host for repo cloning
+webwerk install ddev -n                    # use nip.io (no /etc/hosts admin rights)
+webwerk install ddev -W                    # also add entry to Windows hosts file
 
 # Access site
 open https://mysite.ddev.site
 
-# Modify DDEV site (runs commands inside container)
-./webwerk ddev mod --force-https
-./webwerk ddev mod --enable-debug
-./webwerk ddev mod --setup-acf-license
+# Modify DDEV site (runs wp commands inside container)
+webwerk ddev mod -S                        # force HTTPS
+webwerk ddev mod -x on                    # enable debug mode
+webwerk ddev mod -f                       # setup ACF Pro license
+webwerk ddev mod -h                       # show all mod options
 
-# Update plugins
-./webwerk ddev update                       # Update all plugins
-./webwerk ddev update --core                # Update core + plugins
-./webwerk ddev update --plugins=x,y         # Update specific plugins
-./webwerk ddev update --dry-run             # Preview updates
+# Update DDEV site plugins
+webwerk ddev update                        # update all plugins (core by default)
+webwerk ddev update -c                     # skip core, plugins only
+webwerk ddev update -Ay                    # auto all, no prompts
+webwerk ddev update -h                    # show all update options
 
 # WP-CLI in container
 ddev wp --info
@@ -604,38 +638,39 @@ Log levels: `INFO`, `WARNING`, `ERROR`, `SUCCESS`
 
 ```bash
 # 1. Install WordPress with full setup
-./webwerk install --mode=full --wp-title="Accessible Company Website"
+webwerk install --wp-title="Accessible Company Website"
 
 # 2. Enable debug mode for development
-./webwerk mod --sites=accessible-company --enable-debug
+webwerk mod -s accessible-company -x on
 
 # 3. Setup license keys for premium plugins
-./webwerk mod --sites=accessible-company --setup-acf-license
+webwerk mod -s accessible-company -f
 
 # 4. Create additional admin user
-./webwerk mod --sites=accessible-company --new-user \
-    --wp-user=webmaster --wp-password=SecurePass123
+webwerk mod -s accessible-company -n -U webmaster -P SecurePass123
 ```
 
 ### Example 2: Batch Update Multiple Sites
 
 ```bash
-# Update all WordPress installations in current directory
-./webwerk update --all-sites --git --summary
+# Interactive: review each site before updating
+webwerk update -a
 
-# Update specific sites with minor updates only
-./webwerk update --sites=site1,site2,site3 --minor
+# Auto update all sites, pause between each to review output
+webwerk update -A
 
-# Update excluding specific plugins
-./webwerk update --sites=mysite \
-    --exclude-plugins=woocommerce,elementor
+# Auto update all, single summary git commit, then push
+webwerk update -Ag --sum -p
+
+# Patch-level only, exclude specific plugins
+webwerk update -Am -x woocommerce,elementor
 ```
 
 ### Example 3: DDEV Development Workflow
 
 ```bash
 # 1. Create DDEV site
-./webwerk install --mode=ddev --wp-title="Development Site"
+webwerk install ddev --wp-title="Development Site"
 
 # 2. Access the site
 open https://development-site.ddev.site
@@ -648,38 +683,30 @@ ddev wp theme list
 ddev import-db --src=backup.sql.gz
 
 # 5. Update site
-./webwerk update --sites=development-site
+webwerk ddev update -Ay
 ```
 
 ### Example 4: Repository Management
 
 ```bash
-# Clone repository during installation
-./webwerk install --mode=full \
-    --repo-url=https://github.com/mycompany/wp-theme.git \
-    --wp-title="Corporate Site"
+# Clone repository during installation via SSH host alias
+webwerk install -G arbeit --wp-title="Corporate Site"
 
 # Update repository on existing site
-./webwerk mod --sites=corporate-site --git-pull
+webwerk mod -s corporate-site -gl
 
-# Use SSH host alias for private repositories
-./webwerk install --mode=full --git-host=arbeit
-
-# Use SSH for private repositories (traditional)
-./webwerk install --mode=full \
-    --repo-url=git@github.com:mycompany/private-theme.git \
-    --git-protocol=ssh
+# DDEV install with SSH host
+webwerk install ddev -G arbeit
 ```
 
 ### Example 5: Plugin Management
 
 ```bash
-# Copy plugins from source to multiple sites
-./webwerk mod --copy-plugins=/path/to/custom-plugin \
-    --sites=site1,site2,site3
+# Copy plugin to multiple sites
+webwerk mod -y /path/to/custom-plugin -s site1,site2,site3
 
-# Install and activate specific plugins
-./webwerk mod --sites=mysite --install-plugins=acf-pro,wp-migrate-db-pro
+# Install and activate specific plugin
+webwerk mod -s mysite -i acf-pro
 ```
 
 ## 💡 Best Practices
@@ -727,7 +754,7 @@ Automate regular maintenance with cron:
 crontab -e
 
 # Update all sites weekly (Sunday 2 AM)
-0 2 * * 0 /usr/local/bin/webwerk update --all-sites --git >> /var/log/webwerk-cron.log 2>&1
+0 2 * * 0 /usr/local/bin/webwerk update -Ayg --sum >> /var/log/webwerk-cron.log 2>&1
 
 # Daily backup at midnight
 0 0 * * * /usr/local/bin/webwerk backup --all-sites >> /var/log/webwerk-backup.log 2>&1
@@ -867,16 +894,24 @@ Check system configuration:
 ### Testing
 Test all modes before submitting:
 ```bash
+# Verify help works for all subcommands
+webwerk -h
+webwerk install -h
+webwerk update -h
+webwerk mod -h
+webwerk ddev update -h
+webwerk ddev mod -h
+
 # Test all installation modes
-./webwerk install --mode=full --wp-title="Test Full"
-./webwerk install --mode=minimal --wp-title="Test Minimal"
-./webwerk install --mode=ddev --wp-title="Test DDEV"
+webwerk install full --wp-title="Test Full"
+webwerk install minimal --wp-title="Test Minimal"
+webwerk install ddev --wp-title="Test DDEV"
 
 # Test update functionality
-./webwerk update --sites=testsite
+webwerk update -s testsite
 
 # Test management features
-./webwerk mod --sites=testsite --enable-debug
+webwerk mod -s testsite -x on
 ```
 
 ## 📄 License
