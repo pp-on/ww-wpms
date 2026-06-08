@@ -335,6 +335,11 @@ webwerk update -Ag --sum
 # With git commit + push
 webwerk update -Agp
 
+# Commit now, push later
+webwerk update -Agy             # commits, no push
+webwerk update -AP              # push all sites (no update)
+webwerk update -s site1,site2 -P  # push specific sites
+
 # Exclude specific plugins
 webwerk update -A -x plugin1,plugin2
 
@@ -659,8 +664,12 @@ webwerk update -a
 # Auto update all sites, pause between each to review output
 webwerk update -A
 
-# Auto update all, single summary git commit, then push
-webwerk update -Ag --sum -p
+# Auto update all, commit, review, then push separately
+webwerk update -Agy --sum       # commits only
+webwerk update -AP              # push when ready
+
+# Or commit and push in one go
+webwerk update -Agpy --sum
 
 # Patch-level only, exclude specific plugins
 webwerk update -Am -x woocommerce,elementor

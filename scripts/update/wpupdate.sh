@@ -34,6 +34,7 @@ exclude_plugins=""
 sites=()
 interactive_select=false
 auto_all=false
+push_only=false
 
 # Note: Helper functions are loaded by the webwerk dispatcher  
 # No need to source wphelpfunctions.sh again - functions are already available
@@ -400,6 +401,7 @@ GIT INTEGRATION:
   -g                          Enable git mode (commit each plugin separately)
   --sum                       Create single summary commit for all updates
   -p, --git-push              Enable git push after updates
+  -P, --push-only             Skip updates; just git push selected sites
 
 WP-CLI CONFIGURATION:
   -w PATH                     Set WP-CLI path (default: ${WP_CLI_PATH:-wp})
@@ -415,7 +417,8 @@ EXAMPLES:
   webwerk update -A --yes-update                       # auto all, no confirmations
   webwerk update -s site1,site2 -g --sum               # specific sites, one git commit
   webwerk update -A --minor --exclude-plugins plugin1  # patch-level only, skip plugin1
-  webwerk update -A -g -p --yes-update                 # update all and push
+  webwerk update -Agp --yes-update                     # update all and push
+  webwerk update -AP                                   # push all sites (no update)
 
 CONFIGURATION:
   Configuration loaded from: .env
@@ -489,6 +492,9 @@ parse_arguments() {
             -p|--git-push)
                 git_mode=2
                 ;;
+            -P|--push-only)
+                push_only=true
+                ;;
             -d)
                 shift
                 WORDPRESS_BASE_DIR="$1"
@@ -560,7 +566,15 @@ main() {
             esac
         fi
 
-        if process_single_site "$site"; then
+        if [[ "$push_only" == true ]]; then
+            if (cd "$site" && git push); then
+                log_success "Pushed: $site"
+                ((processed_sites++))
+            else
+                log_error "Push failed: $site"
+                ((failed_sites++))
+            fi
+        elif process_single_site "$site"; then
             ((processed_sites++))
         else
             ((failed_sites++))
