@@ -571,26 +571,17 @@ show_help() {
 WordPress Local Installation Script v2.0
 =========================================
 
-NOTE: This script is typically called via the webwerk dispatcher.
-      Use 'webwerk --help' for the recommended interface.
+USAGE:
+  webwerk install [full|minimal|ddev] [OPTIONS]
+  webwerk install -h    (this help)
 
 TLDR:
-  # Quick DDEV install with SSH host alias (via webwerk)
-  webwerk ddev install -G arbeit
-
-  # Full install with custom title (via webwerk)
-  webwerk full install --wp-title="My Site"
-
-  # Minimal install without repo (via webwerk)
-  webwerk minimal install
-
-USAGE:
-  Via webwerk (recommended):
-    webwerk [full|minimal|ddev] install [OPTIONS]
+  webwerk install                         # full install (default)
+  webwerk install ddev -G arbeit          # DDEV install with SSH host alias
+  webwerk install minimal                 # minimal install without repo
 
   Direct call (advanced):
     $0 [full|minimal|ddev] [OPTIONS]
-    $0 --mode=[full|minimal|ddev] [OPTIONS]  (backward compatibility)
 
 INSTALLATION MODES:
   full      Full WordPress installation with git repository (default)
@@ -632,15 +623,11 @@ OTHER OPTIONS:
   --help                Show this help message
 
 EXAMPLES:
-  Via webwerk (recommended):
-    webwerk full install --wp-title="My Site"
-    webwerk ddev install -G arbeit
-    webwerk ddev install -n                        # Use nip.io (no admin rights needed)
-    webwerk minimal install --db-host=127.0.0.1
-
-  Direct call (backward compatible):
-    $0 full --wp-title="My Site"
-    $0 --mode=full --wp-title="My Site"
+    webwerk install --wp-title="My Site"
+    webwerk install full --wp-title="My Site"
+    webwerk install ddev -G arbeit
+    webwerk install ddev -n                        # Use nip.io (no admin rights needed)
+    webwerk install minimal --db-host=127.0.0.1
 
 CONFIGURATION FILES:
   .env          Environment variables (optional)
@@ -679,6 +666,19 @@ parse_arguments() {
     if [[ "$mode" != "--"* ]]; then
         shift
     fi
+
+    # Expand combined short flags (e.g. -nG -> -n -G)
+    local expanded=()
+    for arg in "$@"; do
+        if [[ "$arg" =~ ^-[^-][a-zA-Z]+$ ]]; then
+            for ((i=1; i<${#arg}; i++)); do
+                expanded+=("-${arg:$i:1}")
+            done
+        else
+            expanded+=("$arg")
+        fi
+    done
+    set -- "${expanded[@]}"
 
     local skip_next=false
 
@@ -807,12 +807,20 @@ parse_arguments() {
 #===============================================================================
 
 main() {
+    # Handle help before anything else
+    for arg in "$@"; do
+        if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+            show_help
+            exit 0
+        fi
+    done
+
     log_info "Starting WordPress Local Installation Script v2.0"
     log_info "Working directory: $PWD"
-    
+
     # Note: Configuration is loaded by dispatcher script
     # All environment variables and license keys are already available
-    
+
     # Parse command line arguments
     parse_arguments "$@"
     

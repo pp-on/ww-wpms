@@ -138,33 +138,32 @@ Webwerk WordPress Management Suite v2.0
 USAGE: $0 COMMAND [OPTIONS]
 
 COMMANDS:
-  full install     Full WordPress installation with git repository
-  minimal install  Minimal WordPress installation without git repository
-  ddev install     DDEV-based WordPress installation
-  ddev mod         Modify DDEV WordPress site (uses 'ddev wp' commands)
-  ddev update      Update DDEV WordPress site (uses 'ddev wp' commands)
+  install [full]   Full WordPress installation with git repository (default)
+  install minimal  Minimal WordPress installation without git repository
+  install ddev     DDEV-based WordPress installation
+  update           Update WordPress core and plugins (wp, default)
+  mod              Modify/manage existing WordPress sites (wp, default)
+  ddev update      Update DDEV WordPress site
+  ddev mod         Modify DDEV WordPress site
   ddev remove      Remove DDEV containers and configuration
-  update           Update WordPress core and plugins
-  mod              Modify/manage existing WordPress sites
 
 OPTIONS:
   --debug          Enable debug mode (works with all commands)
 
 EXAMPLES:
-  $0 full install --wp-title="My Site"
-  $0 ddev install -G arbeit
-  $0 ddev install -n                      # Use nip.io (no hosts file needed)
-  $0 ddev mod -S
-  $0 ddev update                          # Update all plugins (default)
+  $0 install --wp-title="My Site"
+  $0 install full --wp-title="My Site"
+  $0 install minimal
+  $0 install ddev -G arbeit
+  $0 install ddev -n                      # Use nip.io (no hosts file needed)
+  $0 update --sites=site1,site2
+  $0 update --all-sites --yes-update
+  $0 mod --sites=mysite --wp-debug on
+  $0 ddev update                          # Update all plugins
   $0 ddev update -y                       # Auto-confirm all updates
-  $0 ddev update -c --yes-update          # Update core + plugins, auto-confirm
-  $0 ddev update -g --sum                 # Update with git commits (summary)
-  $0 ddev update -x plugin1,plugin2       # Exclude specific plugins
+  $0 ddev update -g --sum                 # Update with git commits
+  $0 ddev mod -S
   $0 ddev remove
-  $0 minimal install
-  $0 full install --debug --wp-title="Debug Site"
-  $0 update --sites=site1,site2 --all
-  $0 mod --sites=mysite --enable-debug
 
 CONFIGURATION:
   Configuration is loaded from:
@@ -244,6 +243,32 @@ main() {
             ;;
     esac
 
+    # Pass -h/--help directly to subcommand scripts, bypassing config loading
+    local help_requested=false
+    for arg in "${@:2}"; do
+        if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+            help_requested=true
+            break
+        fi
+    done
+    if [[ "$help_requested" == true ]]; then
+        case "$command" in
+            "update")
+                exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
+            "mod")
+                exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
+            "install" | "full" | "minimal")
+                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
+            "ddev")
+                case "${2:-}" in
+                    "update") exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
+                    "mod")    exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
+                    *)        exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
+                esac
+                ;;
+        esac
+    fi
+
     # Load all configuration
     log_info "Starting Webwerk WordPress Management Suite v2.0"
     load_environment
@@ -256,12 +281,27 @@ main() {
 
     # Execute command
     case "$command" in
+        "install")
+            # New syntax: webwerk install [full|minimal|ddev]
+            local mode="${1:-full}"
+            case "$mode" in
+                "full" | "minimal" | "ddev") shift ;;
+                *) mode="full" ;;  # default to full if no mode given
+            esac
+            if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
+                log_info "Executing WordPress installation (mode: $mode)"
+                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "$mode" "$@"
+            else
+                log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
+                exit 1
+            fi
+            ;;
         "full" | "minimal")
-            # Installation modes - expect "install" as next argument
+            # Legacy syntax: webwerk full install / webwerk minimal install
             local subcommand="${1:-}"
             if [[ "$subcommand" != "install" ]]; then
                 log_error "Expected 'install' after '$command', got: ${subcommand:-nothing}"
-                log_error "Usage: $0 $command install [OPTIONS]"
+                log_error "Usage: $0 install $command [OPTIONS]"
                 exit 1
             fi
             shift  # Remove "install" from arguments

@@ -178,7 +178,7 @@ SITE SELECTION:
   -a, --all-sites              Process all WordPress sites in directory (interactive)
   -A, --all-sites-auto         Process all WordPress sites non-interactively
   -s, --sites SITES            Process specific sites (comma-separated)
-  -d, --original-dir DIR       Set base directory (default: ${WORDPRESS_BASE_DIR})
+  -d, --original-dir DIR       Set base directory (default: ${WORDPRESS_BASE_DIR:-./})
 
 INFORMATION & DISPLAY:
   -p, --print                  Print selected sites
@@ -226,7 +226,7 @@ WORDPRESS CONFIGURATION:
   -S, --force-https           Force HTTPS (updates wp-config.php and site URLs)
 
 OTHER OPTIONS:
-  -w, --location-wp PATH      Set WP-CLI path (default: ${WP_CLI_PATH})
+  -w, --location-wp PATH      Set WP-CLI path (default: ${WP_CLI_PATH:-wp})
   -h, --help                  Show this help message
 
 EXAMPLES:
@@ -253,6 +253,19 @@ EOF
 
 # Parse command line arguments
 parse_arguments() {
+    # Expand combined short flags (e.g. -Ag -> -A -g)
+    local expanded=()
+    for arg in "$@"; do
+        if [[ "$arg" =~ ^-[^-][a-zA-Z]+$ ]]; then
+            for ((i=1; i<${#arg}; i++)); do
+                expanded+=("-${arg:$i:1}")
+            done
+        else
+            expanded+=("$arg")
+        fi
+    done
+    set -- "${expanded[@]}"
+
     while [[ $# -gt 0 ]]; do
         case $1 in
             --out)
@@ -418,10 +431,18 @@ parse_arguments() {
 #===============================================================================
 
 main() {
+    # Handle help before anything else
+    for arg in "$@"; do
+        if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+            show_help
+            exit 0
+        fi
+    done
+
     log_info "Starting $SCRIPT_NAME v$SCRIPT_VERSION"
 
-    # Initialize colors
-    colors
+    # Initialize colors if available (sourced from wphelpfunctions.sh)
+    type colors &>/dev/null && colors
 
     sites=()
 

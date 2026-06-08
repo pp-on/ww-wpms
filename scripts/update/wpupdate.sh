@@ -29,9 +29,11 @@ minor=0
 summary_commit=""
 git_mode=0
 auto_yes="${AUTO_UPDATE_CONFIRM:-false}"
-core_update=""
+core_update=true
 exclude_plugins=""
 sites=()
+interactive_select=false
+auto_all=false
 
 # Note: Helper functions are loaded by the webwerk dispatcher  
 # No need to source wphelpfunctions.sh again - functions are already available
@@ -340,8 +342,12 @@ process_single_site() {
     echo -e "Checking Core Updates"
     echo -e "---------------${Color_Off}"
     
-    if ! update_core; then
-        log_warning "Core update failed for site: $site"
+    if [[ "$core_update" == true ]]; then
+        if ! update_core; then
+            log_warning "Core update failed for site: $site"
+        fi
+    else
+        log_info "Core update skipped (-c)"
     fi
     
     # Update plugins
@@ -375,44 +381,41 @@ show_help() {
 WordPress Update Script v${SCRIPT_VERSION}
 =========================================
 
-USAGE: $0 [OPTIONS]
+USAGE: webwerk update [OPTIONS]
 
 SITE SELECTION:
-  -a, --all-sites              Update all WordPress sites in directory
+  -a, --all-sites              Discover all sites; prompt y/n/x per site before updating
+  -A, --all-sites-auto         Discover all sites; update all without prompting,
+                               pause after each site (any key = next, x = exit)
   -s, --sites SITES            Update specific sites (comma-separated)
-  -d DIR                       Set base directory (default: ${WORDPRESS_BASE_DIR})
+  -d DIR                       Set base directory (default: ${WORDPRESS_BASE_DIR:-./})
 
 UPDATE OPTIONS:
-  -m, --minor                  Include minor version updates
+  -m, --minor                  Update only patch-level changes (e.g. 8.1.1 → 8.1.2)
   -y, --yes-update             Auto-confirm all updates (no prompts)
-  -c, --core-update            Update WordPress core
+  -c, --skip-core              Skip WordPress core update (core is updated by default)
   -x, --exclude-plugins LIST   Exclude plugins from updates (comma-separated)
 
 GIT INTEGRATION:
   -g                          Enable git mode (commit each plugin separately)
   --sum                       Create single summary commit for all updates
-  --gp, --git-push            Enable git push after updates
+  -p, --git-push              Enable git push after updates
 
 WP-CLI CONFIGURATION:
-  -w PATH                     Set WP-CLI path (default: ${WP_CLI_PATH})
+  -w PATH                     Set WP-CLI path (default: ${WP_CLI_PATH:-wp})
   -u USER                     Set database user (if needed)
 
 OUTPUT & DISPLAY:
-  -c, --colors                Initialize color scheme
+  --colors                    Initialize color scheme
   -h, --help                  Show this help message
 
 EXAMPLES:
-  # Update all sites with auto-confirmation
-  $0 --all-sites --yes-update
-  
-  # Update specific sites with git integration
-  $0 --sites site1,site2 -g --sum
-  
-  # Update with minor versions and exclude specific plugins
-  $0 --all-sites --minor --exclude-plugins plugin1,plugin2
-  
-  # Update and auto-push to git
-  $0 --all-sites -g --git-push --yes-update
+  webwerk update -a                                    # prompt per site
+  webwerk update -A                                    # auto all, pause between sites
+  webwerk update -A --yes-update                       # auto all, no confirmations
+  webwerk update -s site1,site2 -g --sum               # specific sites, one git commit
+  webwerk update -A --minor --exclude-plugins plugin1  # patch-level only, skip plugin1
+  webwerk update -A -g -p --yes-update                 # update all and push
 
 CONFIGURATION:
   Configuration loaded from: .env
@@ -433,10 +436,28 @@ EOF
 
 # Parse command line arguments
 parse_arguments() {
+    # Expand combined short flags (e.g. -Ay -> -A -y)
+    local expanded=()
+    for arg in "$@"; do
+        if [[ "$arg" =~ ^-[^-][a-zA-Z]+$ ]]; then
+            for ((i=1; i<${#arg}; i++)); do
+                expanded+=("-${arg:$i:1}")
+            done
+        else
+            expanded+=("$arg")
+        fi
+    done
+    set -- "${expanded[@]}"
+
     while [[ $# -gt 0 ]]; do
         case $1 in
             -a|--all-sites)
                 process_sites
+                interactive_select=true
+                ;;
+            -A|--all-sites-auto)
+                process_sites
+                auto_all=true
                 ;;
             -u)
                 shift
@@ -453,7 +474,10 @@ parse_arguments() {
             -y|--yes-update)
                 auto_yes="true"
                 ;;
-            -c|--colors)
+            -c|--skip-core)
+                core_update=false
+                ;;
+            --colors)
                 colors
                 ;;
             --sum)
@@ -462,7 +486,7 @@ parse_arguments() {
             -g)
                 git_mode=1
                 ;;
-            --gp|--git-push)
+            -p|--git-push)
                 git_mode=2
                 ;;
             -d)
@@ -498,11 +522,19 @@ parse_arguments() {
 #===============================================================================
 
 main() {
+    # Handle help before anything else
+    for arg in "$@"; do
+        if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+            show_help
+            exit 0
+        fi
+    done
+
     log_info "Starting $SCRIPT_NAME v$SCRIPT_VERSION"
-    
-    # Initialize colors
-    colors
-    
+
+    # Initialize colors if available (sourced from wphelpfunctions.sh)
+    type colors &>/dev/null && colors
+
     # Parse command line arguments
     parse_arguments "$@"
     
@@ -518,11 +550,30 @@ main() {
     local failed_sites=0
     
     for site in "${sites[@]}"; do
+        if [[ "$interactive_select" == true ]]; then
+            read -rp "Update site '$site'? [y/n/x]: " choice
+            case "$choice" in
+                y|Y) ;;
+                n|N) continue ;;
+                x|X) log_info "Aborted by user."; exit 0 ;;
+                *)   continue ;;
+            esac
+        fi
+
         if process_single_site "$site"; then
             ((processed_sites++))
         else
             ((failed_sites++))
             log_error "Failed to process site: $site"
+        fi
+
+        if [[ "$auto_all" == true ]]; then
+            read -rsn1 -p "Press any key to continue, x to exit... " key
+            echo
+            if [[ "${key,,}" == "x" ]]; then
+                log_info "Aborted by user."
+                exit 0
+            fi
         fi
     done
     
