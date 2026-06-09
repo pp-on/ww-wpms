@@ -103,7 +103,7 @@ chmod +x scripts/**/*.sh
 
 ### Shell Completions
 
-Completion files for fish, bash, and zsh are in `completions/`.
+Completion files for fish, bash, and zsh are in `completions/`. Running `./install.sh` installs them automatically. To install manually:
 
 **Fish:**
 ```bash
@@ -112,12 +112,17 @@ cp completions/webwerk.fish ~/.config/fish/completions/
 
 **Bash** (add to `~/.bashrc`):
 ```bash
-source ~/git/ww-wpms/completions/webwerk.bash
+mkdir -p ~/.bash_completion.d
+cp completions/webwerk.bash ~/.bash_completion.d/
+echo 'for f in ~/.bash_completion.d/*.bash; do source "$f"; done' >> ~/.bashrc
 ```
 
 **Zsh** (add to `~/.zshrc` before `compinit`):
 ```bash
-fpath=(~/git/ww-wpms/completions $fpath)
+mkdir -p ~/.local/share/zsh/completions
+cp completions/_webwerk ~/.local/share/zsh/completions/
+echo 'fpath=(~/.local/share/zsh/completions $fpath)' >> ~/.zshrc
+# then restart shell or run:
 autoload -Uz compinit && compinit
 ```
 
