@@ -1,0 +1,154 @@
+#compdef webwerk
+# Zsh completion for webwerk WordPress Management Suite
+#
+# Install: copy to a directory in $fpath (e.g. ~/.zsh/completions/)
+#          or add this file's directory to fpath before compinit:
+#            fpath=(~/.config/zsh/completions $fpath)
+#            autoload -Uz compinit && compinit
+
+_webwerk() {
+    local state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '(-h --help)'{-h,--help}'[Show help]' \
+        '--debug[Enable debug mode]' \
+        '1: :_webwerk_commands' \
+        '*::arg:->args'
+
+    case $state in
+        args)
+            case $line[1] in
+                install)        _webwerk_install ;;
+                update|u)       _webwerk_update ;;
+                mod)            _webwerk_mod ;;
+                ddev)           _webwerk_ddev ;;
+            esac
+            ;;
+    esac
+}
+
+_webwerk_commands() {
+    local commands=(
+        'install:Install WordPress site'
+        'update:Update WordPress (core+plugins+themes)'
+        'u:Update WordPress (alias)'
+        'mod:Modify/manage existing WordPress sites'
+        'ddev:DDEV operations'
+        'status:Show configuration status'
+    )
+    _describe 'command' commands
+}
+
+_webwerk_install() {
+    _arguments \
+        '1: :_webwerk_install_modes' \
+        '--db-host=[Database hostname]:host' \
+        '--db-user=[Database username]:user' \
+        '--db-password=[Database password]:password' \
+        '--db-name=[Database name]:name' \
+        '--wp-url=[WordPress site URL]:url' \
+        '(-b --base-url)'{-b,--base-url}'=[Base URL for local dev]:url' \
+        '--wp-title=[WordPress site title]:title' \
+        '--wp-admin-user=[Admin username]:user' \
+        '--wp-admin-pass=[Admin password]:password' \
+        '--wp-admin-email=[Admin email]:email' \
+        '--repo-url=[Repository URL to clone]:url' \
+        '--git-user=[Git username]:user' \
+        '--git-protocol=[Git protocol]:protocol:(https ssh)' \
+        '(-G --git-host)'{-G,--git-host}'=[SSH host alias from ~/.ssh/config]:host' \
+        '--wp-cli=[Path to WP-CLI executable]:path:_files' \
+        '--target-dir=[Target installation directory]:dir:_files -/' \
+        '(-n --nip-io)'{-n,--nip-io}'[Use nip.io DNS (DDEV only)]' \
+        '--lemp[Generate nginx.conf (default)]' \
+        '--lamp[Generate .htaccess (LAMP stack)]' \
+        '--production[Add nginx security hardening]' \
+        '--multisite[Install as WordPress Multisite]' \
+        '--subdomains[Subdomain network (requires --multisite)]' \
+        '--debug[Enable debug mode]' \
+        '(-h --help)'{-h,--help}'[Show help]'
+}
+
+_webwerk_install_modes() {
+    local modes=(
+        'full:Full install with git repository (default)'
+        'minimal:Minimal install without git'
+        'ddev:DDEV containerized install'
+    )
+    _describe 'mode' modes
+}
+
+_webwerk_update() {
+    _arguments \
+        '1: :_webwerk_update_targets' \
+        '(-a --all-sites)'{-a,--all-sites}'[Prompt y/n/x per site]' \
+        '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Auto all sites, pause between each]' \
+        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
+        '(-y --yes-update)'{-y,--yes-update}'[Auto-confirm all updates]' \
+        '(-c --skip-core)'{-c,--skip-core}'[Skip core update]' \
+        '(-m --minor)'{-m,--minor}'[Patch-level only (e.g. 8.1.1→8.1.2)]' \
+        '-g[Git mode (commit per plugin)]' \
+        '--sum[Single summary git commit]' \
+        '(-p --git-push)'{-p,--git-push}'[Push after updates]' \
+        '(-P --push-only)'{-P,--push-only}'[Push only (no update)]' \
+        '(-x --exclude-plugins)'{-x,--exclude-plugins}'=[Exclude plugins (comma-separated)]:plugins' \
+        '(-h --help)'{-h,--help}'[Show help]'
+}
+
+_webwerk_update_targets() {
+    local targets=(
+        'core:Update core only'
+        'plugins:Update all plugins'
+        'plugin:Update one plugin (name required)'
+        'themes:Update all themes'
+        'theme:Update one theme (name required)'
+    )
+    _describe 'target' targets
+}
+
+_webwerk_mod() {
+    _arguments \
+        '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
+        '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
+        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
+        '(-d --original-dir)'{-d,--original-dir}'=[Set base directory]:dir:_files -/' \
+        '(-p --print)'{-p,--print}'[Print selected sites]' \
+        '(-H --health-check)'{-H,--health-check}'[Check sites with wp core is-installed]' \
+        '(-l --list)'{-l,--list}'[List plugins for selected sites]' \
+        '(-T --themes)'{-T,--themes}'[List/activate themes]' \
+        '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \
+        '-g[Enable git mode]' \
+        '--git=[Run git subcommand]:subcmd:(pull log)' \
+        '--git-pull[Update repos via git pull]' \
+        '(-i --install-plugin)'{-i,--install-plugin}'=[Install plugin on selected sites]:plugin' \
+        '(-y --copy-plugins)'{-y,--copy-plugins}'=[Copy plugin from path]:path:_files' \
+        '(-f --acf-pro-lk)'{-f,--acf-pro-lk}'[Setup ACF Pro license key]' \
+        '(-m --wp-migrate-db-pro)'{-m,--wp-migrate-db-pro}'[Setup WP Migrate DB Pro license key]' \
+        '--akeeba-license[Setup Akeeba Download ID]' \
+        '--setup-all-licenses[Setup all available license keys]' \
+        '(-n --new-user)'{-n,--new-user}'[Create new admin user]' \
+        '(-U --wp-user)'{-U,--wp-user}'=[Username for new user]:user' \
+        '(-P --wp-password)'{-P,--wp-password}'=[Password for new user]:password' \
+        '(-E --wp-email)'{-E,--wp-email}'=[Email for new user]:email' \
+        '(-R --search-replace)'{-R,--search-replace}'=[Run wp search-replace (OLD NEW)]:args' \
+        '(-x --wp-debug)'{-x,--wp-debug}'=[Enable/disable debug mode]:mode:(on off)' \
+        '(-z --hide-errors)'{-z,--hide-errors}'[Hide WordPress errors]' \
+        '(-r --disable-search-engine-indexing)'{-r,--disable-search-engine-indexing}'[Disable search engine indexing]' \
+        '--enable-search-engine-indexing[Enable search engine indexing]' \
+        '--htaccess[Create/update .htaccess file]' \
+        '(-S --force-https)'{-S,--force-https}'[Force HTTPS]' \
+        '(-w --location-wp)'{-w,--location-wp}'=[Set WP-CLI path]:path:_files' \
+        '(-h --help)'{-h,--help}'[Show help]'
+}
+
+_webwerk_ddev() {
+    local subs=(
+        'install:DDEV WordPress install'
+        'mod:Modify DDEV site'
+        'update:Update DDEV site'
+        'remove:Remove DDEV containers'
+    )
+    _describe 'subcommand' subs
+}
+
+_webwerk "$@"

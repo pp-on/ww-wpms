@@ -1,0 +1,146 @@
+# Fish completions for webwerk WordPress Management Suite
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+function __ww_no_cmd
+    not __fish_seen_subcommand_from install update u mod ddev status
+end
+
+function __ww_install_ctx
+    __fish_seen_subcommand_from install
+    and not __fish_seen_subcommand_from update u mod ddev
+end
+
+function __ww_update_ctx
+    __fish_seen_subcommand_from update u
+    and not __fish_seen_subcommand_from install mod ddev
+end
+
+function __ww_update_no_target
+    __ww_update_ctx
+    and not __fish_seen_subcommand_from core plugins plugin themes theme
+end
+
+function __ww_ddev_no_sub
+    __fish_seen_subcommand_from ddev
+    and not __fish_seen_subcommand_from install mod update remove
+end
+
+function __ww_mod_ctx
+    __fish_seen_subcommand_from mod
+    and not __fish_seen_subcommand_from install update u ddev
+end
+
+# ── Top-level commands ────────────────────────────────────────────────────────
+
+complete -c webwerk -f -n __ww_no_cmd -a install -d 'Install WordPress site'
+complete -c webwerk -f -n __ww_no_cmd -a update  -d 'Update WordPress (core+plugins+themes)'
+complete -c webwerk -f -n __ww_no_cmd -a u       -d 'Update WordPress (alias)'
+complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing WordPress sites'
+complete -c webwerk -f -n __ww_no_cmd -a ddev    -d 'DDEV operations'
+complete -c webwerk -f -n __ww_no_cmd -a status  -d 'Show configuration status'
+complete -c webwerk    -n __ww_no_cmd -s h -l help  -d 'Show help'
+complete -c webwerk    -n __ww_no_cmd -l debug       -d 'Enable debug mode'
+
+# ── install: modes ────────────────────────────────────────────────────────────
+
+complete -c webwerk -f \
+    -n '__ww_install_ctx; and not __fish_seen_subcommand_from full minimal ddev' \
+    -a full    -d 'Full install with git repository (default)'
+complete -c webwerk -f \
+    -n '__ww_install_ctx; and not __fish_seen_subcommand_from full minimal ddev' \
+    -a minimal -d 'Minimal install without git'
+complete -c webwerk -f \
+    -n '__ww_install_ctx; and not __fish_seen_subcommand_from full minimal ddev' \
+    -a ddev    -d 'DDEV containerized install'
+
+# ── install: options ──────────────────────────────────────────────────────────
+
+complete -c webwerk -n __ww_install_ctx -l db-host        -r -d 'Database hostname'
+complete -c webwerk -n __ww_install_ctx -l db-user        -r -d 'Database username'
+complete -c webwerk -n __ww_install_ctx -l db-password    -r -d 'Database password'
+complete -c webwerk -n __ww_install_ctx -l db-name        -r -d 'Database name'
+complete -c webwerk -n __ww_install_ctx -l wp-url         -r -d 'WordPress site URL'
+complete -c webwerk -n __ww_install_ctx -l base-url    -s b -r -d 'Base URL for local dev (e.g. netcup.local)'
+complete -c webwerk -n __ww_install_ctx -l wp-title       -r -d 'WordPress site title'
+complete -c webwerk -n __ww_install_ctx -l wp-admin-user  -r -d 'Admin username'
+complete -c webwerk -n __ww_install_ctx -l wp-admin-pass  -r -d 'Admin password'
+complete -c webwerk -n __ww_install_ctx -l wp-admin-email -r -d 'Admin email'
+complete -c webwerk -n __ww_install_ctx -l repo-url       -r -d 'Repository URL to clone'
+complete -c webwerk -n __ww_install_ctx -l git-user       -r -d 'Git username'
+complete -c webwerk -n __ww_install_ctx -l git-protocol   -r -d 'Git protocol' -a 'https\tHTTPS ssh\tSSH'
+complete -c webwerk -n __ww_install_ctx -l git-host    -s G -r -d 'SSH host alias from ~/.ssh/config'
+complete -c webwerk -n __ww_install_ctx -l wp-cli         -r -d 'Path to WP-CLI executable'
+complete -c webwerk -n __ww_install_ctx -l target-dir     -r -d 'Target installation directory'
+complete -c webwerk -n __ww_install_ctx -s n -l nip-io       -d 'Use nip.io DNS (no hosts file, DDEV only)'
+complete -c webwerk -n __ww_install_ctx -l lemp              -d 'Generate nginx.conf (default)'
+complete -c webwerk -n __ww_install_ctx -l lamp              -d 'Generate .htaccess (LAMP stack)'
+complete -c webwerk -n __ww_install_ctx -l production        -d 'Add nginx security hardening'
+complete -c webwerk -n __ww_install_ctx -l multisite         -d 'Install as WordPress Multisite'
+complete -c webwerk -n __ww_install_ctx -l subdomains        -d 'Subdomain network (requires --multisite)'
+complete -c webwerk -n __ww_install_ctx -l debug             -d 'Enable debug mode'
+complete -c webwerk -n __ww_install_ctx -s h -l help         -d 'Show help'
+
+# ── update: targets ───────────────────────────────────────────────────────────
+
+complete -c webwerk -f -n __ww_update_no_target -a core    -d 'Update core only'
+complete -c webwerk -f -n __ww_update_no_target -a plugins -d 'Update all plugins'
+complete -c webwerk -f -n __ww_update_no_target -a plugin  -d 'Update one plugin (name required)'
+complete -c webwerk -f -n __ww_update_no_target -a themes  -d 'Update all themes'
+complete -c webwerk -f -n __ww_update_no_target -a theme   -d 'Update one theme (name required)'
+
+# ── update: options ───────────────────────────────────────────────────────────
+
+complete -c webwerk -n __ww_update_ctx -s a -l all-sites      -d 'Prompt y/n/x per site'
+complete -c webwerk -n __ww_update_ctx -s A -l all-sites-auto -d 'Auto all sites, pause between each (x=exit)'
+complete -c webwerk -n __ww_update_ctx -s s -l sites       -r  -d 'Specific sites (comma-separated)'
+complete -c webwerk -n __ww_update_ctx -s y -l yes-update      -d 'Auto-confirm all updates'
+complete -c webwerk -n __ww_update_ctx -s c -l skip-core       -d 'Skip core update'
+complete -c webwerk -n __ww_update_ctx -s m -l minor           -d 'Patch-level only (e.g. 8.1.1 → 8.1.2)'
+complete -c webwerk -n __ww_update_ctx -s g                    -d 'Git mode (commit per plugin)'
+complete -c webwerk -n __ww_update_ctx -l sum                  -d 'Single summary git commit'
+complete -c webwerk -n __ww_update_ctx -s p -l git-push        -d 'Push after updates'
+complete -c webwerk -n __ww_update_ctx -s P -l push-only       -d 'Push only (no update)'
+complete -c webwerk -n __ww_update_ctx -s x -l exclude-plugins -r -d 'Exclude plugins (comma-separated)'
+complete -c webwerk -n __ww_update_ctx -s h -l help            -d 'Show help'
+
+# ── ddev: subcommands ─────────────────────────────────────────────────────────
+
+complete -c webwerk -f -n __ww_ddev_no_sub -a install -d 'DDEV WordPress install'
+complete -c webwerk -f -n __ww_ddev_no_sub -a mod     -d 'Modify DDEV site'
+complete -c webwerk -f -n __ww_ddev_no_sub -a update  -d 'Update DDEV site'
+complete -c webwerk -f -n __ww_ddev_no_sub -a remove  -d 'Remove DDEV containers'
+
+# ── mod: options ──────────────────────────────────────────────────────────────
+
+complete -c webwerk -n __ww_mod_ctx -s a -l all-sites                      -d 'Process all sites (interactive)'
+complete -c webwerk -n __ww_mod_ctx -s A -l all-sites-auto                 -d 'Process all sites (non-interactive)'
+complete -c webwerk -n __ww_mod_ctx -s s -l sites                       -r  -d 'Specific sites (comma-separated)'
+complete -c webwerk -n __ww_mod_ctx -s d -l original-dir                -r  -d 'Set base directory'
+complete -c webwerk -n __ww_mod_ctx -s p -l print                          -d 'Print selected sites'
+complete -c webwerk -n __ww_mod_ctx -s H -l health-check                   -d 'Check sites with wp core is-installed'
+complete -c webwerk -n __ww_mod_ctx -s l -l list                           -d 'List plugins for selected sites'
+complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
+complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'
+complete -c webwerk -n __ww_mod_ctx -s g                                   -d 'Enable git mode'
+complete -c webwerk -n __ww_mod_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
+complete -c webwerk -n __ww_mod_ctx -s g -l git-pull                       -d 'Update repos via git pull'
+complete -c webwerk -n __ww_mod_ctx -s i -l install-plugin              -r  -d 'Install plugin on selected sites'
+complete -c webwerk -n __ww_mod_ctx -s y -l copy-plugins                -r  -d 'Copy plugin from path to selected sites'
+complete -c webwerk -n __ww_mod_ctx -s f -l acf-pro-lk                     -d 'Setup ACF Pro license key'
+complete -c webwerk -n __ww_mod_ctx -s m -l wp-migrate-db-pro              -d 'Setup WP Migrate DB Pro license key'
+complete -c webwerk -n __ww_mod_ctx -l akeeba-license                      -d 'Setup Akeeba Download ID'
+complete -c webwerk -n __ww_mod_ctx -l setup-all-licenses                  -d 'Setup all available license keys'
+complete -c webwerk -n __ww_mod_ctx -s n -l new-user                       -d 'Create new admin user'
+complete -c webwerk -n __ww_mod_ctx -s U -l wp-user                    -r  -d 'Username for new user'
+complete -c webwerk -n __ww_mod_ctx -s P -l wp-password                -r  -d 'Password for new user'
+complete -c webwerk -n __ww_mod_ctx -s E -l wp-email                   -r  -d 'Email for new user'
+complete -c webwerk -n __ww_mod_ctx -s R -l search-replace             -r  -d 'Run wp search-replace (OLD NEW)'
+complete -c webwerk -n __ww_mod_ctx -s x -l wp-debug                   -r  -d 'Enable/disable debug mode' -a 'on\tEnable off\tDisable'
+complete -c webwerk -n __ww_mod_ctx -s z -l hide-errors                    -d 'Hide WordPress errors'
+complete -c webwerk -n __ww_mod_ctx -s r -l disable-search-engine-indexing -d 'Disable search engine indexing'
+complete -c webwerk -n __ww_mod_ctx -l enable-search-engine-indexing        -d 'Enable search engine indexing'
+complete -c webwerk -n __ww_mod_ctx -l htaccess                            -d 'Create/update .htaccess file'
+complete -c webwerk -n __ww_mod_ctx -s S -l force-https                    -d 'Force HTTPS'
+complete -c webwerk -n __ww_mod_ctx -s w -l location-wp                -r  -d 'Set WP-CLI path'
+complete -c webwerk -n __ww_mod_ctx -s h -l help                           -d 'Show help'
