@@ -30,11 +30,16 @@ summary_commit=""
 git_mode=0
 auto_yes="${AUTO_UPDATE_CONFIRM:-false}"
 core_update=true
+skip_plugins=false
+only_plugins=""
+update_themes=false
+only_theme=""
 exclude_plugins=""
 sites=()
 interactive_select=false
 auto_all=false
 push_only=false
+compact=false
 
 # Note: Helper functions are loaded by the webwerk dispatcher  
 # No need to source wphelpfunctions.sh again - functions are already available
@@ -116,9 +121,9 @@ update_plugins_with_git() {
     fi
     
     # Update repository first
-    out "Updating repository..." 1
-    sleep 1
-    
+    [[ "$compact" != true ]] && out "Updating repository..." 1
+    [[ "$compact" != true ]] && sleep 1
+
     if ! git pull &>/dev/null; then
         log_warning "Git pull failed or no remote repository"
     fi
@@ -138,6 +143,10 @@ update_plugins_with_git() {
     fi
     
     for plugin in $available_updates; do
+        # If only specific plugins requested, skip others
+        if [[ -n "$only_plugins" ]] && [[ ! ",$only_plugins," =~ ",$plugin," ]]; then
+            continue
+        fi
         # Skip excluded plugins
         if [[ -n "$exclude_plugins" ]] && [[ "$exclude_plugins" =~ $plugin ]]; then
             log_info "Skipping excluded plugin: $plugin"
@@ -146,23 +155,24 @@ update_plugins_with_git() {
         
         old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
         
-        out "Updating $plugin" 4
-        sleep 1
-        
+        [[ "$compact" != true ]] && out "Updating $plugin" 4
+        [[ "$compact" != true ]] && sleep 1
+
         if "${WP_CLI_PATH}" plugin update "$plugin" &>/dev/null; then
             new_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
-            
+
             if [[ "$old_version" != "$new_version" ]]; then
                 plugins[$plugin_count]="$plugin: $old_version → $new_version"
-                
-                out "Staging changes..." 2
-                sleep 1
-                
+                [[ "$compact" == true ]] && echo -e "  ${Green}↑${Color_Off} $plugin $old_version → $new_version"
+
+                [[ "$compact" != true ]] && out "Staging changes..." 2
+                [[ "$compact" != true ]] && sleep 1
+
                 if git add -A "plugins/$plugin" &>/dev/null; then
                     commit_message="plugin ${plugins[$plugin_count]}"
-                    
-                    out "Writing commit:" 2
-                    out "chore: update $commit_message" 4
+
+                    [[ "$compact" != true ]] && out "Writing commit:" 2
+                    [[ "$compact" != true ]] && out "chore: update $commit_message" 4
                     
                     if [[ -z "$summary_commit" ]]; then
                         # Separate commit for each plugin
@@ -277,9 +287,17 @@ update_plugins_simple() {
         read -r answer
         echo -e "\n--------------"
         
+        local plugin_args
+        if [[ -n "$only_plugins" ]]; then
+            plugin_args="${only_plugins//,/ }"
+        else
+            plugin_args="--all"
+        fi
+
         if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
-            if "${WP_CLI_PATH}" plugin update --all; then
-                log_success "All plugins updated successfully"
+            # shellcheck disable=SC2086
+            if "${WP_CLI_PATH}" plugin update $plugin_args; then
+                log_success "Plugins updated successfully"
             else
                 log_error "Some plugin updates failed"
                 return 1
@@ -289,12 +307,57 @@ update_plugins_simple() {
         fi
     else
         "${WP_CLI_PATH}" plugin list --update=available
-        out "Auto-updating all plugins" 4
-        
-        if "${WP_CLI_PATH}" plugin update --all; then
-            log_success "All plugins auto-updated successfully"
+        out "Auto-updating plugins" 4
+
+        local plugin_args
+        if [[ -n "$only_plugins" ]]; then
+            plugin_args="${only_plugins//,/ }"
+        else
+            plugin_args="--all"
+        fi
+
+        # shellcheck disable=SC2086
+        if "${WP_CLI_PATH}" plugin update $plugin_args; then
+            log_success "Plugins auto-updated successfully"
         else
             log_error "Auto-update failed for some plugins"
+            return 1
+        fi
+    fi
+}
+
+# Update themes
+update_themes_fn() {
+    local theme_args
+    if [[ -n "$only_theme" ]]; then
+        theme_args="$only_theme"
+    else
+        theme_args="--all"
+    fi
+
+    log_info "Checking for theme updates"
+
+    if [[ "$auto_yes" != "true" ]]; then
+        "${WP_CLI_PATH}" theme list --update=available
+        echo -e "\nProceed with theme update? [y/N]: "
+        read -r answer
+        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+            # shellcheck disable=SC2086
+            if "${WP_CLI_PATH}" theme update $theme_args; then
+                log_success "Themes updated successfully"
+            else
+                log_error "Theme update failed"
+                return 1
+            fi
+        else
+            log_info "Theme update cancelled by user"
+        fi
+    else
+        # shellcheck disable=SC2086
+        if "${WP_CLI_PATH}" theme update $theme_args; then
+            log_success "Themes auto-updated successfully"
+        else
+            log_error "Auto-update failed for themes"
             return 1
         fi
     fi
@@ -309,39 +372,37 @@ process_single_site() {
     local site="$1"
     local site_dir="${WORDPRESS_BASE_DIR}${site}"
     
-    echo -e "${Cyan}================================"
-    echo -e "\t$site"
-    echo -e "================================${Color_Off}"
-    
-    log_info "Processing site: $site"
-    
+    if [[ "$compact" == true ]]; then
+        echo -e "${Cyan}→ $site${Color_Off}"
+    else
+        echo -e "${Cyan}================================"
+        echo -e "\t$site"
+        echo -e "================================${Color_Off}"
+        log_info "Processing site: $site"
+    fi
+
     if ! cd "$site_dir" &>/dev/null; then
         log_error "Cannot access site directory: $site_dir"
         return 1
     fi
-    
-    sleep 1
-    
-    echo -e "${Green}---------------"
-    echo -e "Checking Site"
-    echo -e "---------------${Color_Off}"
-    
+
+    [[ "$compact" != true ]] && sleep 1
+
     # Check if WordPress site is working
     local site_check
     site_check=$("${WP_CLI_PATH}" core check-update 2>&1 || echo "error")
-    
-    if [[ "$site_check" != *"error"* ]]; then
-        echo -e "${Green}Site is functional${Color_Off}"
-    else
-        echo -e "${Red}Site check failed: $site_check${Color_Off}"
+
+    if [[ "$site_check" == *"error"* ]]; then
+        echo -e "${Red}✗ $site: site check failed${Color_Off}"
         cd - &>/dev/null
         return 1
     fi
-    
+
+    [[ "$compact" != true ]] && echo -e "${Green}---------------\nChecking Site\n---------------${Color_Off}"
+    [[ "$compact" != true ]] && echo -e "${Green}Site is functional${Color_Off}"
+
     # Update WordPress core
-    echo -e "${Yellow}---------------"
-    echo -e "Checking Core Updates"
-    echo -e "---------------${Color_Off}"
+    [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Core Updates\n---------------${Color_Off}"
     
     if [[ "$core_update" == true ]]; then
         if ! update_core; then
@@ -352,17 +413,27 @@ process_single_site() {
     fi
     
     # Update plugins
-    echo -e "${Yellow}---------------"
-    echo -e "Checking Plugin Updates"
-    echo -e "---------------${Color_Off}"
-    
-    if [[ "$git_mode" -ge 1 ]]; then
-        if ! update_plugins_with_git; then
-            log_warning "Git-based plugin updates failed for site: $site"
-        fi
+    if [[ "$skip_plugins" == true ]]; then
+        log_info "Plugin updates skipped (core only)"
     else
-        if ! update_plugins_simple; then
-            log_warning "Plugin updates failed for site: $site"
+        [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Plugin Updates\n---------------${Color_Off}"
+
+        if [[ "$git_mode" -ge 1 ]]; then
+            if ! update_plugins_with_git; then
+                log_warning "Git-based plugin updates failed for site: $site"
+            fi
+        else
+            if ! update_plugins_simple; then
+                log_warning "Plugin updates failed for site: $site"
+            fi
+        fi
+    fi
+
+    # Update themes (only when explicitly requested)
+    if [[ "$update_themes" == true ]]; then
+        [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Theme Updates\n---------------${Color_Off}"
+        if ! update_themes_fn; then
+            log_warning "Theme update failed for site: $site"
         fi
     fi
     
@@ -382,12 +453,21 @@ show_help() {
 WordPress Update Script v${SCRIPT_VERSION}
 =========================================
 
-USAGE: webwerk update [OPTIONS]
+USAGE: webwerk update [core|plugins] [OPTIONS]
+
+TARGET (optional):
+  core                         Update WordPress core only
+  plugins                      Update all plugins
+  plugin <name>                Update one specific plugin — name required
+  themes                       Update all themes
+  theme <name>                 Update one specific theme — name required
+  (omit)                       Update core + plugins + themes (default)
 
 SITE SELECTION:
   -a, --all-sites              Discover all sites; prompt y/n/x per site before updating
   -A, --all-sites-auto         Discover all sites; update all without prompting,
                                pause after each site (any key = next, x = exit)
+  -B, --batch                  Like -A but no pause; compact one-line-per-plugin output
   -s, --sites SITES            Update specific sites (comma-separated)
   -d DIR                       Set base directory (default: ${WORDPRESS_BASE_DIR:-./})
 
@@ -412,12 +492,15 @@ OUTPUT & DISPLAY:
   -h, --help                  Show this help message
 
 EXAMPLES:
-  webwerk update -a                                    # prompt per site
+  webwerk update -a                                    # prompt per site (core + plugins)
   webwerk update -A                                    # auto all, pause between sites
-  webwerk update -A --yes-update                       # auto all, no confirmations
-  webwerk update -s site1,site2 -g --sum               # specific sites, one git commit
+  webwerk update -Ay                                   # auto all, no confirmations
+  webwerk update core -Ay                              # core only, auto all
+  webwerk update plugins -Ay                           # plugins only, auto all
+  webwerk update plugins -Ay                           # all plugins, auto all sites
+  webwerk update plugin woocommerce -Ay                # one plugin, auto all sites
   webwerk update -A --minor --exclude-plugins plugin1  # patch-level only, skip plugin1
-  webwerk update -Agp --yes-update                     # update all and push
+  webwerk update -Agpy                                 # update all, commit, push
   webwerk update -AP                                   # push all sites (no update)
 
 CONFIGURATION:
@@ -462,6 +545,12 @@ parse_arguments() {
                 process_sites
                 auto_all=true
                 ;;
+            -B|--batch)
+                process_sites
+                auto_all=true
+                auto_yes="true"
+                compact=true
+                ;;
             -u)
                 shift
                 DB_USER="$1"
@@ -479,6 +568,21 @@ parse_arguments() {
                 ;;
             -c|--skip-core)
                 core_update=false
+                ;;
+            --skip-plugins)
+                skip_plugins=true
+                ;;
+            --only-plugins)
+                shift
+                only_plugins="$1"
+                ;;
+            --update-themes)
+                update_themes=true
+                ;;
+            --only-theme)
+                shift
+                only_theme="$1"
+                update_themes=true
                 ;;
             --colors)
                 colors
@@ -581,7 +685,7 @@ main() {
             log_error "Failed to process site: $site"
         fi
 
-        if [[ "$auto_all" == true ]]; then
+        if [[ "$auto_all" == true && "$compact" != true ]]; then
             read -rsn1 -p "Press any key to continue, x to exit... " key
             echo
             if [[ "${key,,}" == "x" ]]; then

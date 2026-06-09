@@ -93,6 +93,7 @@ complete -c webwerk -f -n __ww_update_no_target -a theme   -d 'Update one theme 
 
 complete -c webwerk -n __ww_update_ctx -s a -l all-sites      -d 'Prompt y/n/x per site'
 complete -c webwerk -n __ww_update_ctx -s A -l all-sites-auto -d 'Auto all sites, pause between each (x=exit)'
+complete -c webwerk -n __ww_update_ctx -s B -l batch          -d 'Auto all sites, no pause, compact output'
 complete -c webwerk -n __ww_update_ctx -s s -l sites       -r  -d 'Specific sites (comma-separated)'
 complete -c webwerk -n __ww_update_ctx -s y -l yes-update      -d 'Auto-confirm all updates'
 complete -c webwerk -n __ww_update_ctx -s c -l skip-core       -d 'Skip core update'

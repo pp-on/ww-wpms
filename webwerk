@@ -253,7 +253,7 @@ main() {
     done
     if [[ "$help_requested" == true ]]; then
         case "$command" in
-            "update")
+            "u" | "update")
                 exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
             "mod")
                 exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
@@ -396,14 +396,59 @@ main() {
                     ;;
             esac
             ;;
-        "update")
-            if [[ -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
-                log_info "Executing WordPress update"
-                exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" "$@"
-            else
+        "u" | "update")
+            if [[ ! -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
                 log_error "Update script not found: ${SCRIPT_DIR}/scripts/update/wpupdate.sh"
                 exit 1
             fi
+            local update_target="${1:-}"
+            case "$update_target" in
+                "core")
+                    shift
+                    log_info "Executing WordPress update (core only)"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-plugins --sum "$@"
+                    ;;
+                "plugin")
+                    shift
+                    local plugin_name="${1:-}"
+                    if [[ -z "$plugin_name" || "$plugin_name" == -* ]]; then
+                        log_error "Usage: webwerk update plugin <name>[,name,...] [OPTIONS]"
+                        exit 1
+                    fi
+                    shift
+                    log_info "Executing WordPress update (plugin: $plugin_name)"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --only-plugins "$plugin_name" --sum "$@"
+                    ;;
+                "plugins")
+                    shift
+                    log_info "Executing WordPress update (all plugins)"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --sum "$@"
+                    ;;
+                "themes")
+                    shift
+                    log_info "Executing WordPress update (all themes)"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --skip-plugins --update-themes --sum "$@"
+                    ;;
+                "theme")
+                    shift
+                    local theme_name="${1:-}"
+                    if [[ -z "$theme_name" || "$theme_name" == -* ]]; then
+                        log_error "Usage: webwerk update theme <name> [OPTIONS]"
+                        exit 1
+                    fi
+                    shift
+                    log_info "Executing WordPress update (theme: $theme_name)"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --skip-plugins --only-theme "$theme_name" --sum "$@"
+                    ;;
+                ""|-*)
+                    log_info "Executing WordPress update (core + plugins + themes)"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --update-themes --sum "$@"
+                    ;;
+                *)
+                    log_error "Unknown update target: '$update_target'. Use: core, plugins, plugin <name>, themes, theme <name>, or omit for both."
+                    exit 1
+                    ;;
+            esac
             ;;
         "mod")
             if [[ -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
