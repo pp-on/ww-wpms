@@ -56,37 +56,54 @@ install_ddev_commands() {
     log_success "Installed custom DDEV launch command (WSL xdg-open fix)"
 }
 
-# Install shell completions for "ddev wp"
+# Install shell completions for webwerk and ddev-wp
 install_completions() {
-    # Fish
+    local bash_completion_dir="${HOME}/.bash_completion.d"
     local fish_dir="${HOME}/.config/fish/completions"
-    local fish_dest="${fish_dir}/ddev-wp.fish"
-    if [[ ! -f "$fish_dest" ]]; then
-        if command -v fish >/dev/null 2>&1; then
-            mkdir -p "$fish_dir"
-            cp "${COMPLETIONS_SRC}/ddev-wp.fish" "$fish_dest"
-            log_success "Installed fish completion for 'ddev wp'"
-        fi
+    local zsh_completion_dir="${HOME}/.local/share/zsh/completions"
+
+    # ── Fish ──────────────────────────────────────────────────────────────────
+    if command -v fish >/dev/null 2>&1; then
+        mkdir -p "$fish_dir"
+        for src in ddev-wp.fish webwerk.fish; do
+            local dest="${fish_dir}/${src}"
+            cp "${COMPLETIONS_SRC}/${src}" "$dest"
+            log_success "Installed fish completion: $src"
+        done
     else
-        log_info "Fish completion for 'ddev wp' already installed, skipping"
+        log_info "Fish not found, skipping fish completions"
     fi
 
-    # Bash
-    local bash_completion_dir="${HOME}/.bash_completion.d"
-    local bash_dest="${bash_completion_dir}/ddev-wp.bash"
-    if [[ ! -f "$bash_dest" ]]; then
-        mkdir -p "$bash_completion_dir"
-        cp "${COMPLETIONS_SRC}/ddev-wp.bash" "$bash_dest"
-        # Source the completion dir from .bashrc if not already done
-        local bashrc="${HOME}/.bashrc"
-        if ! grep -q "bash_completion.d" "$bashrc" 2>/dev/null; then
-            echo '' >> "$bashrc"
-            echo '# Load custom bash completions' >> "$bashrc"
-            echo 'for f in ~/.bash_completion.d/*.bash; do source "$f"; done' >> "$bashrc"
+    # ── Bash ──────────────────────────────────────────────────────────────────
+    mkdir -p "$bash_completion_dir"
+    for src in ddev-wp.bash webwerk.bash; do
+        cp "${COMPLETIONS_SRC}/${src}" "${bash_completion_dir}/${src}"
+        log_success "Installed bash completion: $src"
+    done
+    # Source the completion dir from .bashrc if not already done
+    local bashrc="${HOME}/.bashrc"
+    if ! grep -q "bash_completion.d" "$bashrc" 2>/dev/null; then
+        echo '' >> "$bashrc"
+        echo '# Load custom bash completions' >> "$bashrc"
+        echo 'for f in ~/.bash_completion.d/*.bash; do source "$f"; done' >> "$bashrc"
+        log_info "Added bash completion loader to ~/.bashrc"
+    fi
+
+    # ── Zsh ───────────────────────────────────────────────────────────────────
+    if command -v zsh >/dev/null 2>&1; then
+        mkdir -p "$zsh_completion_dir"
+        cp "${COMPLETIONS_SRC}/_webwerk" "${zsh_completion_dir}/_webwerk"
+        log_success "Installed zsh completion: _webwerk"
+        # Add fpath entry to .zshrc if not already present
+        local zshrc="${HOME}/.zshrc"
+        if ! grep -q "zsh/completions" "$zshrc" 2>/dev/null; then
+            echo '' >> "$zshrc"
+            echo '# Load custom zsh completions' >> "$zshrc"
+            echo 'fpath=(~/.local/share/zsh/completions $fpath)' >> "$zshrc"
+            log_info "Added zsh completion path to ~/.zshrc (restart shell or run: autoload -Uz compinit && compinit)"
         fi
-        log_success "Installed bash completion for 'ddev wp'"
     else
-        log_info "Bash completion for 'ddev wp' already installed, skipping"
+        log_info "Zsh not found, skipping zsh completions"
     fi
 }
 
