@@ -7,6 +7,7 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 - [Features](#-features)
 - [System Requirements](#-system-requirements)
 - [Installation](#-installation)
+- [Shell Completions](#shell-completions)
 - [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
@@ -100,6 +101,28 @@ chmod +x scripts/**/*.sh
 ./webwerk status
 ```
 
+### Shell Completions
+
+Completion files for fish, bash, and zsh are in `completions/`.
+
+**Fish:**
+```bash
+cp completions/webwerk.fish ~/.config/fish/completions/
+```
+
+**Bash** (add to `~/.bashrc`):
+```bash
+source ~/git/ww-wpms/completions/webwerk.bash
+```
+
+**Zsh** (add to `~/.zshrc` before `compinit`):
+```bash
+fpath=(~/git/ww-wpms/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+Completions cover all subcommands, targets (`core`, `plugins`, `plugin`, `themes`, `theme`), and flags.
+
 ### Update Existing Installation
 
 To update an already installed webwerk:
@@ -171,6 +194,10 @@ webwerk/
 ├── .env.example                    # Configuration template
 ├── keys.template                   # License keys template
 ├── README.md                       # This file
+├── completions/
+│   ├── webwerk.fish               # Fish shell completions
+│   ├── webwerk.bash               # Bash completions
+│   └── _webwerk                   # Zsh completions
 └── scripts/
     ├── install/
     │   ├── wplocalinstall.sh      # WordPress installation
@@ -305,7 +332,7 @@ webwerk install -h
 
 ### Update Commands
 
-Core is updated by default. Combined short flags are supported (e.g. `-Ayg`).
+Default updates core + plugins + themes. Short alias: `webwerk u`. Combined short flags supported (e.g. `-Ayg`).
 
 ```bash
 # Interactive: prompt y/n/x per site
@@ -314,8 +341,15 @@ webwerk update -a
 # Auto all sites, pause between each (any key = next, x = exit)
 webwerk update -A
 
-# Auto all, no prompts at all
+# Auto all, no prompts
 webwerk update -Ay
+
+# Update specific target only
+webwerk update core -Ay           # core only
+webwerk update plugins -Ay        # all plugins
+webwerk update plugin woocommerce -Ay  # one plugin
+webwerk update themes -Ay         # all themes
+webwerk update theme twentyfour -Ay   # one theme
 
 # Update specific sites
 webwerk update -s site1,site2
@@ -332,13 +366,13 @@ webwerk update -Ag
 # With single summary git commit
 webwerk update -Ag --sum
 
-# With git commit + push
-webwerk update -Agp
-
 # Commit now, push later
-webwerk update -Agy             # commits, no push
-webwerk update -AP              # push all sites (no update)
+webwerk update -Agy --sum         # commits, no push
+webwerk update -AP                # push all sites (no update)
 webwerk update -s site1,site2 -P  # push specific sites
+
+# Commit and push in one go
+webwerk update -Agpy
 
 # Exclude specific plugins
 webwerk update -A -x plugin1,plugin2
@@ -658,17 +692,23 @@ webwerk mod -s accessible-company -n -U webmaster -P SecurePass123
 ### Example 2: Batch Update Multiple Sites
 
 ```bash
-# Interactive: review each site before updating
+# Interactive: review each site before updating (core+plugins+themes)
 webwerk update -a
 
 # Auto update all sites, pause between each to review output
 webwerk update -A
 
+# Update only plugins across all sites
+webwerk update plugins -Ay
+
+# Update one plugin across all sites
+webwerk update plugin woocommerce -Ay
+
 # Auto update all, commit, review, then push separately
 webwerk update -Agy --sum       # commits only
 webwerk update -AP              # push when ready
 
-# Or commit and push in one go
+# Commit and push in one go
 webwerk update -Agpy --sum
 
 # Patch-level only, exclude specific plugins
