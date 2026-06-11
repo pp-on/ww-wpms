@@ -238,12 +238,12 @@ OUTPUT & FORMATTING:
 GIT OPERATIONS:
   -g                          Enable git mode
   --git SUBCOMMAND            Run git subcommand (pull, log)
-  -gl, --git-pull             Update repositories via git pull
+  -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
 
 PLUGIN MANAGEMENT:
   -i, --install-plugin PLUGIN Install plugin on selected sites
   -y, --copy-plugins FROM     Copy plugin from path to selected sites
-  -up, --update PLUGIN        Update specific plugin (or 'all')
+  -u, --update PLUGIN         Update specific plugin (or 'all') (legacy alias: -up)
 
 LICENSE KEYS:
   -f, --acf-pro-lk            Setup ACF Pro license key
@@ -328,7 +328,7 @@ parse_arguments() {
                 shift
                 git_wp "$1"
                 ;;
-            -gl|--git-pull)
+            -G|-gl|--git-pull)
                 update_repo
                 ;;
             -g)
@@ -378,7 +378,7 @@ parse_arguments() {
                 process_dirs "$1"
                 proc_sites=1
                 ;;
-            -up|--update)
+            -u|-up|--update)
                 shift
                 wp_update "$1"
                 ;;

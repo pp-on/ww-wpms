@@ -122,7 +122,8 @@ _webwerk_mod() {
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \
         '-g[Enable git mode]' \
         '--git=[Run git subcommand]:subcmd:(pull log)' \
-        '--git-pull[Update repos via git pull]' \
+        '(-G --git-pull)'{-G,--git-pull}'[Update repos via git pull]' \
+        '(-u --update)'{-u,--update}'=[Update plugin (or all)]:plugin' \
         '(-i --install-plugin)'{-i,--install-plugin}'=[Install plugin on selected sites]:plugin' \
         '(-y --copy-plugins)'{-y,--copy-plugins}'=[Copy plugin from path]:path:_files' \
         '(-f --acf-pro-lk)'{-f,--acf-pro-lk}'[Setup ACF Pro license key]' \

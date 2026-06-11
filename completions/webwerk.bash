@@ -128,7 +128,7 @@ _webwerk() {
                 -l --list
                 -T --themes
                 -o --os-detection
-                -g --git --git-pull
+                -g --git -G --git-pull -u --update
                 -i --install-plugin
                 -y --copy-plugins
                 -f --acf-pro-lk
