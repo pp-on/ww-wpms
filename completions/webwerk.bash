@@ -124,6 +124,7 @@ _webwerk() {
                 -d --original-dir
                 -p --print
                 -H --health-check
+                -C --status
                 -l --list
                 -T --themes
                 -o --os-detection

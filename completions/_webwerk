@@ -116,6 +116,7 @@ _webwerk_mod() {
         '(-d --original-dir)'{-d,--original-dir}'=[Set base directory]:dir:_files -/' \
         '(-p --print)'{-p,--print}'[Print selected sites]' \
         '(-H --health-check)'{-H,--health-check}'[Check sites with wp core is-installed]' \
+        '(-C --status)'{-C,--status}'[Per-site status: core version, plugins, themes]' \
         '(-l --list)'{-l,--list}'[List plugins for selected sites]' \
         '(-T --themes)'{-T,--themes}'[List/activate themes]' \
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \

@@ -418,6 +418,10 @@ webwerk update -h
 
 # Health check — verify wp core is-installed for every site
 ./webwerk mod -H
+
+# Per-site status: core version (+ available update), plugin and theme lists
+# (any key = next site, c = stop)
+./webwerk mod -C
 ```
 
 ## 🏗️ Architecture
