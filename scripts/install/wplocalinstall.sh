@@ -633,7 +633,7 @@ CONFIGURATION FILES:
   .env          Environment variables (optional)
   ~/.keys       License keys (ACF_PRO_LICENSE, WPMDB_LICENCE, AKEEBA_DOWNLOAD_ID)
 
-For more information, visit: https://github.com/webwerk/wordpress-tools
+For more information, visit: https://github.com/ojnickel/ww-wpms
 EOF
 }
 

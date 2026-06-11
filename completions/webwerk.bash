@@ -83,6 +83,8 @@ _webwerk() {
                     COMPREPLY=( $(compgen -W '
                         -a --all-sites
                         -A --all-sites-auto
+                        -B --batch
+                        -V --progress
                         -s --sites
                         -y --yes-update
                         -c --skip-core

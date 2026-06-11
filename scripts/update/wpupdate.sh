@@ -25,6 +25,7 @@ readonly LOG_FILE="${PWD}/webwerk-update.log"
 #===============================================================================
 
 # Initialize variables with defaults from environment
+WORDPRESS_BASE_DIR="${WORDPRESS_BASE_DIR:-./}"
 minor=0
 summary_commit=""
 git_mode=0
@@ -40,6 +41,10 @@ interactive_select=false
 auto_all=false
 push_only=false
 compact=false
+progress=false
+_prog_idx=0
+_prog_total=0
+_prog_site=""
 
 # Note: Helper functions are loaded by the webwerk dispatcher  
 # No need to source wphelpfunctions.sh again - functions are already available
@@ -62,6 +67,11 @@ log_success() {
 
 log_warning() {
     echo -e "\033[33m[$(date +'%Y-%m-%d %H:%M:%S')] [WARNING] $*\033[0m" | tee -a "$LOG_FILE" >&2
+}
+
+prog() {
+    [[ "$progress" != true ]] && return
+    echo -e "${Cyan}[${_prog_idx}/${_prog_total}] ${_prog_site} [${1}]${Color_Off}"
 }
 
 #===============================================================================
@@ -141,8 +151,13 @@ update_plugins_with_git() {
         cd - &>/dev/null
         return 0
     fi
-    
+
+    local _pl_total _pl_idx=0
+    _pl_total=$(echo "$available_updates" | wc -w)
+
     for plugin in $available_updates; do
+        (( ++_pl_idx ))
+        prog "plugins → $plugin ${_pl_idx}/${_pl_total}"
         # If only specific plugins requested, skip others
         if [[ -n "$only_plugins" ]] && [[ ! ",$only_plugins," =~ ",$plugin," ]]; then
             continue
@@ -280,7 +295,11 @@ update_plugins_simple() {
         log_info "No plugin updates available"
         return 0
     fi
-    
+
+    local _pl_count=0
+    _pl_count=$(echo "$plugins_needing_update" | wc -l)
+    prog "plugins → ${_pl_count} pending"
+
     if [[ "$auto_yes" != "true" ]]; then
         "${WP_CLI_PATH}" plugin list --update=available
         echo -e "\nAll plugins will be updated. Proceed? [y/N]: "
@@ -336,6 +355,11 @@ update_themes_fn() {
     fi
 
     log_info "Checking for theme updates"
+
+    local _th_list _th_count=0
+    _th_list=$("${WP_CLI_PATH}" theme list --update=available --field=name 2>/dev/null)
+    [[ -n "$_th_list" ]] && _th_count=$(echo "$_th_list" | wc -l)
+    prog "themes → ${_th_count} pending"
 
     if [[ "$auto_yes" != "true" ]]; then
         "${WP_CLI_PATH}" theme list --update=available
@@ -403,7 +427,8 @@ process_single_site() {
 
     # Update WordPress core
     [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Core Updates\n---------------${Color_Off}"
-    
+    prog "core"
+
     if [[ "$core_update" == true ]]; then
         if ! update_core; then
             log_warning "Core update failed for site: $site"
@@ -488,6 +513,7 @@ WP-CLI CONFIGURATION:
   -u USER                     Set database user (if needed)
 
 OUTPUT & DISPLAY:
+  -V, --progress               Show [N/total] site + per-plugin/theme progress lines
   --colors                    Initialize color scheme
   -h, --help                  Show this help message
 
@@ -516,7 +542,7 @@ WORKFLOW:
   4. Update plugins (with git integration if enabled)
   5. Commit and push changes if git mode is active
 
-For more information: https://github.com/webwerk/wordpress-tools
+For more information: https://github.com/ojnickel/ww-wpms
 EOF
 }
 
@@ -542,11 +568,11 @@ parse_arguments() {
                 interactive_select=true
                 ;;
             -A|--all-sites-auto)
-                process_sites
+                process_sites_all
                 auto_all=true
                 ;;
             -B|--batch)
-                process_sites
+                process_sites_all
                 auto_all=true
                 auto_yes="true"
                 compact=true
@@ -613,6 +639,9 @@ parse_arguments() {
                 shift
                 exclude_plugins="$1"
                 ;;
+            -V|--progress)
+                progress=true
+                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -647,7 +676,12 @@ main() {
 
     # Parse command line arguments
     parse_arguments "$@"
-    
+
+    _prog_total=${#sites[@]}
+    if [[ "$progress" == true && "$_prog_total" -gt 0 ]]; then
+        echo -e "Found ${_prog_total} site$([[ "$_prog_total" -eq 1 ]] && echo "" || echo "s")"
+    fi
+
     # Validate required tools (handle "ddev wp" as multi-word command)
     local wp_binary="${WP_CLI_PATH%% *}"
     if ! command -v "$wp_binary" >/dev/null 2>&1; then
@@ -660,6 +694,9 @@ main() {
     local failed_sites=0
     
     for site in "${sites[@]}"; do
+        (( ++_prog_idx ))
+        _prog_site="$site"
+
         if [[ "$interactive_select" == true ]]; then
             read -rp "Update site '$site'? [y/n/x]: " choice
             case "$choice" in
@@ -673,15 +710,15 @@ main() {
         if [[ "$push_only" == true ]]; then
             if (cd "$site" && git push); then
                 log_success "Pushed: $site"
-                ((processed_sites++))
+                (( ++processed_sites ))
             else
                 log_error "Push failed: $site"
-                ((failed_sites++))
+                (( ++failed_sites ))
             fi
         elif process_single_site "$site"; then
-            ((processed_sites++))
+            (( ++processed_sites ))
         else
-            ((failed_sites++))
+            (( ++failed_sites ))
             log_error "Failed to process site: $site"
         fi
 

@@ -349,6 +349,12 @@ webwerk update -A
 # Auto all, no prompts
 webwerk update -Ay
 
+# Batch: auto all sites, no pause, compact output
+webwerk update -B
+
+# Show [N/total] site + per-plugin/theme progress lines
+webwerk update -BV
+
 # Update specific target only
 webwerk update core -Ay           # core only
 webwerk update plugins -Ay        # all plugins

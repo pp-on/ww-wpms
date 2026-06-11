@@ -247,7 +247,7 @@ CONFIGURATION:
   License keys loaded from: ~/.keys
   Log file: $LOG_FILE
 
-For more information: https://github.com/webwerk/wordpress-tools
+For more information: https://github.com/ojnickel/ww-wpms
 EOF
 }
 
