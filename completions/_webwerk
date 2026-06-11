@@ -84,7 +84,7 @@ _webwerk_update() {
         '(-a --all-sites)'{-a,--all-sites}'[Prompt y/n/x per site]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Auto all sites, pause between each]' \
         '(-B --batch)'{-B,--batch}'[Auto all sites, no pause, compact output]' \
-        '(-V --progress)'{-V,--progress}'[Show [N/total] site + per-plugin progress lines]' \
+        '(-V --progress)'{-V,--progress}'[Progress-only output, normal output goes to log file]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
         '(-y --yes-update)'{-y,--yes-update}'[Auto-confirm all updates]' \
         '(-c --skip-core)'{-c,--skip-core}'[Skip core update]' \

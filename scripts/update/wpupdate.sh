@@ -54,7 +54,11 @@ _prog_site=""
 #===============================================================================
 
 log_info() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [INFO] $*" | tee -a "$LOG_FILE"
+    if [[ "$progress" == true ]]; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] [INFO] $*" >> "$LOG_FILE"
+    else
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] [INFO] $*" | tee -a "$LOG_FILE"
+    fi
 }
 
 log_error() {
@@ -62,7 +66,11 @@ log_error() {
 }
 
 log_success() {
-    echo -e "\033[32m[$(date +'%Y-%m-%d %H:%M:%S')] [SUCCESS] $*\033[0m" | tee -a "$LOG_FILE"
+    if [[ "$progress" == true ]]; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] [SUCCESS] $*" >> "$LOG_FILE"
+    else
+        echo -e "\033[32m[$(date +'%Y-%m-%d %H:%M:%S')] [SUCCESS] $*\033[0m" | tee -a "$LOG_FILE"
+    fi
 }
 
 log_warning() {
@@ -72,6 +80,15 @@ log_warning() {
 prog() {
     [[ "$progress" != true ]] && return
     echo -e "${Cyan}[${_prog_idx}/${_prog_total}] ${_prog_site} [${1}]${Color_Off}"
+}
+
+# Run a command; in progress mode send its output to the log file instead of the terminal
+quiet_run() {
+    if [[ "$progress" == true ]]; then
+        "$@" &>> "$LOG_FILE"
+    else
+        "$@"
+    fi
 }
 
 #===============================================================================
@@ -92,14 +109,14 @@ update_core() {
             echo -e "\nProceed with Core Update? [y/N]: "
             read -r answer
         else
-            out "Auto-updating core..." 4
+            [[ "$progress" != true ]] && out "Auto-updating core..." 4
             answer="y"
         fi
-        
-        echo -e "\n--------------"
+
+        [[ "$progress" != true ]] && echo -e "\n--------------"
         if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
             log_info "Updating WordPress core"
-            if "${WP_CLI_PATH}" core update --locale="${WP_LOCALE}" --skip-themes; then
+            if quiet_run "${WP_CLI_PATH}" core update --locale="${WP_LOCALE}" --skip-themes; then
                 log_success "WordPress core updated successfully"
             else
                 log_error "WordPress core update failed"
@@ -131,8 +148,8 @@ update_plugins_with_git() {
     fi
     
     # Update repository first
-    [[ "$compact" != true ]] && out "Updating repository..." 1
-    [[ "$compact" != true ]] && sleep 1
+    [[ "$compact" != true && "$progress" != true ]] && out "Updating repository..." 1
+    [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
     if ! git pull &>/dev/null; then
         log_warning "Git pull failed or no remote repository"
@@ -170,24 +187,24 @@ update_plugins_with_git() {
         
         old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
         
-        [[ "$compact" != true ]] && out "Updating $plugin" 4
-        [[ "$compact" != true ]] && sleep 1
+        [[ "$compact" != true && "$progress" != true ]] && out "Updating $plugin" 4
+        [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
         if "${WP_CLI_PATH}" plugin update "$plugin" &>/dev/null; then
             new_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
 
             if [[ "$old_version" != "$new_version" ]]; then
                 plugins[$plugin_count]="$plugin: $old_version → $new_version"
-                [[ "$compact" == true ]] && echo -e "  ${Green}↑${Color_Off} $plugin $old_version → $new_version"
+                [[ "$compact" == true && "$progress" != true ]] && echo -e "  ${Green}↑${Color_Off} $plugin $old_version → $new_version"
 
-                [[ "$compact" != true ]] && out "Staging changes..." 2
-                [[ "$compact" != true ]] && sleep 1
+                [[ "$compact" != true && "$progress" != true ]] && out "Staging changes..." 2
+                [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
                 if git add -A "plugins/$plugin" &>/dev/null; then
                     commit_message="plugin ${plugins[$plugin_count]}"
 
-                    [[ "$compact" != true ]] && out "Writing commit:" 2
-                    [[ "$compact" != true ]] && out "chore: update $commit_message" 4
+                    [[ "$compact" != true && "$progress" != true ]] && out "Writing commit:" 2
+                    [[ "$compact" != true && "$progress" != true ]] && out "chore: update $commit_message" 4
                     
                     if [[ -z "$summary_commit" ]]; then
                         # Separate commit for each plugin
@@ -236,17 +253,19 @@ EOF
     fi
     
     # Display summary
-    sleep 1
-    out "Update Summary:" 1
-    out "$plugin_count plugins updated" 2
-    
-    if [[ -z "$summary_commit" ]]; then
-        for plugin_info in "${plugins[@]}"; do
-            echo "$plugin_info"
-            echo "------------------------------"
-        done
-    else
-        echo "Summary commit with $plugin_count plugin updates"
+    if [[ "$progress" != true ]]; then
+        sleep 1
+        out "Update Summary:" 1
+        out "$plugin_count plugins updated" 2
+
+        if [[ -z "$summary_commit" ]]; then
+            for plugin_info in "${plugins[@]}"; do
+                echo "$plugin_info"
+                echo "------------------------------"
+            done
+        else
+            echo "Summary commit with $plugin_count plugin updates"
+        fi
     fi
     
     # Handle git push
@@ -274,9 +293,9 @@ EOF
         fi
     fi
     
-    sleep 2
+    [[ "$progress" != true ]] && sleep 2
     cd - &>/dev/null
-    
+
     return 0
 }
 
@@ -305,7 +324,7 @@ update_plugins_simple() {
         echo -e "\nAll plugins will be updated. Proceed? [y/N]: "
         read -r answer
         echo -e "\n--------------"
-        
+
         local plugin_args
         if [[ -n "$only_plugins" ]]; then
             plugin_args="${only_plugins//,/ }"
@@ -315,7 +334,7 @@ update_plugins_simple() {
 
         if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
             # shellcheck disable=SC2086
-            if "${WP_CLI_PATH}" plugin update $plugin_args; then
+            if quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
                 log_success "Plugins updated successfully"
             else
                 log_error "Some plugin updates failed"
@@ -325,8 +344,8 @@ update_plugins_simple() {
             log_info "Plugin updates cancelled by user"
         fi
     else
-        "${WP_CLI_PATH}" plugin list --update=available
-        out "Auto-updating plugins" 4
+        [[ "$progress" != true ]] && "${WP_CLI_PATH}" plugin list --update=available
+        [[ "$progress" != true ]] && out "Auto-updating plugins" 4
 
         local plugin_args
         if [[ -n "$only_plugins" ]]; then
@@ -336,7 +355,7 @@ update_plugins_simple() {
         fi
 
         # shellcheck disable=SC2086
-        if "${WP_CLI_PATH}" plugin update $plugin_args; then
+        if quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
             log_success "Plugins auto-updated successfully"
         else
             log_error "Auto-update failed for some plugins"
@@ -367,7 +386,7 @@ update_themes_fn() {
         read -r answer
         if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
             # shellcheck disable=SC2086
-            if "${WP_CLI_PATH}" theme update $theme_args; then
+            if quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
                 log_success "Themes updated successfully"
             else
                 log_error "Theme update failed"
@@ -378,7 +397,7 @@ update_themes_fn() {
         fi
     else
         # shellcheck disable=SC2086
-        if "${WP_CLI_PATH}" theme update $theme_args; then
+        if quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
             log_success "Themes auto-updated successfully"
         else
             log_error "Auto-update failed for themes"
@@ -396,7 +415,9 @@ process_single_site() {
     local site="$1"
     local site_dir="${WORDPRESS_BASE_DIR}${site}"
     
-    if [[ "$compact" == true ]]; then
+    if [[ "$progress" == true ]]; then
+        log_info "Processing site: $site"
+    elif [[ "$compact" == true ]]; then
         echo -e "${Cyan}→ $site${Color_Off}"
     else
         echo -e "${Cyan}================================"
@@ -410,7 +431,7 @@ process_single_site() {
         return 1
     fi
 
-    [[ "$compact" != true ]] && sleep 1
+    [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
     # Check if WordPress site is working
     local site_check
@@ -422,11 +443,11 @@ process_single_site() {
         return 1
     fi
 
-    [[ "$compact" != true ]] && echo -e "${Green}---------------\nChecking Site\n---------------${Color_Off}"
-    [[ "$compact" != true ]] && echo -e "${Green}Site is functional${Color_Off}"
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}---------------\nChecking Site\n---------------${Color_Off}"
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}Site is functional${Color_Off}"
 
     # Update WordPress core
-    [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Core Updates\n---------------${Color_Off}"
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}---------------\nChecking Core Updates\n---------------${Color_Off}"
     prog "core"
 
     if [[ "$core_update" == true ]]; then
@@ -441,7 +462,7 @@ process_single_site() {
     if [[ "$skip_plugins" == true ]]; then
         log_info "Plugin updates skipped (core only)"
     else
-        [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Plugin Updates\n---------------${Color_Off}"
+        [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}---------------\nChecking Plugin Updates\n---------------${Color_Off}"
 
         if [[ "$git_mode" -ge 1 ]]; then
             if ! update_plugins_with_git; then
@@ -456,7 +477,7 @@ process_single_site() {
 
     # Update themes (only when explicitly requested)
     if [[ "$update_themes" == true ]]; then
-        [[ "$compact" != true ]] && echo -e "${Yellow}---------------\nChecking Theme Updates\n---------------${Color_Off}"
+        [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}---------------\nChecking Theme Updates\n---------------${Color_Off}"
         if ! update_themes_fn; then
             log_warning "Theme update failed for site: $site"
         fi
@@ -513,7 +534,8 @@ WP-CLI CONFIGURATION:
   -u USER                     Set database user (if needed)
 
 OUTPUT & DISPLAY:
-  -V, --progress               Show [N/total] site + per-plugin/theme progress lines
+  -V, --progress               Progress-only output: [N/total] site + per-plugin/theme
+                               lines; normal output is written to the log file instead
   --colors                    Initialize color scheme
   -h, --help                  Show this help message
 
@@ -661,11 +683,14 @@ parse_arguments() {
 #===============================================================================
 
 main() {
-    # Handle help before anything else
+    # Handle help before anything else; pre-detect -V so the start log stays quiet
     for arg in "$@"; do
         if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
             show_help
             exit 0
+        fi
+        if [[ "$arg" == "--progress" || "$arg" =~ ^-[a-zA-Z]*V ]]; then
+            progress=true
         fi
     done
 
@@ -735,12 +760,13 @@ main() {
     # Final summary
     log_success "Update process completed"
     log_info "Sites processed successfully: $processed_sites"
-    
+    [[ "$progress" == true ]] && echo -e "${Green}Done: ${processed_sites} ok, ${failed_sites} failed${Color_Off}"
+
     if [[ $failed_sites -gt 0 ]]; then
         log_warning "Sites with failures: $failed_sites"
         exit 1
     fi
-    
+
     log_success "$SCRIPT_NAME completed successfully"
 }
 

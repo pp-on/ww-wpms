@@ -352,7 +352,7 @@ webwerk update -Ay
 # Batch: auto all sites, no pause, compact output
 webwerk update -B
 
-# Show [N/total] site + per-plugin/theme progress lines
+# Progress-only output: [N/total] site + per-plugin lines, rest goes to log file
 webwerk update -BV
 
 # Update specific target only
