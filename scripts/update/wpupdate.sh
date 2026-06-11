@@ -91,6 +91,14 @@ quiet_run() {
     fi
 }
 
+# Fail with a clear message when an option is missing its argument
+require_arg() {
+    if [[ -z "${2:-}" ]]; then
+        log_error "Option $1 requires an argument"
+        exit 1
+    fi
+}
+
 #===============================================================================
 # CORE UPDATE FUNCTIONS
 #===============================================================================
@@ -169,22 +177,25 @@ update_plugins_with_git() {
         return 0
     fi
 
-    local _pl_total _pl_idx=0
-    _pl_total=$(echo "$available_updates" | wc -w)
-
+    # Apply only/exclude filters first (exact name match, comma-bounded)
+    local filtered=()
     for plugin in $available_updates; do
-        (( ++_pl_idx ))
-        prog "plugins → $plugin ${_pl_idx}/${_pl_total}"
-        # If only specific plugins requested, skip others
-        if [[ -n "$only_plugins" ]] && [[ ! ",$only_plugins," =~ ",$plugin," ]]; then
+        if [[ -n "$only_plugins" ]] && [[ ",$only_plugins," != *",$plugin,"* ]]; then
             continue
         fi
-        # Skip excluded plugins
-        if [[ -n "$exclude_plugins" ]] && [[ "$exclude_plugins" =~ $plugin ]]; then
+        if [[ -n "$exclude_plugins" ]] && [[ ",$exclude_plugins," == *",$plugin,"* ]]; then
             log_info "Skipping excluded plugin: $plugin"
             continue
         fi
-        
+        filtered+=("$plugin")
+    done
+
+    local _pl_total=${#filtered[@]} _pl_idx=0
+
+    for plugin in "${filtered[@]}"; do
+        (( ++_pl_idx ))
+        prog "plugins → $plugin ${_pl_idx}/${_pl_total}"
+
         old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
         
         [[ "$compact" != true && "$progress" != true ]] && out "Updating $plugin" 4
@@ -330,6 +341,7 @@ update_plugins_simple() {
             plugin_args="${only_plugins//,/ }"
         else
             plugin_args="--all"
+            [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
         fi
 
         if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
@@ -352,6 +364,7 @@ update_plugins_simple() {
             plugin_args="${only_plugins//,/ }"
         else
             plugin_args="--all"
+            [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
         fi
 
         # shellcheck disable=SC2086
@@ -600,11 +613,13 @@ parse_arguments() {
                 compact=true
                 ;;
             -u)
+                require_arg "$1" "${2:-}"
                 shift
                 DB_USER="$1"
                 export DB_USER
                 ;;
             -s|--sites)
+                require_arg "$1" "${2:-}"
                 shift
                 process_dirs "$1"
                 ;;
@@ -621,6 +636,7 @@ parse_arguments() {
                 skip_plugins=true
                 ;;
             --only-plugins)
+                require_arg "$1" "${2:-}"
                 shift
                 only_plugins="$1"
                 ;;
@@ -628,6 +644,7 @@ parse_arguments() {
                 update_themes=true
                 ;;
             --only-theme)
+                require_arg "$1" "${2:-}"
                 shift
                 only_theme="$1"
                 update_themes=true
@@ -648,16 +665,19 @@ parse_arguments() {
                 push_only=true
                 ;;
             -d)
+                require_arg "$1" "${2:-}"
                 shift
                 WORDPRESS_BASE_DIR="$1"
                 export WORDPRESS_BASE_DIR
                 ;;
             -w)
+                require_arg "$1" "${2:-}"
                 shift
                 WP_CLI_PATH="$1"
                 export WP_CLI_PATH
                 ;;
             -x|--exclude-plugins)
+                require_arg "$1" "${2:-}"
                 shift
                 exclude_plugins="$1"
                 ;;

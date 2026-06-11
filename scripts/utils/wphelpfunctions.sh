@@ -857,7 +857,7 @@ export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se wp_enable_se
 export -f wp_getCPT assign_env
 
-out "$SCRIPT_NAME v$SCRIPT_VERSION loaded successfully" 4
+[[ "${WEBWERK_QUIET:-0}" != "1" ]] && out "$SCRIPT_NAME v$SCRIPT_VERSION loaded successfully" 4 || true
 
 # Conditional output based on flags
 [[ "${print:-0}" = "1" ]] && print_sites || true

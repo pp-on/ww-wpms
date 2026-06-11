@@ -20,7 +20,11 @@ readonly LOG_FILE="${PWD}/webwerk.log"
 #===============================================================================
 
 log_info() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $*" | tee -a "$LOG_FILE"
+    if [[ "${WEBWERK_QUIET:-0}" == "1" ]]; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $*" >> "$LOG_FILE"
+    else
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $*" | tee -a "$LOG_FILE"
+    fi
 }
 
 log_error() {
@@ -228,6 +232,14 @@ show_status() {
 main() {
     local command="${1:-}"
 
+    # Quiet mode (-V/--progress): keep dispatcher INFO output out of the terminal
+    local arg
+    for arg in "$@"; do
+        if [[ "$arg" == "--progress" || "$arg" =~ ^-[a-zA-Z]*V ]]; then
+            export WEBWERK_QUIET=1
+        fi
+    done
+
     # Handle special cases before loading configuration
     case "$command" in
         "" | "--help" | "-h")
@@ -406,7 +418,7 @@ main() {
                 "core")
                     shift
                     log_info "Executing WordPress update (core only)"
-                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-plugins --sum "$@"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-plugins "$@"
                     ;;
                 "plugin")
                     shift
@@ -417,17 +429,17 @@ main() {
                     fi
                     shift
                     log_info "Executing WordPress update (plugin: $plugin_name)"
-                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --only-plugins "$plugin_name" --sum "$@"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --only-plugins "$plugin_name" "$@"
                     ;;
                 "plugins")
                     shift
                     log_info "Executing WordPress update (all plugins)"
-                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --sum "$@"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core "$@"
                     ;;
                 "themes")
                     shift
                     log_info "Executing WordPress update (all themes)"
-                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --skip-plugins --update-themes --sum "$@"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --skip-plugins --update-themes "$@"
                     ;;
                 "theme")
                     shift
@@ -438,11 +450,11 @@ main() {
                     fi
                     shift
                     log_info "Executing WordPress update (theme: $theme_name)"
-                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --skip-plugins --only-theme "$theme_name" --sum "$@"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --skip-core --skip-plugins --only-theme "$theme_name" "$@"
                     ;;
                 ""|-*)
                     log_info "Executing WordPress update (core + plugins + themes)"
-                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --update-themes --sum "$@"
+                    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --update-themes "$@"
                     ;;
                 *)
                     log_error "Unknown update target: '$update_target'. Use: core, plugins, plugin <name>, themes, theme <name>, or omit for both."

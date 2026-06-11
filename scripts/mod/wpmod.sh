@@ -1,32 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #!/bin/bash
 #
 # WordPress Site Modification Script v2.0
@@ -55,7 +26,6 @@ readonly LOG_FILE="${PWD}/webwerk-mod.log"
 
 # Initialize variables with defaults from environment
 wp_config_path=""
-proc_sites=0
 sites=()
 anzahl=0
 WORDPRESS_BASE_DIR="${WORDPRESS_BASE_DIR:-$PWD}"
@@ -82,6 +52,14 @@ log_error() {
 
 log_success() {
     echo -e "\033[32m[$(date +'%Y-%m-%d %H:%M:%S')] [SUCCESS] $*\033[0m" | tee -a "$LOG_FILE"
+}
+
+# Fail with a clear message when an option is missing its argument
+require_arg() {
+    if [[ -z "${2:-}" ]]; then
+        log_error "Option $1 requires an argument"
+        exit 1
+    fi
 }
 
 #===============================================================================
@@ -236,7 +214,6 @@ OUTPUT & FORMATTING:
   -t, --text-color TEXT COLOR  Output colored text
 
 GIT OPERATIONS:
-  -g                          Enable git mode
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
 
@@ -315,26 +292,27 @@ parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             --out)
+                require_arg "$1" "${2:-}"
                 shift
                 out "$1" "${2:-1}"
-                shift
+                [[ $# -gt 1 ]] && shift
                 ;;
             -t|--text-color)
+                require_arg "$1" "${2:-}"
                 shift
                 txt "$1" "${2:-c}"
-                shift
+                [[ $# -gt 1 ]] && shift
                 ;;
             --git)
+                require_arg "$1" "${2:-}"
                 shift
                 git_wp "$1"
                 ;;
             -G|-gl|--git-pull)
                 update_repo
                 ;;
-            -g)
-                git=1
-                ;;
             -d|--original-dir)
+                require_arg "$1" "${2:-}"
                 shift
                 WORDPRESS_BASE_DIR="$1"
                 export WORDPRESS_BASE_DIR
@@ -344,11 +322,9 @@ parse_arguments() {
                 ;;
             -a|--all-sites)
                 process_sites
-                proc_sites=1
                 ;;
             -A|--all-sites-auto)
                 process_sites_all
-                proc_sites=1
                 ;;
             -H|--health-check)
                 do_health_check
@@ -374,11 +350,12 @@ parse_arguments() {
                 fi
                 ;;
             -s|--sites)
+                require_arg "$1" "${2:-}"
                 shift
                 process_dirs "$1"
-                proc_sites=1
                 ;;
             -u|-up|--update)
+                require_arg "$1" "${2:-}"
                 shift
                 wp_update "$1"
                 ;;
@@ -389,6 +366,7 @@ parse_arguments() {
                 wp_force_https
                 ;;
             -x|--wp-debug)
+                require_arg "$1" "${2:-}"
                 shift
                 wp_debug "$1"
                 ;;
@@ -414,10 +392,12 @@ parse_arguments() {
                 wp_enable_se
                 ;;
             -i|--install-plugin)
+                require_arg "$1" "${2:-}"
                 shift
                 install_plugins "$1"
                 ;;
             -y|--copy-plugins)
+                require_arg "$1" "${2:-}"
                 shift
                 copy_plugins "$1"
                 ;;
@@ -438,23 +418,31 @@ parse_arguments() {
                 fi
                 ;;
             -U|--wp-user)
+                require_arg "$1" "${2:-}"
                 shift
                 wp_user="$1"
                 ;;
             -P|--wp-password)
+                require_arg "$1" "${2:-}"
                 shift
                 wp_password="$1"
                 ;;
             -E|--wp-email)
+                require_arg "$1" "${2:-}"
                 shift
                 wp_email="$1"
                 ;;
             -w|--location-wp)
+                require_arg "$1" "${2:-}"
                 shift
                 WP_CLI_PATH="$1"
                 export WP_CLI_PATH
                 ;;
             -R|--search-replace)
+                if [[ -z "${2:-}" || -z "${3:-}" ]]; then
+                    log_error "Option -R/--search-replace requires two arguments: OLD NEW"
+                    exit 1
+                fi
                 shift
                 local _sr_old="$1"
                 shift
@@ -495,19 +483,27 @@ main() {
 
     sites=()
 
-    # Parse command line arguments
-    parse_arguments "$@"
-
-    # Update sites array if no explicit site selection was made
-    if [[ $proc_sites -eq 0 ]]; then
-        sites=("${WORDPRESS_BASE_DIR}")
-        log_info "No sites specified, using current directory: ${WORDPRESS_BASE_DIR}"
-        find_wp_config
-    fi
-
     # Set verbose mode for search functions
     verbose=1
     export verbose
+
+    # Action flags execute inline during parsing, so the no-selection
+    # fallback (current directory) must be prepared before parsing
+    local has_selection=0
+    for arg in "$@"; do
+        case "$arg" in
+            -a|--all-sites|-A|--all-sites-auto|-s|--sites) has_selection=1 ;;
+            --*) ;;
+            -[!-]*) [[ "$arg" == *[aAs]* ]] && has_selection=1 ;;
+        esac
+    done
+    if [[ $has_selection -eq 0 ]]; then
+        sites=(".")
+        log_info "No sites specified, using current directory"
+    fi
+
+    # Parse command line arguments
+    parse_arguments "$@"
 
     log_success "$SCRIPT_NAME completed successfully"
 }

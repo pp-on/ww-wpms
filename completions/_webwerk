@@ -120,7 +120,6 @@ _webwerk_mod() {
         '(-l --list)'{-l,--list}'[List plugins for selected sites]' \
         '(-T --themes)'{-T,--themes}'[List/activate themes]' \
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \
-        '-g[Enable git mode]' \
         '--git=[Run git subcommand]:subcmd:(pull log)' \
         '(-G --git-pull)'{-G,--git-pull}'[Update repos via git pull]' \
         '(-u --update)'{-u,--update}'=[Update plugin (or all)]:plugin' \

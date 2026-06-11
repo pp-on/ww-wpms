@@ -125,7 +125,6 @@ complete -c webwerk -n __ww_mod_ctx -s C -l status                         -d 'P
 complete -c webwerk -n __ww_mod_ctx -s l -l list                           -d 'List plugins for selected sites'
 complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'
-complete -c webwerk -n __ww_mod_ctx -s g                                   -d 'Enable git mode'
 complete -c webwerk -n __ww_mod_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
 complete -c webwerk -n __ww_mod_ctx -s G -l git-pull                       -d 'Update repos via git pull'
 complete -c webwerk -n __ww_mod_ctx -s u -l update                      -r  -d 'Update plugin (or all)'
