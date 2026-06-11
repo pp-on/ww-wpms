@@ -297,9 +297,12 @@ EOF
 # Parse command line arguments
 parse_arguments() {
     # Expand combined short flags (e.g. -Ag -> -A -g)
+    # Multi-char short flags (-gl, -up) must not be split
     local expanded=()
     for arg in "$@"; do
-        if [[ "$arg" =~ ^-[^-][a-zA-Z]+$ ]]; then
+        if [[ "$arg" == "-gl" || "$arg" == "-up" ]]; then
+            expanded+=("$arg")
+        elif [[ "$arg" =~ ^-[^-][a-zA-Z]+$ ]]; then
             for ((i=1; i<${#arg}; i++)); do
                 expanded+=("-${arg:$i:1}")
             done
