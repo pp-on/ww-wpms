@@ -118,6 +118,7 @@ _webwerk() {
                 -x|--wp-debug) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '
+                wp ddev
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites

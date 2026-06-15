@@ -170,7 +170,7 @@ webwerk install --wp-title="My Accessible Site"
 webwerk install ddev
 
 # Modify DDEV site
-webwerk ddev mod -S
+webwerk mod ddev -S
 
 # Update WordPress sites (interactive, prompt per site)
 webwerk update -a
@@ -628,10 +628,10 @@ webwerk install ddev -W                    # also add entry to Windows hosts fil
 open https://mysite.ddev.site
 
 # Modify DDEV site (runs wp commands inside container)
-webwerk ddev mod -S                        # force HTTPS
-webwerk ddev mod -x on                    # enable debug mode
-webwerk ddev mod -f                       # setup ACF Pro license
-webwerk ddev mod -h                       # show all mod options
+webwerk mod ddev -S                        # force HTTPS
+webwerk mod ddev -x on                    # enable debug mode
+webwerk mod ddev -f                       # setup ACF Pro license
+webwerk mod ddev -h                       # show all mod options
 
 # Update DDEV site plugins
 webwerk ddev update                        # update all plugins (core by default)
@@ -968,7 +968,7 @@ webwerk install -h
 webwerk update -h
 webwerk mod -h
 webwerk ddev update -h
-webwerk ddev mod -h
+webwerk mod ddev -h
 
 # Test all installation modes
 webwerk install full --wp-title="Test Full"

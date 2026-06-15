@@ -28,7 +28,12 @@ end
 
 function __ww_mod_ctx
     __fish_seen_subcommand_from mod
-    and not __fish_seen_subcommand_from install update u ddev
+    and not __fish_seen_subcommand_from install update u
+end
+
+function __ww_mod_env
+    __ww_mod_ctx
+    and not __fish_seen_subcommand_from wp ddev
 end
 
 # ── Top-level commands ────────────────────────────────────────────────────────
@@ -112,6 +117,11 @@ complete -c webwerk -f -n __ww_ddev_no_sub -a install -d 'DDEV WordPress install
 complete -c webwerk -f -n __ww_ddev_no_sub -a mod     -d 'Modify DDEV site'
 complete -c webwerk -f -n __ww_ddev_no_sub -a update  -d 'Update DDEV site'
 complete -c webwerk -f -n __ww_ddev_no_sub -a remove  -d 'Remove DDEV containers'
+
+# ── mod: environment target (wp default / ddev) ───────────────────────────────
+
+complete -c webwerk -f -n __ww_mod_env -a wp   -d 'Modify local WordPress sites (default)'
+complete -c webwerk -f -n __ww_mod_env -a ddev -d 'Modify DDEV WordPress site'
 
 # ── mod: options ──────────────────────────────────────────────────────────────
 

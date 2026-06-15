@@ -110,6 +110,7 @@ _webwerk_update_targets() {
 
 _webwerk_mod() {
     _arguments \
+        '1:environment:(wp ddev)' \
         '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \

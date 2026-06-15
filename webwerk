@@ -146,9 +146,9 @@ COMMANDS:
   install minimal  Minimal WordPress installation without git repository
   install ddev     DDEV-based WordPress installation
   update           Update WordPress core and plugins (wp, default)
-  mod              Modify/manage existing WordPress sites (wp, default)
+  mod [wp]         Modify/manage existing WordPress sites (wp, default)
+  mod ddev         Modify DDEV WordPress site
   ddev update      Update DDEV WordPress site
-  ddev mod         Modify DDEV WordPress site
   ddev remove      Remove DDEV containers and configuration
 
 OPTIONS:
@@ -166,7 +166,7 @@ EXAMPLES:
   $0 ddev update                          # Update all plugins
   $0 ddev update -y                       # Auto-confirm all updates
   $0 ddev update -g --sum                 # Update with git commits
-  $0 ddev mod -S
+  $0 mod ddev -S                          # Modify DDEV site
   $0 ddev remove
 
 CONFIGURATION:
@@ -463,13 +463,31 @@ main() {
             esac
             ;;
         "mod")
-            if [[ -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
-                log_info "Executing WordPress modification"
-                exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
-            else
+            if [[ ! -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
                 log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
                 exit 1
             fi
+            # Optional environment target: wp (default, local) or ddev
+            case "${1:-}" in
+                "ddev")
+                    shift
+                    log_info "Executing WordPress modification (mode: ddev)"
+                    if ! ddev status >/dev/null 2>&1; then
+                        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
+                        exit 1
+                    fi
+                    export WP_CLI_PATH="ddev wp"
+                    export WORDPRESS_BASE_DIR="."
+                    ;;
+                "wp")
+                    shift
+                    log_info "Executing WordPress modification (mode: wp)"
+                    ;;
+                *)
+                    log_info "Executing WordPress modification (mode: wp)"
+                    ;;
+            esac
+            exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
             ;;
         *)
             log_error "Unknown command: $command"
