@@ -133,6 +133,8 @@ complete -c webwerk -n __ww_mod_ctx -s p -l print                          -d 'P
 complete -c webwerk -n __ww_mod_ctx -s H -l health-check                   -d 'Check sites with wp core is-installed'
 complete -c webwerk -n __ww_mod_ctx -s C -l status                         -d 'Per-site status: core version, plugins, themes'
 complete -c webwerk -n __ww_mod_ctx -s B -l brief                          -d 'Brief status: core + plugin/theme update counts (all sites)'
+complete -c webwerk -n __ww_mod_ctx -s e -l errors                         -d 'Brief status, only sites with errors (broken/missing)'
+complete -c webwerk -n __ww_mod_ctx -s O -l outdated                       -d 'Brief status, only sites with available updates'
 complete -c webwerk -n __ww_mod_ctx -s l -l list                           -d 'List plugins for selected sites'
 complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'

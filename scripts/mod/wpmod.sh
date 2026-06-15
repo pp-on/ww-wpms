@@ -155,6 +155,10 @@ do_status() {
                 echo -e "\033[32mWP OK\033[0m  $version (up to date)"
             fi
 
+            if [[ ! -d "$site_dir/wp-content" || -z "$(find "$site_dir/wp-content" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+                echo -e "\033[31mWARN — wp-content EMPTY (no plugins/themes, site broken)\033[0m"
+            fi
+
             echo -e "\033[33mPlugins:\033[0m"
             $WP_CLI_PATH --path="$site_dir" plugin list --fields=name,status,version,update_version 2>/dev/null || echo "  (failed to list plugins)"
             echo -e "\033[33mThemes:\033[0m"
@@ -169,36 +173,56 @@ do_status() {
     done
 }
 
-# Brief status — core version + plugin/theme update counts, all sites, non-interactive
+# Brief status — core version + plugin/theme update counts, all sites, non-interactive.
+# $1 filter: all (default) | errors (only broken sites) | outdated (only sites with updates)
 do_status_brief() {
+    local filter="${1:-all}"
     local configs=()
     while IFS= read -r config; do
         configs+=("$config")
     done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
 
-    local config site_dir name version update p_total p_upd t_total t_upd
+    local config site_dir name version update p_total p_upd t_total t_upd shown=0 err_msg
     for config in "${configs[@]}"; do
         site_dir="$(dirname "$config")"
         name="$(basename "$site_dir")"
 
+        # Error conditions: broken DB install, or empty wp-content (no themes = unrenderable)
+        err_msg=""
         if ! $WP_CLI_PATH --path="$site_dir" core is-installed &>/dev/null; then
-            echo -e "\033[31m$name   WP ERR — not installed or broken\033[0m"
+            err_msg="WP ERR — not installed or broken"
+        elif [[ ! -d "$site_dir/wp-content" || -z "$(find "$site_dir/wp-content" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+            version=$($WP_CLI_PATH --path="$site_dir" core version 2>/dev/null || true)
+            err_msg="WP ${version:-?} — wp-content EMPTY (no plugins/themes, site broken)"
+        fi
+        if [[ -n "$err_msg" ]]; then
+            if [[ "$filter" != "outdated" ]]; then
+                echo -e "\033[31m$name   $err_msg\033[0m"
+                shown=1
+            fi
             continue
         fi
 
+        # errors filter: healthy installs are not of interest
+        [[ "$filter" == "errors" ]] && continue
+
         version=$($WP_CLI_PATH --path="$site_dir" core version 2>/dev/null || true)
         update=$($WP_CLI_PATH --path="$site_dir" core check-update --field=version 2>/dev/null | grep -v '^Success' | xargs || true)
-        if [[ -n "$update" ]]; then
-            echo -e "\033[36m$name\033[0m   WP $version \033[33m(update: $update)\033[0m"
-        else
-            echo -e "\033[36m$name\033[0m   WP $version (up to date)"
-        fi
-
         p_total=$($WP_CLI_PATH --path="$site_dir" plugin list --format=count 2>/dev/null || echo 0)
         p_upd=$($WP_CLI_PATH --path="$site_dir" plugin list --update=available --format=count 2>/dev/null || echo 0)
         t_total=$($WP_CLI_PATH --path="$site_dir" theme list --format=count 2>/dev/null || echo 0)
         t_upd=$($WP_CLI_PATH --path="$site_dir" theme list --update=available --format=count 2>/dev/null || echo 0)
 
+        # outdated filter: skip fully up-to-date sites
+        if [[ "$filter" == "outdated" && -z "$update" && "$p_upd" -eq 0 && "$t_upd" -eq 0 ]]; then
+            continue
+        fi
+
+        if [[ -n "$update" ]]; then
+            echo -e "\033[36m$name\033[0m   WP $version \033[33m(update: $update)\033[0m"
+        else
+            echo -e "\033[36m$name\033[0m   WP $version (up to date)"
+        fi
         if [[ "$p_upd" -gt 0 ]]; then
             echo -e "  plugins: $p_total total, \033[33m$p_upd can be updated\033[0m"
         else
@@ -210,7 +234,16 @@ do_status_brief() {
             echo "  themes:  $t_total total, all up to date"
         fi
         echo
+        shown=1
     done
+
+    if [[ "$shown" -eq 0 ]]; then
+        case "$filter" in
+            errors)   echo "No sites with errors." ;;
+            outdated) echo "All sites up to date." ;;
+            *)        echo "No WordPress sites found." ;;
+        esac
+    fi
 }
 
 # Setup all license keys for current site
@@ -250,6 +283,8 @@ INFORMATION & DISPLAY:
                                theme lists; any key = next site, c = stop
   -B, --brief                  Brief status for all sites: core version + plugin/
                                theme totals and updatable counts (non-interactive)
+  -e, --errors                 Brief status, only sites with errors (broken/missing)
+  -O, --outdated               Brief status, only sites with available updates
   -l, --list                   List plugins for selected sites
   -T, --themes [NUM|NAME]      List themes; optionally activate by number or name
   -o, --os-detection           Show operating system information
@@ -379,7 +414,13 @@ parse_arguments() {
                 do_status
                 ;;
             -B|--brief)
-                do_status_brief
+                do_status_brief all
+                ;;
+            -e|--errors)
+                do_status_brief errors
+                ;;
+            -O|--outdated)
+                do_status_brief outdated
                 ;;
             -p|--print)
                 print_sites

@@ -426,6 +426,12 @@ webwerk update -h
 # Brief status for all sites: core version + plugin/theme totals and
 # updatable counts (non-interactive)
 ./webwerk mod -B
+
+# Brief status, only sites with errors (broken / WP not installed)
+./webwerk mod -e
+
+# Brief status, only sites with available updates
+./webwerk mod -O
 ```
 
 ## 🏗️ Architecture

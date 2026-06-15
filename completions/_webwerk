@@ -119,6 +119,8 @@ _webwerk_mod() {
         '(-H --health-check)'{-H,--health-check}'[Check sites with wp core is-installed]' \
         '(-C --status)'{-C,--status}'[Per-site status: core version, plugins, themes]' \
         '(-B --brief)'{-B,--brief}'[Brief status: core + plugin/theme update counts (all sites)]' \
+        '(-e --errors)'{-e,--errors}'[Brief status, only sites with errors (broken/missing)]' \
+        '(-O --outdated)'{-O,--outdated}'[Brief status, only sites with available updates]' \
         '(-l --list)'{-l,--list}'[List plugins for selected sites]' \
         '(-T --themes)'{-T,--themes}'[List/activate themes]' \
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \

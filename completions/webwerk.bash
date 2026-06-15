@@ -127,6 +127,8 @@ _webwerk() {
                 -H --health-check
                 -C --status
                 -B --brief
+                -e --errors
+                -O --outdated
                 -l --list
                 -T --themes
                 -o --os-detection
