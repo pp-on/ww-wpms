@@ -422,6 +422,10 @@ webwerk update -h
 # Per-site status: core version (+ available update), plugin and theme lists
 # (any key = next site, c = stop)
 ./webwerk mod -C
+
+# Brief status for all sites: core version + plugin/theme totals and
+# updatable counts (non-interactive)
+./webwerk mod -B
 ```
 
 ## 🏗️ Architecture

@@ -169,6 +169,50 @@ do_status() {
     done
 }
 
+# Brief status — core version + plugin/theme update counts, all sites, non-interactive
+do_status_brief() {
+    local configs=()
+    while IFS= read -r config; do
+        configs+=("$config")
+    done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
+
+    local config site_dir name version update p_total p_upd t_total t_upd
+    for config in "${configs[@]}"; do
+        site_dir="$(dirname "$config")"
+        name="$(basename "$site_dir")"
+
+        if ! $WP_CLI_PATH --path="$site_dir" core is-installed &>/dev/null; then
+            echo -e "\033[31m$name   WP ERR — not installed or broken\033[0m"
+            continue
+        fi
+
+        version=$($WP_CLI_PATH --path="$site_dir" core version 2>/dev/null || true)
+        update=$($WP_CLI_PATH --path="$site_dir" core check-update --field=version 2>/dev/null | grep -v '^Success' | xargs || true)
+        if [[ -n "$update" ]]; then
+            echo -e "\033[36m$name\033[0m   WP $version \033[33m(update: $update)\033[0m"
+        else
+            echo -e "\033[36m$name\033[0m   WP $version (up to date)"
+        fi
+
+        p_total=$($WP_CLI_PATH --path="$site_dir" plugin list --format=count 2>/dev/null || echo 0)
+        p_upd=$($WP_CLI_PATH --path="$site_dir" plugin list --update=available --format=count 2>/dev/null || echo 0)
+        t_total=$($WP_CLI_PATH --path="$site_dir" theme list --format=count 2>/dev/null || echo 0)
+        t_upd=$($WP_CLI_PATH --path="$site_dir" theme list --update=available --format=count 2>/dev/null || echo 0)
+
+        if [[ "$p_upd" -gt 0 ]]; then
+            echo -e "  plugins: $p_total total, \033[33m$p_upd can be updated\033[0m"
+        else
+            echo "  plugins: $p_total total, all up to date"
+        fi
+        if [[ "$t_upd" -gt 0 ]]; then
+            echo -e "  themes:  $t_total total, \033[33m$t_upd can be updated\033[0m"
+        else
+            echo "  themes:  $t_total total, all up to date"
+        fi
+        echo
+    done
+}
+
 # Setup all license keys for current site
 setup_all_licenses() {
     log_info "Setting up all license keys for current site"
@@ -204,6 +248,8 @@ INFORMATION & DISPLAY:
   -H, --health-check           Check all sites with wp core is-installed
   -C, --status                 Per-site status: core version (+update), plugin and
                                theme lists; any key = next site, c = stop
+  -B, --brief                  Brief status for all sites: core version + plugin/
+                               theme totals and updatable counts (non-interactive)
   -l, --list                   List plugins for selected sites
   -T, --themes [NUM|NAME]      List themes; optionally activate by number or name
   -o, --os-detection           Show operating system information
@@ -331,6 +377,9 @@ parse_arguments() {
                 ;;
             -C|--status)
                 do_status
+                ;;
+            -B|--brief)
+                do_status_brief
                 ;;
             -p|--print)
                 print_sites
