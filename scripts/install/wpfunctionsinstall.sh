@@ -376,20 +376,15 @@ clone_git_repository() {
         rm -rf "$target_dir"
     fi
     
-    # Clone repository
-    if git clone --depth 1 "$repo_url" "$target_dir"; then
+    # Clone repository — full clone, .git always kept so wp-content stays a working clone
+    if git clone "$repo_url" "$target_dir"; then
         log_success "Repository cloned successfully"
-        
-        # Remove .git directory for deployment
-        if [[ -d "$target_dir/.git" ]]; then
-            rm -rf "$target_dir/.git"
-        fi
-        
+
         # Activate plugins if enabled
         if [[ "${AUTO_ACTIVATE_PLUGINS}" == "true" ]]; then
             activate_all_plugins
         fi
-        
+
         return 0
     else
         log_error "Failed to clone repository: $repo_url"
