@@ -432,6 +432,9 @@ webwerk update -h
 
 # Brief status, only sites with available updates
 ./webwerk mod -O
+
+# Git overview of each wp-content repo: remote, local/upstream branch, status
+./webwerk mod -g
 ```
 
 ## 🏗️ Architecture

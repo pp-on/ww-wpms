@@ -126,6 +126,7 @@ _webwerk_mod() {
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \
         '--git=[Run git subcommand]:subcmd:(pull log)' \
         '(-G --git-pull)'{-G,--git-pull}'[Update repos via git pull]' \
+        '(-g --git-status)'{-g,--git-status}'[Overview of each wp-content git repo: remote, branch, status]' \
         '(-u --update)'{-u,--update}'=[Update plugin (or all)]:plugin' \
         '(-i --install-plugin)'{-i,--install-plugin}'=[Install plugin on selected sites]:plugin' \
         '(-y --copy-plugins)'{-y,--copy-plugins}'=[Copy plugin from path]:path:_files' \

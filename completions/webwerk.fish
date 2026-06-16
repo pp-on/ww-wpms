@@ -140,6 +140,7 @@ complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'L
 complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'
 complete -c webwerk -n __ww_mod_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
 complete -c webwerk -n __ww_mod_ctx -s G -l git-pull                       -d 'Update repos via git pull'
+complete -c webwerk -n __ww_mod_ctx -s g -l git-status                     -d 'Overview of each wp-content git repo (remote, branch, status)'
 complete -c webwerk -n __ww_mod_ctx -s u -l update                      -r  -d 'Update plugin (or all)'
 complete -c webwerk -n __ww_mod_ctx -s i -l install-plugin              -r  -d 'Install plugin on selected sites'
 complete -c webwerk -n __ww_mod_ctx -s y -l copy-plugins                -r  -d 'Copy plugin from path to selected sites'
