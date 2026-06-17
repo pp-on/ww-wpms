@@ -248,16 +248,25 @@ do_status_brief() {
 
 # Git overview for each site's wp-content repo: remote, local/upstream branch, status
 do_git_status() {
-    local configs=()
-    while IFS= read -r config; do
-        configs+=("$config")
-    done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
+    local site_dirs=()
+    if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
+        # honor -s/-a/-A site selection
+        local s
+        for s in "${sites[@]}"; do
+            site_dirs+=("$WORDPRESS_BASE_DIR/$s")
+        done
+    else
+        # no selection: every install under the base dir
+        local config
+        while IFS= read -r config; do
+            site_dirs+=("$(dirname "$config")")
+        done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
+    fi
 
-    local total=${#configs[@]} idx=0
-    local config site_dir name repo remote branch upstream ahead behind dirty
-    for config in "${configs[@]}"; do
+    local total=${#site_dirs[@]} idx=0
+    local site_dir name repo remote branch upstream ahead behind dirty
+    for site_dir in "${site_dirs[@]}"; do
         (( ++idx ))
-        site_dir="$(dirname "$config")"
         name="$(basename "$site_dir")"
         repo="$site_dir/wp-content"
 
@@ -268,8 +277,13 @@ do_git_status() {
 
         echo -e "\033[36m[$idx/$total] $name\033[0m"
 
-        remote=$(git -C "$repo" remote get-url origin 2>/dev/null || git -C "$repo" remote -v 2>/dev/null | awk 'NR==1{print $2}')
-        echo "  remote: ${remote:-<none>}"
+        remote=$(git -C "$repo" remote -v 2>/dev/null || true)
+        if [[ -n "$remote" ]]; then
+            echo "  remote:"
+            echo "$remote" | sed 's/^/    /'
+        else
+            echo "  remote: <none>"
+        fi
 
         branch=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)
         if [[ -z "$branch" ]]; then
