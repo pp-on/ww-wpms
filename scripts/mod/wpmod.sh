@@ -253,36 +253,40 @@ do_git_status() {
         configs+=("$config")
     done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
 
+    local total=${#configs[@]} idx=0
     local config site_dir name repo remote branch upstream ahead behind dirty
     for config in "${configs[@]}"; do
+        (( ++idx ))
         site_dir="$(dirname "$config")"
         name="$(basename "$site_dir")"
         repo="$site_dir/wp-content"
 
         if ! git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
-            echo -e "\033[33m$name   no git repo in wp-content\033[0m"
+            echo -e "\033[33m[$idx/$total] $name   no git repo in wp-content\033[0m"
             continue
         fi
 
-        echo -e "\033[36m$name\033[0m"
+        echo -e "\033[36m[$idx/$total] $name\033[0m"
 
         remote=$(git -C "$repo" remote get-url origin 2>/dev/null || git -C "$repo" remote -v 2>/dev/null | awk 'NR==1{print $2}')
         echo "  remote: ${remote:-<none>}"
 
-        branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null)
-        if [[ "$branch" == "HEAD" ]]; then
+        branch=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)
+        if [[ -z "$branch" ]]; then
             echo "  branch: (detached HEAD)"
+        elif ! git -C "$repo" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+            echo "  branch: $branch (no commits yet)"
         else
             upstream=$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
             if [[ -n "$upstream" ]]; then
-                read -r behind ahead < <(git -C "$repo" rev-list --left-right --count "$upstream"...HEAD 2>/dev/null)
+                read -r behind ahead < <(git -C "$repo" rev-list --left-right --count "$upstream"...HEAD 2>/dev/null || echo "0 0")
                 echo "  branch: $branch → $upstream (ahead ${ahead:-0}, behind ${behind:-0})"
             else
                 echo "  branch: $branch (no upstream)"
             fi
         fi
 
-        dirty=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l)
+        dirty=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l || true)
         if [[ "$dirty" -gt 0 ]]; then
             echo -e "  status: \033[33m$dirty uncommitted change(s)\033[0m"
         else
