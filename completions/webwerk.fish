@@ -83,6 +83,7 @@ complete -c webwerk -n __ww_install_ctx -l lamp              -d 'Generate .htacc
 complete -c webwerk -n __ww_install_ctx -l production        -d 'Add nginx security hardening'
 complete -c webwerk -n __ww_install_ctx -l multisite         -d 'Install as WordPress Multisite'
 complete -c webwerk -n __ww_install_ctx -l subdomains        -d 'Subdomain network (requires --multisite)'
+complete -c webwerk -n __ww_install_ctx -s v -l verbose      -d 'Show full install log instead of the progress bar'
 complete -c webwerk -n __ww_install_ctx -l debug             -d 'Enable debug mode'
 complete -c webwerk -n __ww_install_ctx -s h -l help         -d 'Show help'
 

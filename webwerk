@@ -277,8 +277,8 @@ run_install() {
     local a verbose="${WEBWERK_INSTALL_VERBOSE:-0}" args=() rc
     for a in "$@"; do
         case "$a" in
-            --verbose) verbose=1 ;;
-            --debug)   verbose=1; args+=("$a") ;;
+            -v|--verbose) verbose=1 ;;
+            --debug)      verbose=1; args+=("$a") ;;
             *)         args+=("$a") ;;
         esac
     done

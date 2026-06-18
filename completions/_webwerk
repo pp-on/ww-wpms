@@ -65,6 +65,7 @@ _webwerk_install() {
         '--production[Add nginx security hardening]' \
         '--multisite[Install as WordPress Multisite]' \
         '--subdomains[Subdomain network (requires --multisite)]' \
+        '(-v --verbose)'{-v,--verbose}'[Show full install log instead of the progress bar]' \
         '--debug[Enable debug mode]' \
         '(-h --help)'{-h,--help}'[Show help]'
 }

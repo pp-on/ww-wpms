@@ -55,7 +55,7 @@ _webwerk() {
                         --repo-url --git-user --git-protocol --git-host
                         --wp-cli --target-dir
                         --nip-io --lemp --lamp --production
-                        --multisite --subdomains --debug --help
+                        --multisite --subdomains -v --verbose --debug --help
                         -b -G -n -h
                     ' -- "$cur") )
                     ;;

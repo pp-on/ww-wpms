@@ -619,6 +619,7 @@ OTHER OPTIONS:
   --production          Add security hardening to nginx.conf (deny xmlrpc, headers, etc.)
   --multisite           Install as WordPress Multisite (wp core multisite-install)
   --subdomains          Use subdomain network (default: subdirectory); requires --multisite
+  -v, --verbose         Show full install log instead of the progress bar
   --debug               Enable debug mode
   --help                Show this help message
 
@@ -781,6 +782,9 @@ parse_arguments() {
                 ;;
             --subdomains)
                 WP_MULTISITE_SUBDOMAINS=true
+                ;;
+            -v|--verbose)
+                : # handled by the webwerk dispatcher (full logs vs progress bar); no-op here
                 ;;
             --debug)
                 set -x
