@@ -128,18 +128,30 @@ do_health_check() {
     log_info "Health check — $ok OK, $err ERR"
 }
 
+# Populate global SITE_DIRS with the -s/-a selected sites, or every install under
+# WORDPRESS_BASE_DIR when nothing is selected.
+collect_site_dirs() {
+    SITE_DIRS=()
+    if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
+        local s
+        for s in "${sites[@]}"; do
+            SITE_DIRS+=("$WORDPRESS_BASE_DIR/$s")
+        done
+    else
+        local config
+        while IFS= read -r config; do
+            SITE_DIRS+=("$(dirname "$config")")
+        done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
+    fi
+}
+
 # Site status — core version (+ available update), plugin and theme lists per site
 do_status() {
-    local configs=()
-    while IFS= read -r config; do
-        configs+=("$config")
-    done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
-
-    local total=${#configs[@]} idx=0
-    local config site_dir name version update key
-    for config in "${configs[@]}"; do
+    collect_site_dirs
+    local total=${#SITE_DIRS[@]} idx=0
+    local site_dir name version update key
+    for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
-        site_dir="$(dirname "$config")"
         name="$(basename "$site_dir")"
 
         echo -e "\033[36m================================\n  [$idx/$total] $name\n================================\033[0m"
@@ -177,14 +189,9 @@ do_status() {
 # $1 filter: all (default) | errors (only broken sites) | outdated (only sites with updates)
 do_status_brief() {
     local filter="${1:-all}"
-    local configs=()
-    while IFS= read -r config; do
-        configs+=("$config")
-    done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
-
-    local config site_dir name version update p_total p_upd t_total t_upd shown=0 err_msg
-    for config in "${configs[@]}"; do
-        site_dir="$(dirname "$config")"
+    collect_site_dirs
+    local site_dir name version update p_total p_upd t_total t_upd shown=0 err_msg
+    for site_dir in "${SITE_DIRS[@]}"; do
         name="$(basename "$site_dir")"
 
         # Error conditions: broken DB install, or empty wp-content (no themes = unrenderable)
@@ -248,24 +255,10 @@ do_status_brief() {
 
 # Git overview for each site's wp-content repo: remote, local/upstream branch, status
 do_git_status() {
-    local site_dirs=()
-    if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
-        # honor -s/-a/-A site selection
-        local s
-        for s in "${sites[@]}"; do
-            site_dirs+=("$WORDPRESS_BASE_DIR/$s")
-        done
-    else
-        # no selection: every install under the base dir
-        local config
-        while IFS= read -r config; do
-            site_dirs+=("$(dirname "$config")")
-        done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
-    fi
-
-    local total=${#site_dirs[@]} idx=0
+    collect_site_dirs
+    local total=${#SITE_DIRS[@]} idx=0
     local site_dir name repo remote branch upstream ahead behind dirty
-    for site_dir in "${site_dirs[@]}"; do
+    for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
         name="$(basename "$site_dir")"
         repo="$site_dir/wp-content"
