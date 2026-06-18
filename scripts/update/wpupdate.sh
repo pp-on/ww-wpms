@@ -79,7 +79,10 @@ log_warning() {
 
 prog() {
     [[ "$progress" != true ]] && return
-    echo -e "${Cyan}[${_prog_idx}/${_prog_total}] ${_prog_site} [${1}]${Color_Off}"
+    local line width
+    line="$(printf '[%s/%s] %s [%s]' "$_prog_idx" "$_prog_total" "$_prog_site" "$1")"
+    width=$(( ${COLUMNS:-119} - 1 ))
+    printf '\r%b%.*s%b\033[K' "${Cyan}" "$width" "$line" "${Color_Off}"
 }
 
 # Run a command; in progress mode send its output to the log file instead of the terminal
@@ -780,7 +783,7 @@ main() {
     # Final summary
     log_success "Update process completed"
     log_info "Sites processed successfully: $processed_sites"
-    [[ "$progress" == true ]] && echo -e "${Green}Done: ${processed_sites} ok, ${failed_sites} failed${Color_Off}"
+    [[ "$progress" == true ]] && echo -e "\n${Green}Done: ${processed_sites} ok, ${failed_sites} failed${Color_Off}"
 
     if [[ $failed_sites -gt 0 ]]; then
         log_warning "Sites with failures: $failed_sites"
