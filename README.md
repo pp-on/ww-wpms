@@ -269,12 +269,13 @@ Features:
 - ✅ WordPress core download
 - ✅ Database creation
 - ✅ Admin user setup
-- ✅ Repository cloning
+- ✅ Repository cloning into `wp-content` (`.git` kept — stays a working clone)
 - ✅ Plugin activation
 - ✅ License key setup
 - ✅ .htaccess configuration
 - ✅ Search engine indexing disabled
 - ✅ File permissions setup
+- ✅ Single-line progress bar (default on a terminal; `-v`/`--verbose` for full log)
 
 ### Minimal Installation
 WordPress without repository:
@@ -331,9 +332,19 @@ webwerk install --git-protocol=ssh
 # Override base URL (WordPress siteurl = <base>/<dirname>)
 webwerk install -G arbeit -b netcup.local
 
+# Show the full install log instead of the progress bar
+webwerk install -G arbeit -v
+webwerk install -G arbeit --verbose
+
 # Show help
 webwerk install -h
 ```
+
+When run in a terminal, `webwerk install` shows a single-line progress bar
+(`[bar] xx% (n/11) | current activity`); errors and warnings break out on their
+own line. Use `-v`/`--verbose` (or `--debug`) for the full log. When the output is
+piped or redirected, the full log is used automatically. The cloned `wp-content`
+keeps its `.git`, so it stays a working git clone (use `webwerk mod -g` to inspect).
 
 ### Update Commands
 
@@ -435,6 +446,9 @@ webwerk update -h
 
 # Git overview of each wp-content repo: remote, local/upstream branch, status
 ./webwerk mod -g
+
+# Any of the status views (-C/-B/-e/-O/-g) can be scoped to specific sites with -s
+./webwerk mod -s site1,site2 -g
 ```
 
 ## 🏗️ Architecture

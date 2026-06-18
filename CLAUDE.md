@@ -58,6 +58,10 @@ webwerk status
 
 # DDEV containerized development
 ./webwerk ddev install --wp-title="DDEV Site"
+
+# Install shows a single-line phase progress bar by default on a TTY;
+# use -v/--verbose (or pipe the output) for the full log
+./webwerk install full --wp-title="Site" -v
 ```
 
 ### Updates and Management
@@ -74,6 +78,14 @@ webwerk status
 
 # Setup license keys
 ./webwerk mod --sites=mysite --setup-acf-license
+
+# Status overviews (add -s site1,site2 to scope to specific sites)
+./webwerk mod -C    # full per-site status (core, plugins, themes)
+./webwerk mod -B    # brief status; -e = only errors, -O = only outdated
+./webwerk mod -g    # wp-content git overview (remote, branch, status)
+
+# Modify a DDEV site (wp is default): webwerk mod [wp|ddev]
+./webwerk mod ddev -x on
 ```
 
 ### System Status
@@ -103,6 +115,8 @@ The suite automatically detects:
 - **Debug Control**: `wp_debug()`, `wp_hide_errors()`, `wp_force_https()` - Development mode and HTTPS
 - **SEO Management**: `wp_block_se()`, `wp_enable_se()` - Search engine indexing control
 - **Git Integration**: `update_repo()`, `git_wp()` - Repository synchronization
+- **Status Overviews (wpmod.sh)**: `do_status()` (`-C`), `do_status_brief()` (`-B`/`-e`/`-O`), `do_git_status()` (`-g`) - per-site core/plugin/theme and wp-content git overviews; all use `collect_site_dirs()` to honor `-s`/`-a` or scan the base dir
+- **Install Progress (webwerk)**: `render_install_progress()` + `run_install()` - single-line phase progress bar shown by default on a TTY; `-v`/`--verbose` (or piped output) falls back to the full log
 
 ### Configuration Variables
 Essential variables defined in `.env`:
