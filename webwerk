@@ -225,6 +225,74 @@ show_status() {
     done
 }
 
+# Render install log lines as a single-line phase progress bar + current activity.
+# Reads piped install output; errors/warnings are surfaced on their own line.
+render_install_progress() {
+    shopt -s nocasematch   # phase keys match log lines case-insensitively
+    local phase_keys=(
+        "requirements validated"
+        "database connection validated"
+        "Downloading WordPress"
+        "WordPress core downloaded"
+        "Creating wp-config"
+        "Database reset"
+        "Installing WordPress"
+        "Cloning repository"
+        "Activating all"
+        "license keys"
+        "installation completed"
+    )
+    local total=${#phase_keys[@]} cur=0 line msg pct fill bar i j width out
+    while IFS= read -r line; do
+        line="$(printf '%s' "$line" | sed 's/\x1b\[[0-9;]*m//g')"
+        # surface errors/warnings on their own line (both LEVEL: and [LEVEL] formats)
+        if [[ "$line" == *ERROR:* || "$line" == *"ERROR]"* ]]; then printf '\r\033[K\033[31m%s\033[0m\n' "$line"; continue; fi
+        if [[ "$line" == *WARNING:* || "$line" == *"WARNING]"* ]]; then printf '\r\033[K\033[33m%s\033[0m\n' "$line"; continue; fi
+        [[ "$line" == *INFO:* || "$line" == *"INFO]"* || "$line" == *SUCCESS:* || "$line" == *"SUCCESS]"* ]] || continue
+        # strip "[timestamp] [LEVEL] " or "[timestamp] LEVEL: " prefix, keep the message
+        msg="$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] (\[(INFO|SUCCESS)\]|(INFO|SUCCESS):) *//')"
+        # advance to the matched phase (tolerant of skipped/missing phases, never goes back)
+        for (( j=0; j<total; j++ )); do
+            if [[ "$line" == *"${phase_keys[j]}"* ]]; then (( j+1 > cur )) && cur=$((j+1)); break; fi
+        done
+        pct=$(( cur * 100 / total ))
+        fill=$(( pct * 20 / 100 ))
+        bar=""
+        for (( i=0; i<20; i++ )); do (( i < fill )) && bar+="#" || bar+="-"; done
+        width=$(( ${COLUMNS:-119} - 1 ))
+        out="$(printf '[%s] %3d%% (%d/%d) | %s' "$bar" "$pct" "$cur" "$total" "$msg")"
+        printf '\r%.*s\033[K' "$width" "$out"
+    done
+    printf '\n'
+}
+
+# Run the installer. On a terminal, show the single-line progress bar by default;
+# when piped/redirected (e.g. the `repo` batch) or with --verbose/--debug, pass logs through.
+run_install() {
+    local installer="${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
+    if [[ ! -f "$installer" ]]; then
+        log_error "Installation script not found: $installer"
+        exit 1
+    fi
+    local a verbose="${WEBWERK_INSTALL_VERBOSE:-0}" args=() rc
+    for a in "$@"; do
+        case "$a" in
+            --verbose) verbose=1 ;;
+            --debug)   verbose=1; args+=("$a") ;;
+            *)         args+=("$a") ;;
+        esac
+    done
+    set +e   # capture the installer's exit code ourselves (dispatcher runs under set -e)
+    if [[ -t 1 && "$verbose" != "1" ]]; then
+        bash "$installer" "${args[@]}" 2>&1 | render_install_progress
+        rc=${PIPESTATUS[0]}
+    else
+        bash "$installer" "${args[@]}"
+        rc=$?
+    fi
+    exit "$rc"
+}
+
 #===============================================================================
 # MAIN EXECUTION
 #===============================================================================
@@ -300,13 +368,8 @@ main() {
                 "full" | "minimal" | "ddev") shift ;;
                 *) mode="full" ;;  # default to full if no mode given
             esac
-            if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
-                log_info "Executing WordPress installation (mode: $mode)"
-                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "$mode" "$@"
-            else
-                log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
-                exit 1
-            fi
+            log_info "Executing WordPress installation (mode: $mode)"
+            run_install "$mode" "$@"
             ;;
         "full" | "minimal")
             # Legacy syntax: webwerk full install / webwerk minimal install
@@ -318,13 +381,8 @@ main() {
             fi
             shift  # Remove "install" from arguments
 
-            if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
-                log_info "Executing WordPress installation (mode: $command)"
-                exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "$command" "$@"
-            else
-                log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
-                exit 1
-            fi
+            log_info "Executing WordPress installation (mode: $command)"
+            run_install "$command" "$@"
             ;;
         "ddev")
             # DDEV mode - expect "install" or "remove" as next argument
@@ -332,13 +390,8 @@ main() {
             case "$subcommand" in
                 "install")
                     shift  # Remove "install" from arguments
-                    if [[ -f "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" ]]; then
-                        log_info "Executing WordPress installation (mode: ddev)"
-                        exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" "ddev" "$@"
-                    else
-                        log_error "Installation script not found: ${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
-                        exit 1
-                    fi
+                    log_info "Executing WordPress installation (mode: ddev)"
+                    run_install "ddev" "$@"
                     ;;
                 "remove")
                     shift  # Remove "remove" from arguments
