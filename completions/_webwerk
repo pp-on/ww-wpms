@@ -135,7 +135,7 @@ _webwerk_mod() {
         '(-y --copy-plugins)'{-y,--copy-plugins}'=[Copy plugin from path]:path:_files' \
         '(-f --acf-pro-lk)'{-f,--acf-pro-lk}'[Setup ACF Pro license key]' \
         '(-m --wp-migrate-db-pro)'{-m,--wp-migrate-db-pro}'[Setup WP Migrate DB Pro license key]' \
-        '--akeeba-license[Setup Akeeba Download ID]' \
+        '(-k --akeeba-license)'{-k,--akeeba-license}'[Setup Akeeba Download ID]' \
         '--setup-all-licenses[Setup all available license keys]' \
         '(-n --new-user)'{-n,--new-user}'[Create new admin user]' \
         '(-U --wp-user)'{-U,--wp-user}'=[Username for new user]:user' \

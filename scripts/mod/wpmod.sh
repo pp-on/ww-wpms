@@ -365,7 +365,7 @@ PLUGIN MANAGEMENT:
 LICENSE KEYS:
   -f, --acf-pro-lk            Setup ACF Pro license key
   -m, --wp-migrate-db-pro     Setup WP Migrate DB Pro license key
-  --akeeba-license            Setup Akeeba Download ID
+  -k, --akeeba-license        Setup Akeeba Download ID
   --setup-all-licenses        Setup all available license keys
 
 USER MANAGEMENT:
@@ -531,7 +531,7 @@ parse_arguments() {
             -m|--wp-migrate-db-pro)
                 wp_license_plugins "WPMDB"
                 ;;
-            --akeeba-license)
+            -k|--akeeba-license)
                 setup_akeeba_download_id
                 ;;
             --setup-all-licenses)

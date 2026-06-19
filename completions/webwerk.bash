@@ -139,7 +139,7 @@ _webwerk() {
                 -y --copy-plugins
                 -f --acf-pro-lk
                 -m --wp-migrate-db-pro
-                --akeeba-license --setup-all-licenses
+                -k --akeeba-license --setup-all-licenses
                 -n --new-user
                 -U --wp-user -P --wp-password -E --wp-email
                 -R --search-replace
