@@ -322,12 +322,22 @@ webwerk install ddev --wp-title="DDEV Site"
 webwerk install ddev -G arbeit          # with SSH host alias for repo cloning
 webwerk install ddev -n                 # use nip.io (no /etc/hosts admin rights needed)
 
-# Custom database settings
+# Batch: install into every empty subdirectory of the current dir
+# (dir name = site/repo name; non-empty dirs are skipped, never overwritten)
+cd ~/www/repos/netcup
+webwerk install -A -G arbeit            # all empty subdirs, non-interactive
+webwerk install -a -G arbeit            # prompt y/n/x per subdir
+
+# Custom database settings (long form or short aliases)
 webwerk install --db-host=127.0.0.1 --db-user=custom --db-password=secret
+webwerk install -H 127.0.0.1 -U custom -P secret
+
+# Short aliases also exist for the other options, e.g.
+webwerk install -t "My Site" -u https://example.test -w /usr/local/bin/wp -d /path/to/dir
 
 # SSH repository cloning
 webwerk install -G arbeit               # SSH host alias from ~/.ssh/config
-webwerk install --git-protocol=ssh
+webwerk install -p ssh                  # -p = --git-protocol
 
 # Override base URL (WordPress siteurl = <base>/<dirname>)
 webwerk install -G arbeit -b netcup.local
@@ -345,6 +355,17 @@ When run in a terminal, `webwerk install` shows a single-line progress bar
 own line. Use `-v`/`--verbose` (or `--debug`) for the full log. When the output is
 piped or redirected, the full log is used automatically. The cloned `wp-content`
 keeps its `.git`, so it stays a working git clone (use `webwerk mod -g` to inspect).
+
+`-A`/`-a` run a **batch install** over the immediate subdirectories of the current
+directory: each empty subdir is installed (its name becomes the site/repo name),
+non-empty subdirs are skipped with a warning so existing installs are never
+overwritten. `-A` is non-interactive; `-a` prompts `y`/`n`/`x` per directory.
+
+Most long install options also have short aliases: `-H`/`-U`/`-P`/`-N` (database),
+`-u` `--wp-url`, `-t` `--wp-title`, `-e` `--wp-admin-email`, `-r` `--repo-url`,
+`-g` `--git-user`, `-p` `--git-protocol`, `-w` `--wp-cli`, `-d` `--target-dir`,
+`-X` `--production`, `-m` `--multisite`, `-s` `--subdomains` (plus existing `-b`, `-G`,
+`-n`, `-v`). `--wp-admin-user`/`--wp-admin-pass` stay long-only (since `-a`/`-A` are batch).
 
 ### Update Commands
 

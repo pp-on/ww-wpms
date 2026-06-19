@@ -62,6 +62,10 @@ webwerk status
 # Install shows a single-line phase progress bar by default on a TTY;
 # use -v/--verbose (or pipe the output) for the full log
 ./webwerk install full --wp-title="Site" -v
+
+# Batch install into every empty subdirectory of the current dir
+# (dir name = site/repo name; non-empty dirs skipped). -a prompts per dir.
+cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 ```
 
 ### Updates and Management
@@ -117,6 +121,7 @@ The suite automatically detects:
 - **Git Integration**: `update_repo()`, `git_wp()` - Repository synchronization
 - **Status Overviews (wpmod.sh)**: `do_status()` (`-C`), `do_status_brief()` (`-B`/`-e`/`-O`), `do_git_status()` (`-g`) - per-site core/plugin/theme and wp-content git overviews; all use `collect_site_dirs()` to honor `-s`/`-a` or scan the base dir
 - **Install Progress (webwerk)**: `render_install_progress()` + `run_install()` - single-line phase progress bar shown by default on a TTY; `-v`/`--verbose` (or piped output) falls back to the full log
+- **Batch Install (webwerk)**: `run_install_batch()` - `install -A`/`-a` install into each empty immediate subdirectory of the current dir (dir name = site/repo name); non-empty dirs skipped, never overwritten. Most long install options also have short aliases (`-H`/`-U`/`-P`/`-N`, `-u`/`-t`/`-e`, `-r`/`-g`/`-p`, `-w`/`-d`, `-X`/`-m`/`-s`)
 
 ### Configuration Variables
 Essential variables defined in `.env`:
