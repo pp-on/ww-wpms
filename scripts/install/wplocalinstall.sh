@@ -603,9 +603,9 @@ WORDPRESS OPTIONS:
   -u, --wp-url=URL      WordPress site URL
   -b, --base-url=URL    Base URL for local dev (sets LOCAL_URL_BASE, e.g. netcup.local)
   -t, --wp-title=TITLE  WordPress site title
-  --wp-admin-user=USER  WordPress admin username (default: admin)
-  --wp-admin-pass=PASS  WordPress admin password (auto-generated if not set)
-  -e, --wp-admin-email=EMAIL  WordPress admin email
+  --wp-admin-user=USER, --wpu=USER   WordPress admin username (default: admin)
+  --wp-admin-pass=PASS, --wpp=PASS   WordPress admin password (auto-generated if unset)
+  -e, --wp-admin-email=EMAIL, --wpe=EMAIL   WordPress admin email
 
 GIT OPTIONS:
   -r, --repo-url=URL    Full repository URL to clone
@@ -727,13 +727,13 @@ parse_arguments() {
             --wp-title=*)
                 WP_TITLE="${1#*=}"
                 ;;
-            --wp-admin-user=*)
+            --wp-admin-user=*|--wpu=*)
                 WP_ADMIN_USER="${1#*=}"
                 ;;
-            --wp-admin-pass=*)
+            --wp-admin-pass=*|--wpp=*)
                 WP_ADMIN_PASSWORD="${1#*=}"
                 ;;
-            --wp-admin-email=*)
+            --wp-admin-email=*|--wpe=*)
                 WP_ADMIN_EMAIL="${1#*=}"
                 ;;
             --repo-url=*)

@@ -52,7 +52,7 @@ _webwerk() {
                         -A -a
                         --db-host --db-user --db-password --db-name
                         --wp-url --base-url --wp-title
-                        --wp-admin-user --wp-admin-pass --wp-admin-email
+                        --wp-admin-user --wp-admin-pass --wp-admin-email --wpu --wpp --wpe
                         --repo-url --git-user --git-protocol --git-host
                         --wp-cli --target-dir
                         --nip-io --lemp --lamp --production

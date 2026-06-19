@@ -365,7 +365,8 @@ Most long install options also have short aliases: `-H`/`-U`/`-P`/`-N` (database
 `-u` `--wp-url`, `-t` `--wp-title`, `-e` `--wp-admin-email`, `-r` `--repo-url`,
 `-g` `--git-user`, `-p` `--git-protocol`, `-w` `--wp-cli`, `-d` `--target-dir`,
 `-X` `--production`, `-m` `--multisite`, `-s` `--subdomains` (plus existing `-b`, `-G`,
-`-n`, `-v`). `--wp-admin-user`/`--wp-admin-pass` stay long-only (since `-a`/`-A` are batch).
+`-n`, `-v`). The admin options have no single-letter short (since `-a`/`-A` are batch),
+but accept the shorter aliases `--wpu` (user), `--wpp` (pass), `--wpe` (email).
 
 ### Update Commands
 

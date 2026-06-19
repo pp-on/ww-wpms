@@ -52,9 +52,9 @@ _webwerk_install() {
         '(-u --wp-url)'{-u,--wp-url}'=[WordPress site URL]:url' \
         '(-b --base-url)'{-b,--base-url}'=[Base URL for local dev]:url' \
         '(-t --wp-title)'{-t,--wp-title}'=[WordPress site title]:title' \
-        '--wp-admin-user=[Admin username]:user' \
-        '--wp-admin-pass=[Admin password]:password' \
-        '(-e --wp-admin-email)'{-e,--wp-admin-email}'=[Admin email]:email' \
+        '(--wp-admin-user --wpu)'{--wp-admin-user,--wpu}'=[Admin username]:user' \
+        '(--wp-admin-pass --wpp)'{--wp-admin-pass,--wpp}'=[Admin password]:password' \
+        '(-e --wp-admin-email --wpe)'{-e,--wp-admin-email,--wpe}'=[Admin email]:email' \
         '(-r --repo-url)'{-r,--repo-url}'=[Repository URL to clone]:url' \
         '(-g --git-user)'{-g,--git-user}'=[Git username]:user' \
         '(-p --git-protocol)'{-p,--git-protocol}'=[Git protocol]:protocol:(https ssh)' \
