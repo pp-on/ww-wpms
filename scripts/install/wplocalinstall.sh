@@ -588,37 +588,40 @@ INSTALLATION MODES:
   minimal   Minimal WordPress installation without git repository
   ddev      DDEV-based WordPress installation
 
+BATCH (multiple sites):
+  -A                    Install into every empty subdirectory of the current dir
+                        (non-interactive); the dir name is the site/repo name
+  -a                    Same, but prompt y/n/x per subdirectory
+
 DATABASE OPTIONS:
-  --db-host=HOST        Database hostname (default: localhost)
-  --db-user=USER        Database username (default: wordpress)
-  --db-password=PASS    Database password
-  --db-name=NAME        Database name (default: current directory name)
+  -H, --db-host=HOST    Database hostname (default: localhost)
+  -U, --db-user=USER    Database username (default: wordpress)
+  -P, --db-password=PASS  Database password
+  -N, --db-name=NAME    Database name (default: current directory name)
 
 WORDPRESS OPTIONS:
-  --wp-url=URL          WordPress site URL
-  --base-url=URL        Base URL for local dev (sets LOCAL_URL_BASE, e.g. netcup.local)
-  -b URL                Short form of --base-url
-  --wp-title=TITLE      WordPress site title
+  -u, --wp-url=URL      WordPress site URL
+  -b, --base-url=URL    Base URL for local dev (sets LOCAL_URL_BASE, e.g. netcup.local)
+  -t, --wp-title=TITLE  WordPress site title
   --wp-admin-user=USER  WordPress admin username (default: admin)
   --wp-admin-pass=PASS  WordPress admin password (auto-generated if not set)
-  --wp-admin-email=EMAIL WordPress admin email
+  -e, --wp-admin-email=EMAIL  WordPress admin email
 
 GIT OPTIONS:
-  --repo-url=URL        Full repository URL to clone
-  --git-user=USER       GitHub username (default: pfennigparade)
-  --git-protocol=PROTO  Git protocol: https or ssh (default: https)
-  --git-host=HOST       SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
-  -G HOST               Short form of --git-host
+  -r, --repo-url=URL    Full repository URL to clone
+  -g, --git-user=USER   GitHub username (default: pfennigparade)
+  -p, --git-protocol=PROTO  Git protocol: https or ssh (default: https)
+  -G, --git-host=HOST   SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
 
 OTHER OPTIONS:
-  --wp-cli=PATH         Path to WP-CLI executable (default: wp)
-  --target-dir=DIR      Target installation directory (default: current dir)
+  -w, --wp-cli=PATH     Path to WP-CLI executable (default: wp)
+  -d, --target-dir=DIR  Target installation directory (default: current dir)
   -n, --nip-io          Use nip.io for DNS (no hosts file needed, DDEV mode only)
   --lemp, --nginx       Generate nginx.conf (LEMP stack, default)
   --lamp, --apache      Generate .htaccess instead of nginx.conf (LAMP stack)
-  --production          Add security hardening to nginx.conf (deny xmlrpc, headers, etc.)
-  --multisite           Install as WordPress Multisite (wp core multisite-install)
-  --subdomains          Use subdomain network (default: subdirectory); requires --multisite
+  -X, --production      Add security hardening to nginx.conf (deny xmlrpc, headers, etc.)
+  -m, --multisite       Install as WordPress Multisite (wp core multisite-install)
+  -s, --subdomains      Use subdomain network (default: subdirectory); requires --multisite
   -v, --verbose         Show full install log instead of the progress bar
   --debug               Enable debug mode
   --help                Show this help message
@@ -782,6 +785,25 @@ parse_arguments() {
                 ;;
             --subdomains)
                 WP_MULTISITE_SUBDOMAINS=true
+                ;;
+            # Short aliases for the long options above (take the next arg as value)
+            -w) [[ -z "${2:-}" ]] && { log_error "-w requires an argument"; exit 1; }; WP_CLI_PATH="$2"; skip_next=true ;;
+            -d) [[ -z "${2:-}" ]] && { log_error "-d requires an argument"; exit 1; }; cd "$2" || { log_error "Cannot change to directory: $2"; exit 1; }; skip_next=true ;;
+            -t) [[ -z "${2:-}" ]] && { log_error "-t requires an argument"; exit 1; }; WP_TITLE="$2"; skip_next=true ;;
+            -u) [[ -z "${2:-}" ]] && { log_error "-u requires an argument"; exit 1; }; WP_URL="$2"; skip_next=true ;;
+            -e) [[ -z "${2:-}" ]] && { log_error "-e requires an argument"; exit 1; }; WP_ADMIN_EMAIL="$2"; skip_next=true ;;
+            -r) [[ -z "${2:-}" ]] && { log_error "-r requires an argument"; exit 1; }; REPO_URL="$2"; skip_next=true ;;
+            -g) [[ -z "${2:-}" ]] && { log_error "-g requires an argument"; exit 1; }; GIT_USER="$2"; skip_next=true ;;
+            -p) [[ -z "${2:-}" ]] && { log_error "-p requires an argument"; exit 1; }; GIT_PROTOCOL="$2"; skip_next=true ;;
+            -H) [[ -z "${2:-}" ]] && { log_error "-H requires an argument"; exit 1; }; DB_HOST="$2"; skip_next=true ;;
+            -U) [[ -z "${2:-}" ]] && { log_error "-U requires an argument"; exit 1; }; DB_USER="$2"; skip_next=true ;;
+            -P) [[ -z "${2:-}" ]] && { log_error "-P requires an argument"; exit 1; }; DB_PASSWORD="$2"; skip_next=true ;;
+            -N) [[ -z "${2:-}" ]] && { log_error "-N requires an argument"; exit 1; }; DB_NAME="$2"; skip_next=true ;;
+            -m) WP_MULTISITE=true ;;
+            -s) WP_MULTISITE_SUBDOMAINS=true ;;
+            -X) NGINX_PRODUCTION=true ;;
+            -a|-A)
+                : # batch (multi-site) flags handled by the webwerk dispatcher; no-op here
                 ;;
             -v|--verbose)
                 : # handled by the webwerk dispatcher (full logs vs progress bar); no-op here

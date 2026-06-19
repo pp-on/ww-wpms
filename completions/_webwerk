@@ -43,28 +43,30 @@ _webwerk_commands() {
 _webwerk_install() {
     _arguments \
         '1: :_webwerk_install_modes' \
-        '--db-host=[Database hostname]:host' \
-        '--db-user=[Database username]:user' \
-        '--db-password=[Database password]:password' \
-        '--db-name=[Database name]:name' \
-        '--wp-url=[WordPress site URL]:url' \
+        '-A[Batch: install into every empty subdirectory (non-interactive)]' \
+        '-a[Batch: prompt y/n/x per empty subdirectory]' \
+        '(-H --db-host)'{-H,--db-host}'=[Database hostname]:host' \
+        '(-U --db-user)'{-U,--db-user}'=[Database username]:user' \
+        '(-P --db-password)'{-P,--db-password}'=[Database password]:password' \
+        '(-N --db-name)'{-N,--db-name}'=[Database name]:name' \
+        '(-u --wp-url)'{-u,--wp-url}'=[WordPress site URL]:url' \
         '(-b --base-url)'{-b,--base-url}'=[Base URL for local dev]:url' \
-        '--wp-title=[WordPress site title]:title' \
+        '(-t --wp-title)'{-t,--wp-title}'=[WordPress site title]:title' \
         '--wp-admin-user=[Admin username]:user' \
         '--wp-admin-pass=[Admin password]:password' \
-        '--wp-admin-email=[Admin email]:email' \
-        '--repo-url=[Repository URL to clone]:url' \
-        '--git-user=[Git username]:user' \
-        '--git-protocol=[Git protocol]:protocol:(https ssh)' \
+        '(-e --wp-admin-email)'{-e,--wp-admin-email}'=[Admin email]:email' \
+        '(-r --repo-url)'{-r,--repo-url}'=[Repository URL to clone]:url' \
+        '(-g --git-user)'{-g,--git-user}'=[Git username]:user' \
+        '(-p --git-protocol)'{-p,--git-protocol}'=[Git protocol]:protocol:(https ssh)' \
         '(-G --git-host)'{-G,--git-host}'=[SSH host alias from ~/.ssh/config]:host' \
-        '--wp-cli=[Path to WP-CLI executable]:path:_files' \
-        '--target-dir=[Target installation directory]:dir:_files -/' \
+        '(-w --wp-cli)'{-w,--wp-cli}'=[Path to WP-CLI executable]:path:_files' \
+        '(-d --target-dir)'{-d,--target-dir}'=[Target installation directory]:dir:_files -/' \
         '(-n --nip-io)'{-n,--nip-io}'[Use nip.io DNS (DDEV only)]' \
         '--lemp[Generate nginx.conf (default)]' \
         '--lamp[Generate .htaccess (LAMP stack)]' \
-        '--production[Add nginx security hardening]' \
-        '--multisite[Install as WordPress Multisite]' \
-        '--subdomains[Subdomain network (requires --multisite)]' \
+        '(-X --production)'{-X,--production}'[Add nginx security hardening]' \
+        '(-m --multisite)'{-m,--multisite}'[Install as WordPress Multisite]' \
+        '(-s --subdomains)'{-s,--subdomains}'[Subdomain network (requires --multisite)]' \
         '(-v --verbose)'{-v,--verbose}'[Show full install log instead of the progress bar]' \
         '--debug[Enable debug mode]' \
         '(-h --help)'{-h,--help}'[Show help]'

@@ -274,14 +274,20 @@ run_install() {
         log_error "Installation script not found: $installer"
         exit 1
     fi
-    local a verbose="${WEBWERK_INSTALL_VERBOSE:-0}" args=() rc
+    local a verbose="${WEBWERK_INSTALL_VERBOSE:-0}" batch="" args=() rc
     for a in "$@"; do
         case "$a" in
             -v|--verbose) verbose=1 ;;
             --debug)      verbose=1; args+=("$a") ;;
-            *)         args+=("$a") ;;
+            -A)           batch=auto ;;
+            -a)           batch=ask ;;
+            *)            args+=("$a") ;;
         esac
     done
+    if [[ -n "$batch" ]]; then
+        run_install_batch "$batch" "$verbose" "${args[@]}"
+        exit $?
+    fi
     set +e   # capture the installer's exit code ourselves (dispatcher runs under set -e)
     if [[ -t 1 && "$verbose" != "1" ]]; then
         bash "$installer" "${args[@]}" 2>&1 | render_install_progress
@@ -291,6 +297,50 @@ run_install() {
         rc=$?
     fi
     exit "$rc"
+}
+
+# Batch install into each empty immediate subdirectory of the current dir.
+# $1 = ask|auto, $2 = verbose (0/1), rest = installer args (incl. mode).
+# Non-empty dirs are skipped with a warning; the dir name is the site/repo name.
+run_install_batch() {
+    local prompt="$1" verbose="$2"; shift 2
+    local installer="${SCRIPT_DIR}/scripts/install/wplocalinstall.sh"
+    local d ans rc ok=0 skipped=0 failed=0 idx=0 dirs=()
+    for d in */; do [[ -d "$d" ]] && dirs+=("${d%/}"); done
+    local total=${#dirs[@]}
+    if (( total == 0 )); then
+        log_warning "No subdirectories to install in $(pwd)"
+        return 0
+    fi
+    log_info "Batch install: $total subdirectories under $(pwd)"
+    for d in "${dirs[@]}"; do
+        (( ++idx ))
+        if [[ -n "$(ls -A "$d" 2>/dev/null)" ]]; then
+            log_warning "[$idx/$total] $d — not empty, skipping"
+            (( ++skipped )); continue
+        fi
+        if [[ "$prompt" == "ask" ]]; then
+            read -rsn1 -p "[$idx/$total] Install $d? [y/n/x] " ans; echo
+            case "${ans,,}" in
+                y) ;;
+                x) log_info "Stopped at $d"; break ;;
+                *) (( ++skipped )); continue ;;
+            esac
+        fi
+        echo -e "\033[36m=== [$idx/$total] $d ===\033[0m"
+        set +e
+        if [[ -t 1 && "$verbose" != "1" ]]; then
+            ( cd "$d" && bash "$installer" "$@" ) 2>&1 | render_install_progress
+            rc=${PIPESTATUS[0]}
+        else
+            ( cd "$d" && bash "$installer" "$@" )
+            rc=$?
+        fi
+        set -e
+        if (( rc == 0 )); then (( ++ok )); else (( ++failed )); log_warning "[$idx/$total] $d failed (rc=$rc)"; fi
+    done
+    echo -e "\033[32mBatch done: ${ok} ok, ${skipped} skipped, ${failed} failed\033[0m"
+    (( failed == 0 ))
 }
 
 #===============================================================================

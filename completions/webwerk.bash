@@ -49,6 +49,7 @@ _webwerk() {
             case "$cur" in
                 -*)
                     COMPREPLY=( $(compgen -W '
+                        -A -a
                         --db-host --db-user --db-password --db-name
                         --wp-url --base-url --wp-title
                         --wp-admin-user --wp-admin-pass --wp-admin-email
@@ -57,6 +58,7 @@ _webwerk() {
                         --nip-io --lemp --lamp --production
                         --multisite --subdomains -v --verbose --debug --help
                         -b -G -n -h
+                        -H -U -P -N -u -t -e -r -g -p -w -d -X -m -s
                     ' -- "$cur") )
                     ;;
                 *)
