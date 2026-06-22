@@ -151,6 +151,10 @@ COMMANDS:
   ddev update      Update DDEV WordPress site
   ddev remove      Remove DDEV containers and configuration
 
+  Commands and modes accept any unambiguous abbreviation, e.g.
+  'ins'->install, 'upd'->update, 'st'->status, 'min'->minimal,
+  'dd'->ddev, 'rem'->remove; 'wp' is an alias for the full install mode.
+
 OPTIONS:
   --debug          Enable debug mode (works with all commands)
 
@@ -347,6 +351,22 @@ run_install_batch() {
 # MAIN EXECUTION
 #===============================================================================
 
+# Resolve an abbreviation to a canonical word by unique-prefix match.
+# Usage: resolve_word <token> <canonical>...
+# Echoes the canonical word on an exact or unambiguous prefix match,
+# otherwise echoes the token unchanged (so callers can reject it as before).
+resolve_word() {
+    local token="$1"; shift
+    local w match="" count=0
+    for w in "$@"; do
+        [[ "$w" == "$token" ]] && { echo "$w"; return 0; }   # exact match wins
+    done
+    for w in "$@"; do
+        [[ "$w" == "$token"* ]] && { match="$w"; count=$((count + 1)); }
+    done
+    if [[ $count -eq 1 ]]; then echo "$match"; else echo "$token"; fi
+}
+
 main() {
     local command="${1:-}"
 
@@ -357,6 +377,12 @@ main() {
             export WEBWERK_QUIET=1
         fi
     done
+
+    # Accept unambiguous abbreviations for the top-level command
+    # (e.g. ins->install, upd->update, st->status, legacy full/minimal/ddev)
+    if [[ -n "$command" && "$command" != -* ]]; then
+        command="$(resolve_word "$command" install update mod status full minimal ddev)"
+    fi
 
     # Handle special cases before loading configuration
     case "$command" in
@@ -390,7 +416,7 @@ main() {
             "install" | "full" | "minimal")
                 exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
             "ddev")
-                case "${2:-}" in
+                case "$(resolve_word "${2:-}" install remove mod update)" in
                     "update") exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
                     "mod")    exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
                     *)        exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
@@ -412,9 +438,14 @@ main() {
     # Execute command
     case "$command" in
         "install")
-            # New syntax: webwerk install [full|minimal|ddev]
+            # New syntax: webwerk install [full|minimal|ddev|wp]
             local mode="${1:-full}"
             case "$mode" in
+                -*|"") ;;  # leave flags / empty as-is
+                *) mode="$(resolve_word "$mode" full minimal ddev wp)" ;;
+            esac
+            case "$mode" in
+                "wp") mode="full"; shift ;;  # wp is an alias for full
                 "full" | "minimal" | "ddev") shift ;;
                 *) mode="full" ;;  # default to full if no mode given
             esac
@@ -423,7 +454,8 @@ main() {
             ;;
         "full" | "minimal")
             # Legacy syntax: webwerk full install / webwerk minimal install
-            local subcommand="${1:-}"
+            local subcommand
+            subcommand="$(resolve_word "${1:-}" install)"
             if [[ "$subcommand" != "install" ]]; then
                 log_error "Expected 'install' after '$command', got: ${subcommand:-nothing}"
                 log_error "Usage: $0 install $command [OPTIONS]"
@@ -435,8 +467,9 @@ main() {
             run_install "$command" "$@"
             ;;
         "ddev")
-            # DDEV mode - expect "install" or "remove" as next argument
-            local subcommand="${1:-}"
+            # DDEV mode - expect "install", "remove", "mod", or "update" next
+            local subcommand
+            subcommand="$(resolve_word "${1:-}" install remove mod update)"
             case "$subcommand" in
                 "install")
                     shift  # Remove "install" from arguments
@@ -571,7 +604,7 @@ main() {
                 exit 1
             fi
             # Optional environment target: wp (default, local) or ddev
-            case "${1:-}" in
+            case "$(resolve_word "${1:-}" wp ddev)" in
                 "ddev")
                     shift
                     log_info "Executing WordPress modification (mode: ddev)"
