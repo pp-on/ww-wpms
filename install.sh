@@ -167,7 +167,7 @@ install_webwerk() {
 
     # Show configuration reminder
     log_info "Don't forget to configure your environment:"
-    log_info "1. Copy .env.example to .env and edit your settings"
+    log_info "1. Copy env.example to .env and edit your settings"
     log_info "2. Create ~/.keys with your license keys"
     log_info "3. Run 'webwerk status' to verify configuration"
 }

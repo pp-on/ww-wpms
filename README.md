@@ -149,7 +149,7 @@ sudo ./install.sh
 
 **Copy the .env template:**
 ```bash
-cp .env.example .env
+cp env.example .env
 # Edit .env with your preferred settings
 ```
 
@@ -195,8 +195,8 @@ webwerk install -h
 ```
 webwerk/
 ├── webwerk                          # Main dispatcher script
-├── .env                            # Configuration (copy from .env.example)
-├── .env.example                    # Configuration template
+├── .env                            # Configuration (copy from env.example)
+├── env.example                    # Configuration template
 ├── keys.template                   # License keys template
 ├── README.md                       # This file
 ├── completions/
@@ -828,7 +828,7 @@ webwerk mod -s mysite -i acf-pro
 1. **Always use `.env` file**: Don't hardcode configuration values
 2. **Keep `.keys` secure**: Set permissions to `600` (owner read/write only)
 3. **Use separate configs**: Different `.env` for development/production
-4. **Version control**: Add `.env.example` but exclude `.env`
+4. **Version control**: Add `env.example` but exclude `.env`
 
 ### Security
 1. **Strong passwords**: Use generated passwords for database and admin users
