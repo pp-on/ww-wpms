@@ -107,6 +107,34 @@ install_completions() {
     fi
 }
 
+# Offer to scaffold a project .env from the template (guarded, opt-in).
+# Never overwrites; skips when an existing config is already in effect.
+scaffold_env() {
+    local template="${SCRIPT_DIR}/env.example"
+    local target="${SCRIPT_DIR}/.env"
+
+    if [[ -f "$target" ]]; then
+        log_info "Project .env already exists, leaving it untouched"
+        return
+    fi
+    if [[ -f "$HOME/.env" ]]; then
+        log_info "Using existing ~/.env for configuration (no project .env created)"
+        return
+    fi
+    if [[ ! -f "$template" ]]; then
+        log_warning "env.example template not found, skipping .env scaffold"
+        return
+    fi
+
+    read -rp "$(echo -e "${CYAN}No configuration found. Create .env from env.example? [y/N] ${COLOR_OFF}")" reply
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+        cp "$template" "$target"
+        log_success "Created $target — edit it with your DB and site settings before installing"
+    else
+        log_info "Skipped .env creation; configure ~/.env or $target manually"
+    fi
+}
+
 # Main installation function
 install_webwerk() {
     log_info "Installing Webwerk WordPress Management Suite..."
@@ -165,9 +193,12 @@ install_webwerk() {
     # Install shell completions
     install_completions
 
+    # Offer to scaffold a project .env (guarded, opt-in)
+    scaffold_env
+
     # Show configuration reminder
     log_info "Don't forget to configure your environment:"
-    log_info "1. Copy env.example to .env and edit your settings"
+    log_info "1. Copy env.example to .env and edit your settings (if not done above)"
     log_info "2. Create ~/.keys with your license keys"
     log_info "3. Run 'webwerk status' to verify configuration"
 }
