@@ -148,6 +148,8 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   update [ddev]    Update WordPress core, plugins and themes (local default)
   mod [ddev]       Modify/manage existing WordPress sites (local default)
   remove ddev      Remove DDEV containers and configuration
+  remove local     DESTRUCTIVE: drop the DB + delete files of a WP site
+                   (current dir; -s sites; -a/-A all sites; -y skip prompt)
   status           Show system configuration and script availability
 
   Verbs and modes accept any unambiguous abbreviation:
@@ -170,6 +172,9 @@ EXAMPLES:
   $0 mod --sites=mysite --wp-debug on
   $0 mod ddev -S                          # Modify DDEV site
   $0 remove ddev                          # (same as: webwerk ddev remove)
+  $0 remove local                         # drop DB + wipe files of the WP site here
+  $0 remove local -s acme                 # remove the 'acme' site under the base dir
+  $0 remove local -A                      # remove every WP site under the base dir
 
 CONFIGURATION:
   Configuration is loaded from:
@@ -395,6 +400,83 @@ ddev_update() {
     exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --sites . "$@"
 }
 
+# Remove host-side WordPress site(s): drop each site's database, then wipe the
+# directory contents (the now-empty dir is kept). DESTRUCTIVE.
+#   (default)   current dir, which must be a WordPress install
+#   -s a,b      those subdirs of the base dir
+#   -a / -A     every WP site under the base dir  (-a prompts each, -A auto)
+#   -y          skip the per-site confirmation
+remove_local() {
+    local base="${WORDPRESS_BASE_DIR:-.}"
+    local target="cwd" assume_yes=0 sites_csv=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s|--sites)          sites_csv="${2:-}"; shift 2 ;;
+            -s=*|--sites=*)      sites_csv="${1#*=}"; shift ;;
+            -a|--all-sites)      target="all"; shift ;;
+            -A|--all-sites-auto) target="all"; assume_yes=1; shift ;;
+            -y|--yes)            assume_yes=1; shift ;;
+            *) log_error "remove local: unknown option '$1'"; exit 1 ;;
+        esac
+    done
+
+    local dirs=() s cfg
+    if [[ -n "$sites_csv" ]]; then
+        local IFS=','
+        for s in $sites_csv; do dirs+=("$base/$s"); done
+    elif [[ "$target" == "all" ]]; then
+        while IFS= read -r cfg; do dirs+=("$(dirname "$cfg")"); done \
+            < <(find "$base" -maxdepth 2 -name wp-config.php 2>/dev/null | sort)
+        if [[ ${#dirs[@]} -eq 0 ]]; then
+            log_warning "No WordPress sites found under $base"; exit 0
+        fi
+    else
+        dirs+=(".")
+    fi
+
+    # the dispatcher logs into ${PWD}/webwerk.log; remember that dir so we can
+    # drop the log we recreate if we end up wiping the dir it lives in
+    local log_dir wiped_log_dir=0
+    log_dir="$(cd "$(dirname "$LOG_FILE")" 2>/dev/null && pwd)"
+
+    local dir abs dbname reply removed=0 skipped=0
+    for dir in "${dirs[@]}"; do
+        if [[ ! -f "$dir/wp-config.php" ]] \
+           || ! "${WP_CLI_PATH}" core is-installed --path="$dir" >/dev/null 2>&1; then
+            log_warning "Not a WordPress install, skipping: $dir"
+            skipped=$((skipped + 1)); continue
+        fi
+        abs="$(cd "$dir" 2>/dev/null && pwd)"
+        case "$abs" in
+            "" | "/" | "$HOME")
+                log_error "Refusing to delete protected path: ${abs:-$dir}"
+                skipped=$((skipped + 1)); continue ;;
+        esac
+        dbname="$("${WP_CLI_PATH}" config get DB_NAME --path="$dir" 2>/dev/null || echo '?')"
+
+        if [[ "$assume_yes" -ne 1 ]]; then
+            log_warning "About to DROP database '$dbname' and delete all files in:"
+            log_warning "  $abs"
+            read -rp "Remove this site? [y/N] " reply
+            if [[ ! "$reply" =~ ^[Yy]$ ]]; then
+                log_info "Skipped: $abs"; skipped=$((skipped + 1)); continue
+            fi
+        fi
+
+        log_info "Dropping database '$dbname'"
+        "${WP_CLI_PATH}" db drop --yes --path="$dir" \
+            || log_warning "Could not drop database '$dbname' (continuing with file deletion)"
+        log_info "Deleting site files in $abs"
+        find "$abs" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        [[ -n "$log_dir" && "$abs" == "$log_dir" ]] && wiped_log_dir=1
+        log_success "Removed site: $abs"
+        removed=$((removed + 1))
+    done
+    log_info "Remove done: $removed removed, $skipped skipped"
+    # if our own log got recreated inside a wiped dir, remove it last (nothing logs after)
+    [[ "$wiped_log_dir" -eq 1 ]] && rm -f "$LOG_FILE"
+}
+
 main() {
     local command="${1:-}"
 
@@ -617,11 +699,16 @@ main() {
             exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
             ;;
         "remove")
-            # Syntax: webwerk remove [ddev]  (only ddev sites can be removed)
-            case "$(resolve_word "${1:-ddev}" local bare ddev)" in
-                "ddev") ddev_remove ;;
+            # Syntax: webwerk remove local|ddev [OPTIONS]  (DESTRUCTIVE; mode required)
+            case "$(resolve_word "${1:-}" local bare ddev)" in
+                "ddev")  ddev_remove ;;
+                "local") shift; remove_local "$@" ;;
+                "bare")
+                    log_error "No separate 'bare' removal; use: webwerk remove local"
+                    exit 1
+                    ;;
                 *)
-                    log_error "Only DDEV sites can be removed. Use: webwerk remove ddev"
+                    log_error "remove: specify a mode -> webwerk remove local|ddev"
                     exit 1
                     ;;
             esac

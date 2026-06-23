@@ -123,6 +123,28 @@ complete -c webwerk -f -n __ww_ddev_no_sub -a mod     -d 'Modify DDEV site'
 complete -c webwerk -f -n __ww_ddev_no_sub -a update  -d 'Update DDEV site'
 complete -c webwerk -f -n __ww_ddev_no_sub -a remove  -d 'Remove DDEV containers'
 
+# ── remove: mode + options ────────────────────────────────────────────────────
+
+function __ww_remove_ctx
+    __fish_seen_subcommand_from remove
+    and not __fish_seen_subcommand_from install update mod
+end
+function __ww_remove_no_mode
+    __ww_remove_ctx
+    and not __fish_seen_subcommand_from local ddev
+end
+function __ww_remove_local
+    __ww_remove_ctx
+    and __fish_seen_subcommand_from local
+end
+
+complete -c webwerk -f -n __ww_remove_no_mode -a local -d 'DESTRUCTIVE: drop DB + delete files of a WP site'
+complete -c webwerk -f -n __ww_remove_no_mode -a ddev  -d 'Remove DDEV containers'
+complete -c webwerk    -n __ww_remove_local -s s -l sites          -r -d 'Site(s) to remove (comma-separated)'
+complete -c webwerk -f -n __ww_remove_local -s a -l all-sites          -d 'All sites under base dir (prompt each)'
+complete -c webwerk -f -n __ww_remove_local -s A -l all-sites-auto     -d 'All sites under base dir (no prompt)'
+complete -c webwerk -f -n __ww_remove_local -s y -l yes                -d 'Skip the confirmation prompt'
+
 # ── mod: environment target (local default / ddev) ────────────────────────────
 
 complete -c webwerk -f -n __ww_mod_env -a local -d 'Modify local WordPress sites (default)'

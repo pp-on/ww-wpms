@@ -22,6 +22,7 @@ _webwerk() {
                 install)        _webwerk_install ;;
                 update)         _webwerk_update ;;
                 mod)            _webwerk_mod ;;
+                remove)         _webwerk_remove ;;
                 ddev)           _webwerk_ddev ;;
             esac
             ;;
@@ -152,6 +153,22 @@ _webwerk_mod() {
         '(-S --force-https)'{-S,--force-https}'[Force HTTPS]' \
         '(-w --location-wp)'{-w,--location-wp}'=[Set WP-CLI path]:path:_files' \
         '(-h --help)'{-h,--help}'[Show help]'
+}
+
+_webwerk_remove() {
+    if (( ${words[(I)local]} )); then
+        _arguments \
+            '(-s --sites)'{-s,--sites}'=[Site(s) to remove (comma-separated)]:sites' \
+            '(-a --all-sites)'{-a,--all-sites}'[All sites under base dir (prompt each)]' \
+            '(-A --all-sites-auto)'{-A,--all-sites-auto}'[All sites under base dir (no prompt)]' \
+            '(-y --yes)'{-y,--yes}'[Skip the confirmation prompt]'
+    else
+        local modes=(
+            'local:DESTRUCTIVE: drop DB + delete files of a WP site'
+            'ddev:Remove DDEV containers'
+        )
+        _describe 'mode' modes
+    fi
 }
 
 _webwerk_ddev() {

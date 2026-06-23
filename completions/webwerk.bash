@@ -166,6 +166,14 @@ _webwerk() {
                 COMPREPLY=( $(compgen -W "$ddev_subs" -- "$cur") )
             fi
             ;;
+
+        remove)
+            if _webwerk_has_word local; then
+                COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto -y --yes' -- "$cur") )
+            elif ! _webwerk_has_word ddev; then
+                COMPREPLY=( $(compgen -W 'local ddev' -- "$cur") )
+            fi
+            ;;
     esac
 }
 
