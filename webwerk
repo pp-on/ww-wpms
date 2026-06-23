@@ -141,37 +141,35 @@ Webwerk WordPress Management Suite v2.0
 
 USAGE: $0 COMMAND [OPTIONS]
 
-COMMANDS:
-  install [full]   Full WordPress installation with git repository (default)
-  install minimal  Minimal WordPress installation without git repository
+COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | ddev )
+  install [local]  Local WordPress installation with git repository (default)
+  install bare     Bare WordPress installation without git repository
   install ddev     DDEV-based WordPress installation
-  update           Update WordPress core and plugins (wp, default)
-  mod [wp]         Modify/manage existing WordPress sites (wp, default)
-  mod ddev         Modify DDEV WordPress site
-  ddev update      Update DDEV WordPress site
-  ddev remove      Remove DDEV containers and configuration
+  update [ddev]    Update WordPress core, plugins and themes (local default)
+  mod [ddev]       Modify/manage existing WordPress sites (local default)
+  remove ddev      Remove DDEV containers and configuration
+  status           Show system configuration and script availability
 
-  Commands and modes accept any unambiguous abbreviation, e.g.
-  'ins'->install, 'upd'->update, 'st'->status, 'min'->minimal,
-  'dd'->ddev, 'rem'->remove; 'wp' is an alias for the full install mode.
+  Verbs and modes accept any unambiguous abbreviation:
+  i->install  u->update  m->mod  r->remove  s->status
+  l->local    b->bare    d->ddev
+  (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
 
 OPTIONS:
   --debug          Enable debug mode (works with all commands)
 
 EXAMPLES:
-  $0 install --wp-title="My Site"
-  $0 install full --wp-title="My Site"
-  $0 install minimal
+  $0 install --wp-title="My Site"        # local install (default)
+  $0 install bare
   $0 install ddev -G arbeit
-  $0 install ddev -n                      # Use nip.io (no hosts file needed)
+  $0 i ddev -n                            # Use nip.io (no hosts file needed)
   $0 update --sites=site1,site2
   $0 update --all-sites --yes-update
+  $0 update ddev                          # Update the DDEV site here
+  $0 u ddev -g --sum                      # Update DDEV site with git commits
   $0 mod --sites=mysite --wp-debug on
-  $0 ddev update                          # Update all plugins
-  $0 ddev update -y                       # Auto-confirm all updates
-  $0 ddev update -g --sum                 # Update with git commits
   $0 mod ddev -S                          # Modify DDEV site
-  $0 ddev remove
+  $0 remove ddev                          # (same as: webwerk ddev remove)
 
 CONFIGURATION:
   Configuration is loaded from:
@@ -367,6 +365,36 @@ resolve_word() {
     if [[ $count -eq 1 ]]; then echo "$match"; else echo "$token"; fi
 }
 
+# Remove the DDEV containers/config in the current directory.
+ddev_remove() {
+    log_info "Removing DDEV containers and configuration"
+    if [[ ! -f ".ddev/config.yaml" ]]; then
+        log_warning "No DDEV configuration found in current directory"
+        exit 0
+    fi
+    log_info "Stopping DDEV containers..."
+    ddev stop
+    log_info "Removing DDEV containers..."
+    ddev delete -O
+    log_success "DDEV containers removed successfully"
+}
+
+# Run the updater against the DDEV site in the current directory.
+ddev_update() {
+    log_info "Running WordPress update (mode: ddev)"
+    if ! ddev status >/dev/null 2>&1; then
+        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
+        exit 1
+    fi
+    export WP_CLI_PATH="ddev wp"
+    export WORDPRESS_BASE_DIR=""
+    if [[ ! -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
+        log_error "Update script not found: ${SCRIPT_DIR}/scripts/update/wpupdate.sh"
+        exit 1
+    fi
+    exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --sites . "$@"
+}
+
 main() {
     local command="${1:-}"
 
@@ -379,9 +407,9 @@ main() {
     done
 
     # Accept unambiguous abbreviations for the top-level command
-    # (e.g. ins->install, upd->update, st->status, legacy full/minimal/ddev)
+    # (i->install, u->update, m->mod, r->remove, s->status, d->ddev)
     if [[ -n "$command" && "$command" != -* ]]; then
-        command="$(resolve_word "$command" install update mod status full minimal ddev)"
+        command="$(resolve_word "$command" install update mod remove status ddev)"
     fi
 
     # Handle special cases before loading configuration
@@ -409,11 +437,11 @@ main() {
     done
     if [[ "$help_requested" == true ]]; then
         case "$command" in
-            "u" | "update")
+            "update")
                 exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
             "mod")
                 exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
-            "install" | "full" | "minimal")
+            "install")
                 exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
             "ddev")
                 case "$(resolve_word "${2:-}" install remove mod update)" in
@@ -438,33 +466,23 @@ main() {
     # Execute command
     case "$command" in
         "install")
-            # New syntax: webwerk install [full|minimal|ddev|wp]
-            local mode="${1:-full}"
-            case "$mode" in
-                -*|"") ;;  # leave flags / empty as-is
-                *) mode="$(resolve_word "$mode" full minimal ddev wp)" ;;
-            esac
-            case "$mode" in
-                "wp") mode="full"; shift ;;  # wp is an alias for full
-                "full" | "minimal" | "ddev") shift ;;
-                *) mode="full" ;;  # default to full if no mode given
+            # Syntax: webwerk install [local|bare|ddev]  (local is the default)
+            local mode="local"
+            case "${1:-}" in
+                -*|"") ;;  # no mode word (flag or none): keep default, consume nothing
+                *)
+                    mode="$(resolve_word "$1" local bare ddev)"
+                    case "$mode" in
+                        local|bare|ddev) shift ;;  # a real mode word -> consume it
+                        *)
+                            log_error "Unknown install mode: '$1'. Use: local, bare, ddev"
+                            exit 1
+                            ;;
+                    esac
+                    ;;
             esac
             log_info "Executing WordPress installation (mode: $mode)"
             run_install "$mode" "$@"
-            ;;
-        "full" | "minimal")
-            # Legacy syntax: webwerk full install / webwerk minimal install
-            local subcommand
-            subcommand="$(resolve_word "${1:-}" install)"
-            if [[ "$subcommand" != "install" ]]; then
-                log_error "Expected 'install' after '$command', got: ${subcommand:-nothing}"
-                log_error "Usage: $0 install $command [OPTIONS]"
-                exit 1
-            fi
-            shift  # Remove "install" from arguments
-
-            log_info "Executing WordPress installation (mode: $command)"
-            run_install "$command" "$@"
             ;;
         "ddev")
             # DDEV mode - expect "install", "remove", "mod", or "update" next
@@ -478,22 +496,7 @@ main() {
                     ;;
                 "remove")
                     shift  # Remove "remove" from arguments
-                    log_info "Removing DDEV containers and configuration"
-
-                    # Check if DDEV is configured
-                    if [[ ! -f ".ddev/config.yaml" ]]; then
-                        log_warning "No DDEV configuration found in current directory"
-                        exit 0
-                    fi
-
-                    # Stop and remove DDEV containers
-                    log_info "Stopping DDEV containers..."
-                    ddev stop
-
-                    log_info "Removing DDEV containers..."
-                    ddev delete -O
-
-                    log_success "DDEV containers removed successfully"
+                    ddev_remove
                     ;;
                 "mod")
                     shift  # Remove "mod" from arguments
@@ -518,24 +521,7 @@ main() {
                     ;;
                 "update")
                     shift  # Remove "update" from arguments
-                    log_info "Running WordPress update (mode: ddev)"
-
-                    # Check if DDEV is running
-                    if ! ddev status >/dev/null 2>&1; then
-                        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
-                        exit 1
-                    fi
-
-                    # Set DDEV-specific environment variables
-                    export WP_CLI_PATH="ddev wp"
-                    export WORDPRESS_BASE_DIR=""
-
-                    if [[ -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
-                        exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --sites . "$@"
-                    else
-                        log_error "Update script not found: ${SCRIPT_DIR}/scripts/update/wpupdate.sh"
-                        exit 1
-                    fi
+                    ddev_update "$@"
                     ;;
                 *)
                     log_error "Expected 'install', 'remove', 'mod', or 'update' after 'ddev', got: ${subcommand:-nothing}"
@@ -544,11 +530,16 @@ main() {
                     ;;
             esac
             ;;
-        "u" | "update")
+        "update")
             if [[ ! -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then
                 log_error "Update script not found: ${SCRIPT_DIR}/scripts/update/wpupdate.sh"
                 exit 1
             fi
+            # Optional leading mode: 'ddev' runs inside the container; 'local' is the default
+            case "$(resolve_word "${1:-}" local ddev)" in
+                "ddev")  shift; ddev_update "$@" ;;
+                "local") shift ;;  # explicit local; fall through to normal handling
+            esac
             local update_target="${1:-}"
             case "$update_target" in
                 "core")
@@ -603,8 +594,8 @@ main() {
                 log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
                 exit 1
             fi
-            # Optional environment target: wp (default, local) or ddev
-            case "$(resolve_word "${1:-}" wp ddev)" in
+            # Optional environment target: local (default) or ddev
+            case "$(resolve_word "${1:-}" local ddev)" in
                 "ddev")
                     shift
                     log_info "Executing WordPress modification (mode: ddev)"
@@ -615,15 +606,25 @@ main() {
                     export WP_CLI_PATH="ddev wp"
                     export WORDPRESS_BASE_DIR="."
                     ;;
-                "wp")
+                "local")
                     shift
-                    log_info "Executing WordPress modification (mode: wp)"
+                    log_info "Executing WordPress modification (mode: local)"
                     ;;
                 *)
-                    log_info "Executing WordPress modification (mode: wp)"
+                    log_info "Executing WordPress modification (mode: local)"
                     ;;
             esac
             exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
+            ;;
+        "remove")
+            # Syntax: webwerk remove [ddev]  (only ddev sites can be removed)
+            case "$(resolve_word "${1:-ddev}" local bare ddev)" in
+                "ddev") ddev_remove ;;
+                *)
+                    log_error "Only DDEV sites can be removed. Use: webwerk remove ddev"
+                    exit 1
+                    ;;
+            esac
             ;;
         *)
             log_error "Unknown command: $command"

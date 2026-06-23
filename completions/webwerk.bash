@@ -11,9 +11,9 @@ _webwerk() {
         cword=$COMP_CWORD
     }
 
-    local commands='install update u mod ddev status'
+    local commands='install update mod remove ddev status'
     local update_targets='core plugins plugin themes theme'
-    local install_modes='full minimal ddev'
+    local install_modes='local bare ddev'
     local ddev_subs='install mod update remove'
 
     # Helper: check if a word exists in the command line
@@ -28,7 +28,7 @@ _webwerk() {
     local i
     for (( i=1; i<cword; i++ )); do
         case "${words[i]}" in
-            install|update|u|mod|ddev|status) cmd="${words[i]}"; break ;;
+            install|update|mod|remove|ddev|status) cmd="${words[i]}"; break ;;
         esac
     done
 
@@ -63,7 +63,7 @@ _webwerk() {
                     ;;
                 *)
                     # Complete mode if not yet given
-                    if ! _webwerk_has_word full && ! _webwerk_has_word minimal && ! _webwerk_has_word ddev; then
+                    if ! _webwerk_has_word local && ! _webwerk_has_word bare && ! _webwerk_has_word ddev; then
                         COMPREPLY=( $(compgen -W "$install_modes" -- "$cur") )
                     fi
                     ;;
@@ -120,7 +120,7 @@ _webwerk() {
                 -x|--wp-debug) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '
-                wp ddev
+                local ddev
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites

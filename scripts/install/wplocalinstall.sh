@@ -153,8 +153,8 @@ validate_database() {
 #===============================================================================
 
 # Install WordPress with all features
-install_full_wordpress() {
-    log_info "Starting full WordPress installation for: $CURRENT_DIR"
+install_local_wordpress() {
+    log_info "Starting local WordPress installation for: $CURRENT_DIR"
     
     download_wordpress
     create_wp_config
@@ -166,12 +166,12 @@ install_full_wordpress() {
     setup_license_keys
     set_permissions
 
-    log_success "Full WordPress installation completed"
+    log_success "Local WordPress installation completed"
 }
 
-# Install minimal WordPress (without git repo)
-install_minimal_wordpress() {
-    log_info "Starting minimal WordPress installation for: $CURRENT_DIR"
+# Install bare WordPress (without git repo)
+install_bare_wordpress() {
+    log_info "Starting bare WordPress installation for: $CURRENT_DIR"
     
     download_wordpress
     create_wp_config
@@ -179,7 +179,7 @@ install_minimal_wordpress() {
     install_wordpress
     setup_webserver_config
 
-    log_success "Minimal WordPress installation completed"
+    log_success "Bare WordPress installation completed"
 }
 
 # Install WordPress with DDEV
@@ -572,20 +572,20 @@ WordPress Local Installation Script v2.0
 =========================================
 
 USAGE:
-  webwerk install [full|minimal|ddev] [OPTIONS]
+  webwerk install [local|bare|ddev] [OPTIONS]
   webwerk install -h    (this help)
 
 TLDR:
-  webwerk install                         # full install (default)
+  webwerk install                         # local install (default)
   webwerk install ddev -G arbeit          # DDEV install with SSH host alias
-  webwerk install minimal                 # minimal install without repo
+  webwerk install bare                    # bare install without repo
 
   Direct call (advanced):
-    $0 [full|minimal|ddev] [OPTIONS]
+    $0 [local|bare|ddev] [OPTIONS]
 
 INSTALLATION MODES:
-  full      Full WordPress installation with git repository (default)
-  minimal   Minimal WordPress installation without git repository
+  local     Local WordPress installation with git repository (default)
+  bare      Bare WordPress installation without git repository
   ddev      DDEV-based WordPress installation
 
 BATCH (multiple sites):
@@ -628,10 +628,10 @@ OTHER OPTIONS:
 
 EXAMPLES:
     webwerk install --wp-title="My Site"
-    webwerk install full --wp-title="My Site"
+    webwerk install local --wp-title="My Site"
     webwerk install ddev -G arbeit
     webwerk install ddev -n                        # Use nip.io (no admin rights needed)
-    webwerk install minimal --db-host=127.0.0.1
+    webwerk install bare --db-host=127.0.0.1
 
 CONFIGURATION FILES:
   .env          Environment variables (optional)
@@ -646,22 +646,22 @@ parse_arguments() {
     USE_NIP_IO=false
     USE_WINDOWS_HOSTS=false
 
-    # First argument is the installation mode (full/minimal/ddev)
-    local mode="${1:-full}"
+    # First argument is the installation mode (local/bare/ddev)
+    local mode="${1:-local}"
 
     # Validate mode
     case "$mode" in
-        full|minimal|ddev)
+        local|bare|ddev)
             # Valid mode, continue
             ;;
         --*)
-            # Old-style flag passed as first argument, default to full mode
-            mode="full"
+            # Old-style flag passed as first argument, default to local mode
+            mode="local"
             # Don't shift, process this as a regular argument
             ;;
         *)
             log_error "Invalid installation mode: $mode"
-            log_error "Valid modes: full, minimal, ddev"
+            log_error "Valid modes: local, bare, ddev"
             exit 1
             ;;
     esac
@@ -876,18 +876,18 @@ main() {
     
     # Execute installation based on mode
     case "$INSTALL_MODE" in
-        "full")
-            install_full_wordpress
+        "local")
+            install_local_wordpress
             ;;
-        "minimal")
-            install_minimal_wordpress
+        "bare")
+            install_bare_wordpress
             ;;
         "ddev")
             install_ddev_wordpress
             ;;
         *)
             log_error "Invalid installation mode: $INSTALL_MODE"
-            log_error "Valid modes: full, minimal, ddev"
+            log_error "Valid modes: local, bare, ddev"
             exit 1
             ;;
     esac

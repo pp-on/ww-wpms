@@ -20,7 +20,7 @@ _webwerk() {
         args)
             case $line[1] in
                 install)        _webwerk_install ;;
-                update|u)       _webwerk_update ;;
+                update)         _webwerk_update ;;
                 mod)            _webwerk_mod ;;
                 ddev)           _webwerk_ddev ;;
             esac
@@ -32,8 +32,8 @@ _webwerk_commands() {
     local commands=(
         'install:Install WordPress site'
         'update:Update WordPress (core+plugins+themes)'
-        'u:Update WordPress (alias)'
         'mod:Modify/manage existing WordPress sites'
+        'remove:Remove a DDEV site'
         'ddev:DDEV operations'
         'status:Show configuration status'
     )
@@ -74,8 +74,8 @@ _webwerk_install() {
 
 _webwerk_install_modes() {
     local modes=(
-        'full:Full install with git repository (default)'
-        'minimal:Minimal install without git'
+        'local:Local install with git repository (default)'
+        'bare:Bare install without git'
         'ddev:DDEV containerized install'
     )
     _describe 'mode' modes
@@ -102,6 +102,8 @@ _webwerk_update() {
 
 _webwerk_update_targets() {
     local targets=(
+        'local:Update local site (default)'
+        'ddev:Update the DDEV site here'
         'core:Update core only'
         'plugins:Update all plugins'
         'plugin:Update one plugin (name required)'
@@ -113,7 +115,7 @@ _webwerk_update_targets() {
 
 _webwerk_mod() {
     _arguments \
-        '1:environment:(wp ddev)' \
+        '1:environment:(local ddev)' \
         '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \

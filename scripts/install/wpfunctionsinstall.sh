@@ -764,8 +764,8 @@ start_ddev_containers() {
 #===============================================================================
 
 # Complete WordPress installation
-install_full_wordpress() {
-    log_info "Starting full WordPress installation"
+install_local_wordpress() {
+    log_info "Starting local WordPress installation"
     
     download_wordpress_core || return 1
     create_wordpress_config || return 1
@@ -777,13 +777,13 @@ install_full_wordpress() {
     setup_all_license_keys || return 1
     set_file_permissions || return 1
 
-    log_success "Full WordPress installation completed successfully"
+    log_success "Local WordPress installation completed successfully"
     return 0
 }
 
-# Minimal WordPress installation
-install_minimal_wordpress() {
-    log_info "Starting minimal WordPress installation"
+# Bare WordPress installation
+install_bare_wordpress() {
+    log_info "Starting bare WordPress installation"
     
     download_wordpress_core || return 1
     create_wordpress_config || return 1
@@ -793,7 +793,7 @@ install_minimal_wordpress() {
     disable_search_engine_indexing || return 1
     set_file_permissions || return 1
 
-    log_success "Minimal WordPress installation completed successfully"
+    log_success "Bare WordPress installation completed successfully"
     return 0
 }
 
@@ -886,7 +886,7 @@ export -f clone_git_repository activate_all_plugins
 export -f setup_all_license_keys setup_acf_pro_license setup_wpmdb_license setup_akeeba_download_id
 export -f create_nginx_config_file setup_webserver_config_file create_htaccess_file disable_search_engine_indexing set_file_permissions
 export -f initialize_ddev_project start_ddev_containers
-export -f install_full_wordpress install_minimal_wordpress install_ddev_wordpress
+export -f install_local_wordpress install_bare_wordpress install_ddev_wordpress
 export -f validate_wordpress_installation
 
 log_info "$SCRIPT_NAME v$SCRIPT_VERSION loaded successfully"

@@ -51,17 +51,17 @@ webwerk status
 
 ```bash
 # Full installation with repository cloning
-./webwerk full install --wp-title="Accessible Website"
+./webwerk install local --wp-title="Accessible Website"
 
 # Minimal WordPress-only installation
-./webwerk minimal install --wp-title="Simple Site"
+./webwerk install bare --wp-title="Simple Site"
 
 # DDEV containerized development
 ./webwerk ddev install --wp-title="DDEV Site"
 
 # Install shows a single-line phase progress bar by default on a TTY;
 # use -v/--verbose (or pipe the output) for the full log
-./webwerk install full --wp-title="Site" -v
+./webwerk install local --wp-title="Site" -v
 
 # Batch install into every empty subdirectory of the current dir
 # (dir name = site/repo name; non-empty dirs skipped). -a prompts per dir.
@@ -88,7 +88,7 @@ cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 ./webwerk mod -B    # brief status; -e = only errors, -O = only outdated
 ./webwerk mod -g    # wp-content git overview (remote, branch, status)
 
-# Modify a DDEV site (wp is default): webwerk mod [wp|ddev]
+# Modify a DDEV site (local is default): webwerk mod [local|ddev]
 ./webwerk mod ddev -x on
 ```
 
@@ -145,8 +145,8 @@ Test all installation modes before making changes:
 
 ```bash
 # Test each mode
-./webwerk full install --wp-title="Test Full"
-./webwerk minimal install --wp-title="Test Minimal"
+./webwerk install local --wp-title="Test Full"
+./webwerk install bare --wp-title="Test Minimal"
 ./webwerk ddev install --wp-title="Test DDEV"
 
 # Test update functionality

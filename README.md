@@ -26,7 +26,7 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 
 ## ✨ Features
 
-- **Multi-Mode Installation**: Full, minimal, and DDEV containerized installations
+- **Multi-Mode Installation**: Local, bare, and DDEV containerized installations
 - **Automated Updates**: Batch update WordPress core, themes, and plugins across multiple sites
 - **License Management**: Secure handling of ACF Pro, WP Migrate DB Pro, and Akeeba licenses
 - **Git Integration**: Automatic repository cloning and synchronization
@@ -163,7 +163,7 @@ chmod 600 ~/.keys
 ### 2. Basic Usage
 
 ```bash
-# Install new WordPress site (full mode is default)
+# Install new WordPress site (local mode is default)
 webwerk install --wp-title="My Accessible Site"
 
 # Install with DDEV
@@ -257,12 +257,12 @@ AKEEBA_DOWNLOAD_ID=your_akeeba_id
 
 ## 🎯 Installation Modes
 
-### Full Installation
-Complete WordPress setup with repository cloning:
+### Local Installation
+Complete WordPress setup with repository cloning (the default mode):
 ```bash
 webwerk install --wp-title="Accessible Website"
 # or explicitly:
-webwerk install full --wp-title="Accessible Website"
+webwerk install local --wp-title="Accessible Website"
 ```
 
 Features:
@@ -277,10 +277,10 @@ Features:
 - ✅ File permissions setup
 - ✅ Single-line progress bar (default on a terminal; `-v`/`--verbose` for full log)
 
-### Minimal Installation
+### Bare Installation
 WordPress without repository:
 ```bash
-webwerk install minimal --wp-title="Simple Site"
+webwerk install bare --wp-title="Simple Site"
 ```
 
 Features:
@@ -307,15 +307,28 @@ Features:
 
 ## 🛠️ Command Reference
 
+### Command Grammar
+
+```
+webwerk VERB [MODE] [OPTIONS]
+  VERB = install | update | mod | remove | status
+  MODE = local (default) | bare | ddev
+
+# Verbs and modes accept any unambiguous abbreviation:
+#   i->install  u->update  m->mod  r->remove  s->status
+#   l->local    b->bare     d->ddev
+# (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
+```
+
 ### Installation Commands
 
 ```bash
-# Full install (default)
+# Local install (default)
 webwerk install --wp-title="My Site"
-webwerk install full --wp-title="My Site"
+webwerk install local --wp-title="My Site"
 
-# Minimal install (no repo, no plugins)
-webwerk install minimal --wp-title="Simple Site"
+# Bare install (no repo, no plugins)
+webwerk install bare --wp-title="Simple Site"
 
 # DDEV install
 webwerk install ddev --wp-title="DDEV Site"
@@ -491,7 +504,7 @@ The Webwerk WordPress Management Suite follows a modular architecture with clear
 **Installation Module** (`scripts/install/`)
 - `wplocalinstall.sh`: Main WordPress installation engine
 - `wpfunctionsinstall.sh`: Installation-specific functions
-- Handles full, minimal, and DDEV installation modes
+- Handles local, bare, and DDEV installation modes
 - Repository cloning and plugin activation
 - Database creation and WordPress configuration
 
@@ -978,7 +991,7 @@ cat ~/.keys
 ### Debug Mode
 Enable debug output:
 ```bash
-./webwerk debug --mode=full --wp-title="Debug Site"
+./webwerk debug --mode=local --wp-title="Debug Site"
 ```
 
 ### System Status
@@ -1016,8 +1029,8 @@ webwerk ddev update -h
 webwerk mod ddev -h
 
 # Test all installation modes
-webwerk install full --wp-title="Test Full"
-webwerk install minimal --wp-title="Test Minimal"
+webwerk install local --wp-title="Test Full"
+webwerk install bare --wp-title="Test Minimal"
 webwerk install ddev --wp-title="Test DDEV"
 
 # Test update functionality

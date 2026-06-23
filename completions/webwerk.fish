@@ -3,17 +3,17 @@
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 function __ww_no_cmd
-    not __fish_seen_subcommand_from install update u mod ddev status
+    not __fish_seen_subcommand_from install update mod remove ddev status
 end
 
 function __ww_install_ctx
     __fish_seen_subcommand_from install
-    and not __fish_seen_subcommand_from update u mod ddev
+    and not __fish_seen_subcommand_from update mod remove ddev
 end
 
 function __ww_update_ctx
-    __fish_seen_subcommand_from update u
-    and not __fish_seen_subcommand_from install mod ddev
+    __fish_seen_subcommand_from update
+    and not __fish_seen_subcommand_from install mod remove ddev
 end
 
 function __ww_update_no_target
@@ -28,20 +28,20 @@ end
 
 function __ww_mod_ctx
     __fish_seen_subcommand_from mod
-    and not __fish_seen_subcommand_from install update u
+    and not __fish_seen_subcommand_from install update remove
 end
 
 function __ww_mod_env
     __ww_mod_ctx
-    and not __fish_seen_subcommand_from wp ddev
+    and not __fish_seen_subcommand_from local ddev
 end
 
 # ── Top-level commands ────────────────────────────────────────────────────────
 
 complete -c webwerk -f -n __ww_no_cmd -a install -d 'Install WordPress site'
 complete -c webwerk -f -n __ww_no_cmd -a update  -d 'Update WordPress (core+plugins+themes)'
-complete -c webwerk -f -n __ww_no_cmd -a u       -d 'Update WordPress (alias)'
 complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing WordPress sites'
+complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a DDEV site'
 complete -c webwerk -f -n __ww_no_cmd -a ddev    -d 'DDEV operations'
 complete -c webwerk -f -n __ww_no_cmd -a status  -d 'Show configuration status'
 complete -c webwerk    -n __ww_no_cmd -s h -l help  -d 'Show help'
@@ -50,13 +50,13 @@ complete -c webwerk    -n __ww_no_cmd -l debug       -d 'Enable debug mode'
 # ── install: modes ────────────────────────────────────────────────────────────
 
 complete -c webwerk -f \
-    -n '__ww_install_ctx; and not __fish_seen_subcommand_from full minimal ddev' \
-    -a full    -d 'Full install with git repository (default)'
+    -n '__ww_install_ctx; and not __fish_seen_subcommand_from local bare ddev' \
+    -a local   -d 'Local install with git repository (default)'
 complete -c webwerk -f \
-    -n '__ww_install_ctx; and not __fish_seen_subcommand_from full minimal ddev' \
-    -a minimal -d 'Minimal install without git'
+    -n '__ww_install_ctx; and not __fish_seen_subcommand_from local bare ddev' \
+    -a bare    -d 'Bare install without git'
 complete -c webwerk -f \
-    -n '__ww_install_ctx; and not __fish_seen_subcommand_from full minimal ddev' \
+    -n '__ww_install_ctx; and not __fish_seen_subcommand_from local bare ddev' \
     -a ddev    -d 'DDEV containerized install'
 
 # ── install: options ──────────────────────────────────────────────────────────
@@ -91,6 +91,8 @@ complete -c webwerk -n __ww_install_ctx -s h -l help         -d 'Show help'
 
 # ── update: targets ───────────────────────────────────────────────────────────
 
+complete -c webwerk -f -n __ww_update_no_target -a local   -d 'Update local site (default)'
+complete -c webwerk -f -n __ww_update_no_target -a ddev    -d 'Update the DDEV site here'
 complete -c webwerk -f -n __ww_update_no_target -a core    -d 'Update core only'
 complete -c webwerk -f -n __ww_update_no_target -a plugins -d 'Update all plugins'
 complete -c webwerk -f -n __ww_update_no_target -a plugin  -d 'Update one plugin (name required)'
@@ -121,10 +123,10 @@ complete -c webwerk -f -n __ww_ddev_no_sub -a mod     -d 'Modify DDEV site'
 complete -c webwerk -f -n __ww_ddev_no_sub -a update  -d 'Update DDEV site'
 complete -c webwerk -f -n __ww_ddev_no_sub -a remove  -d 'Remove DDEV containers'
 
-# ── mod: environment target (wp default / ddev) ───────────────────────────────
+# ── mod: environment target (local default / ddev) ────────────────────────────
 
-complete -c webwerk -f -n __ww_mod_env -a wp   -d 'Modify local WordPress sites (default)'
-complete -c webwerk -f -n __ww_mod_env -a ddev -d 'Modify DDEV WordPress site'
+complete -c webwerk -f -n __ww_mod_env -a local -d 'Modify local WordPress sites (default)'
+complete -c webwerk -f -n __ww_mod_env -a ddev  -d 'Modify DDEV WordPress site'
 
 # ── mod: options ──────────────────────────────────────────────────────────────
 
