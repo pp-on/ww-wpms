@@ -68,7 +68,8 @@ webwerk status
 cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 
 # Activate the site theme after cloning: -T/--theme auto-detects
-# (webwerk -> dir name -> dir name minus trailing -suffix), or --theme=NAME
+# (webwerk -> dir name -> dir name minus trailing -suffix), or --theme=NAME.
+# No match + interactive (non-batch) -> prompts to pick an installed theme.
 ./webwerk install -G arbeit -T
 ```
 

@@ -415,7 +415,8 @@ activate_all_plugins() {
 # Activate the site theme. With THEME_NAME set, activate that theme directly;
 # otherwise auto-detect: try the agency theme "webwerk", then the site dir name,
 # then the dir name with a trailing -suffix stripped (e.g. acme-relaunch -> acme).
-# Best-effort: a miss only warns, it never fails the install.
+# If nothing matches and we're interactive (not batch), prompt to pick one of the
+# installed themes. Best-effort: a miss only warns, it never fails the install.
 activate_site_theme() {
     local explicit="${THEME_NAME:-}"
 
@@ -451,6 +452,45 @@ activate_site_theme() {
             return 1
         fi
     done
+
+    # Nothing matched. If interactive (and not a batch install), let the user pick
+    # from the installed themes. stdout may be piped to the progress bar, so do the
+    # menu/prompt over /dev/tty.
+    if [[ "${WEBWERK_BATCH:-0}" != "1" ]] && [[ -t 0 ]]; then
+        local themes choice idx target i
+        mapfile -t themes <<<"$installed"
+        {
+            echo ""
+            echo "No matching theme (tried: ${candidates[*]}). Installed themes:"
+            for (( i=0; i<${#themes[@]}; i++ )); do
+                printf '  %d) %s\n' "$((i+1))" "${themes[i]}"
+            done
+            printf 'Activate which theme? (number/name, or Enter to skip): '
+        } >/dev/tty
+        IFS= read -r choice </dev/tty || choice=""
+        if [[ -z "$choice" ]]; then
+            log_warning "No theme selected; active theme unchanged"
+            return 1
+        fi
+        if [[ "$choice" =~ ^[0-9]+$ ]]; then
+            idx=$(( choice - 1 ))
+            if (( idx >= 0 && idx < ${#themes[@]} )); then
+                target="${themes[idx]}"
+            else
+                log_warning "Invalid number: $choice; active theme unchanged"
+                return 1
+            fi
+        else
+            target="$choice"
+        fi
+        log_info "Activating theme: $target (selected)"
+        if ${WP_CLI_PATH} theme activate "$target" 2>/dev/null; then
+            log_success "Theme activated: $target"
+            return 0
+        fi
+        log_warning "Could not activate theme: $target"
+        return 1
+    fi
 
     log_warning "No matching theme installed (tried: ${candidates[*]}); active theme unchanged"
     return 1

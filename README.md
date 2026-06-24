@@ -382,7 +382,9 @@ overwritten. `-A` is non-interactive; `-a` prompts `y`/`n`/`x` per directory.
 **auto-detects**, trying these names in order and activating the first one installed:
 the agency theme `webwerk`, then the install dir name, then the dir name with a
 trailing `-suffix` stripped (e.g. `acme-relaunch` → `acme`). Pass `--theme=NAME` to
-activate a specific theme instead. A miss only warns; it never fails the install.
+activate a specific theme instead. If nothing matches and the install is interactive
+(not a batch install), it lists the installed themes and prompts you to pick one by
+number or name (Enter skips). A miss only warns; it never fails the install.
 
 Most long install options also have short aliases: `-H`/`-U`/`-P`/`-N` (database),
 `-u` `--wp-url`, `-t` `--wp-title`, `-e` `--wp-admin-email`, `-r` `--repo-url`,
