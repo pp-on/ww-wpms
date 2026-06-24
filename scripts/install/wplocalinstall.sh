@@ -606,6 +606,10 @@ WORDPRESS OPTIONS:
   --wp-admin-user=USER, --wpu=USER   WordPress admin username (default: admin)
   --wp-admin-pass=PASS, --wpp=PASS   WordPress admin password (auto-generated if unset)
   -e, --wp-admin-email=EMAIL, --wpe=EMAIL   WordPress admin email
+  -T, --theme[=NAME]    After cloning, activate the site theme. With no NAME,
+                        auto-detect: try "webwerk", then the dir name, then the
+                        dir name with a trailing -suffix stripped (e.g.
+                        acme-relaunch -> acme); activates the first one installed
 
 GIT OPTIONS:
   -r, --repo-url=URL    Full repository URL to clone
@@ -645,6 +649,8 @@ parse_arguments() {
     # Initialize optional flags
     USE_NIP_IO=false
     USE_WINDOWS_HOSTS=false
+    ACTIVATE_THEME=false
+    THEME_NAME=""
 
     # First argument is the installation mode (local/bare/ddev)
     local mode="${1:-local}"
@@ -785,6 +791,13 @@ parse_arguments() {
                 ;;
             --subdomains)
                 WP_MULTISITE_SUBDOMAINS=true
+                ;;
+            --theme=*)
+                ACTIVATE_THEME=true
+                THEME_NAME="${1#*=}"
+                ;;
+            -T|--theme)
+                ACTIVATE_THEME=true
                 ;;
             # Short aliases for the long options above (take the next arg as value)
             -w) [[ -z "${2:-}" ]] && { log_error "-w requires an argument"; exit 1; }; WP_CLI_PATH="$2"; skip_next=true ;;

@@ -56,6 +56,7 @@ _webwerk_install() {
         '(--wp-admin-user --wpu)'{--wp-admin-user,--wpu}'=[Admin username]:user' \
         '(--wp-admin-pass --wpp)'{--wp-admin-pass,--wpp}'=[Admin password]:password' \
         '(-e --wp-admin-email --wpe)'{-e,--wp-admin-email,--wpe}'=[Admin email]:email' \
+        '(-T --theme)'{-T,--theme}'=[Activate site theme after clone (auto-detect, or =NAME)]::theme' \
         '(-r --repo-url)'{-r,--repo-url}'=[Repository URL to clone]:url' \
         '(-g --git-user)'{-g,--git-user}'=[Git username]:user' \
         '(-p --git-protocol)'{-p,--git-protocol}'=[Git protocol]:protocol:(https ssh)' \

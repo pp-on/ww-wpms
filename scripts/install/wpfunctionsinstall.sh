@@ -381,8 +381,13 @@ clone_git_repository() {
         log_success "Repository cloned successfully"
 
         # Activate plugins if enabled
-        if [[ "${AUTO_ACTIVATE_PLUGINS}" == "true" ]]; then
+        if [[ "${AUTO_ACTIVATE_PLUGINS:-false}" == "true" ]]; then
             activate_all_plugins
+        fi
+
+        # Activate the site theme if enabled (-T / --theme)
+        if [[ "${ACTIVATE_THEME:-false}" == "true" ]]; then
+            activate_site_theme
         fi
 
         return 0
@@ -405,6 +410,50 @@ activate_all_plugins() {
         log_warning "Some plugins failed to activate"
         return 1
     fi
+}
+
+# Activate the site theme. With THEME_NAME set, activate that theme directly;
+# otherwise auto-detect: try the agency theme "webwerk", then the site dir name,
+# then the dir name with a trailing -suffix stripped (e.g. acme-relaunch -> acme).
+# Best-effort: a miss only warns, it never fails the install.
+activate_site_theme() {
+    local explicit="${THEME_NAME:-}"
+
+    if [[ -n "$explicit" ]]; then
+        log_info "Activating theme: $explicit"
+        if ${WP_CLI_PATH} theme activate "$explicit" 2>/dev/null; then
+            log_success "Theme activated: $explicit"
+            return 0
+        fi
+        log_warning "Could not activate theme: $explicit"
+        return 1
+    fi
+
+    local dir candidates name installed
+    dir="$(basename "$PWD")"
+    candidates=("webwerk" "$dir")
+    [[ "$dir" == *-* ]] && candidates+=("${dir%-*}")
+
+    installed="$(${WP_CLI_PATH} theme list --field=name 2>/dev/null || true)"
+    if [[ -z "$installed" ]]; then
+        log_warning "Could not list themes; skipping theme activation"
+        return 1
+    fi
+
+    for name in "${candidates[@]}"; do
+        if grep -qxF "$name" <<<"$installed"; then
+            log_info "Auto-detected theme: $name"
+            if ${WP_CLI_PATH} theme activate "$name" 2>/dev/null; then
+                log_success "Theme activated: $name"
+                return 0
+            fi
+            log_warning "Found but could not activate theme: $name"
+            return 1
+        fi
+    done
+
+    log_warning "No matching theme installed (tried: ${candidates[*]}); active theme unchanged"
+    return 1
 }
 
 #===============================================================================
@@ -882,7 +931,7 @@ export -f generate_wp_password load_mysql_fallback
 export -f test_database_connection reset_wordpress_database
 export -f download_wordpress_core create_wordpress_config create_ddev_wordpress_config 
 export -f add_enhanced_wp_config install_wordpress_core
-export -f clone_git_repository activate_all_plugins
+export -f clone_git_repository activate_all_plugins activate_site_theme
 export -f setup_all_license_keys setup_acf_pro_license setup_wpmdb_license setup_akeeba_download_id
 export -f create_nginx_config_file setup_webserver_config_file create_htaccess_file disable_search_engine_indexing set_file_permissions
 export -f initialize_ddev_project start_ddev_containers

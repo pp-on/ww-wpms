@@ -355,6 +355,10 @@ webwerk install -p ssh                  # -p = --git-protocol
 # Override base URL (WordPress siteurl = <base>/<dirname>)
 webwerk install -G arbeit -b netcup.local
 
+# Activate the site theme after cloning
+webwerk install -G arbeit -T               # auto-detect the theme
+webwerk install -G arbeit --theme=webwerk  # activate a specific theme
+
 # Show the full install log instead of the progress bar
 webwerk install -G arbeit -v
 webwerk install -G arbeit --verbose
@@ -374,11 +378,17 @@ directory: each empty subdir is installed (its name becomes the site/repo name),
 non-empty subdirs are skipped with a warning so existing installs are never
 overwritten. `-A` is non-interactive; `-a` prompts `y`/`n`/`x` per directory.
 
+`-T`/`--theme` activates the site theme after the repo is cloned. With no value it
+**auto-detects**, trying these names in order and activating the first one installed:
+the agency theme `webwerk`, then the install dir name, then the dir name with a
+trailing `-suffix` stripped (e.g. `acme-relaunch` → `acme`). Pass `--theme=NAME` to
+activate a specific theme instead. A miss only warns; it never fails the install.
+
 Most long install options also have short aliases: `-H`/`-U`/`-P`/`-N` (database),
 `-u` `--wp-url`, `-t` `--wp-title`, `-e` `--wp-admin-email`, `-r` `--repo-url`,
 `-g` `--git-user`, `-p` `--git-protocol`, `-w` `--wp-cli`, `-d` `--target-dir`,
-`-X` `--production`, `-m` `--multisite`, `-s` `--subdomains` (plus existing `-b`, `-G`,
-`-n`, `-v`). The admin options have no single-letter short (since `-a`/`-A` are batch),
+`-X` `--production`, `-m` `--multisite`, `-s` `--subdomains`, `-T` `--theme` (plus
+existing `-b`, `-G`, `-n`, `-v`). The admin options have no single-letter short (since `-a`/`-A` are batch),
 but accept the shorter aliases `--wpu` (user), `--wpp` (pass), `--wpe` (email).
 
 ### Update Commands

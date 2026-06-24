@@ -66,6 +66,10 @@ webwerk status
 # Batch install into every empty subdirectory of the current dir
 # (dir name = site/repo name; non-empty dirs skipped). -a prompts per dir.
 cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
+
+# Activate the site theme after cloning: -T/--theme auto-detects
+# (webwerk -> dir name -> dir name minus trailing -suffix), or --theme=NAME
+./webwerk install -G arbeit -T
 ```
 
 ### Updates and Management

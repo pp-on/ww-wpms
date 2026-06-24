@@ -52,13 +52,13 @@ _webwerk() {
                         -A -a
                         --db-host --db-user --db-password --db-name
                         --wp-url --base-url --wp-title
-                        --wp-admin-user --wp-admin-pass --wp-admin-email --wpu --wpp --wpe
+                        --wp-admin-user --wp-admin-pass --wp-admin-email --wpu --wpp --wpe --theme
                         --repo-url --git-user --git-protocol --git-host
                         --wp-cli --target-dir
                         --nip-io --lemp --lamp --production
                         --multisite --subdomains -v --verbose --debug --help
                         -b -G -n -h
-                        -H -U -P -N -u -t -e -r -g -p -w -d -X -m -s
+                        -H -U -P -N -u -t -e -r -g -p -w -d -X -m -s -T
                     ' -- "$cur") )
                     ;;
                 *)
