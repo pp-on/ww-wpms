@@ -442,7 +442,7 @@ activate_site_theme() {
 
     for name in "${candidates[@]}"; do
         if grep -qxF "$name" <<<"$installed"; then
-            log_info "Auto-detected theme: $name"
+            log_info "Activating theme: $name (auto-detected)"
             if ${WP_CLI_PATH} theme activate "$name" 2>/dev/null; then
                 log_success "Theme activated: $name"
                 return 0

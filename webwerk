@@ -246,6 +246,7 @@ render_install_progress() {
         "Installing WordPress"
         "Cloning repository"
         "Activating all"
+        "Activating theme"
         "license keys"
         "installation completed"
     )
