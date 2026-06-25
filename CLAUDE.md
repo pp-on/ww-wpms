@@ -14,7 +14,8 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/`** - Modular script collection organized by function:
   - `install/` - WordPress installation scripts
   - `update/` - Update management scripts  
-  - `mod/` - Site modification and management
+  - `mod/` - Site modification and management (writes/changes)
+  - `get/` - Read-only retrieval/query (plugins/themes/core/status/url/db)
   - `utils/` - Shared helper functions and utilities
 
 ### Key Scripts
@@ -23,7 +24,8 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/utils/wphelpfunctions.sh:1`** - Core utility library with 850+ lines of shared functions
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
-- **`scripts/mod/wpmod.sh`** - Site modification tools
+- **`scripts/mod/wpmod.sh`** - Site modification tools (writes)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. The `mod` read flags (-C/-B/-e/-O/-l/-g, -T list) now forward here (deprecated).
 
 ## Configuration System
 

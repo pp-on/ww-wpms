@@ -11,8 +11,9 @@ _webwerk() {
         cword=$COMP_CWORD
     }
 
-    local commands='install update mod remove ddev status'
+    local commands='install update mod get remove ddev status'
     local update_targets='core plugins plugin themes theme'
+    local get_targets='plugins themes core status brief git url db'
     local install_modes='local bare ddev'
     local ddev_subs='install mod update remove'
 
@@ -28,7 +29,7 @@ _webwerk() {
     local i
     for (( i=1; i<cword; i++ )); do
         case "${words[i]}" in
-            install|update|mod|remove|ddev|status) cmd="${words[i]}"; break ;;
+            install|update|mod|get|remove|ddev|status) cmd="${words[i]}"; break ;;
         esac
     done
 
@@ -152,6 +153,26 @@ _webwerk() {
                 -w --location-wp
                 -h --help
             ' -- "$cur") )
+            ;;
+
+        get)
+            case "$prev" in
+                -s|--sites|--format) return 0 ;;
+            esac
+            case "$cur" in
+                -*)
+                    COMPREPLY=( $(compgen -W '-s --sites -a --all-sites --format --errors --outdated -h --help' -- "$cur") )
+                    ;;
+                *)
+                    local has_target=false w
+                    for w in "${words[@]}"; do
+                        case "$w" in plugins|themes|core|status|brief|git|url|db) has_target=true; break ;; esac
+                    done
+                    if [[ "$has_target" == false ]]; then
+                        COMPREPLY=( $(compgen -W "$get_targets" -- "$cur") )
+                    fi
+                    ;;
+            esac
             ;;
 
         ddev)

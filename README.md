@@ -210,7 +210,9 @@ webwerk/
     ├── update/
     │   └── wpupdate.sh           # Update management
     ├── mod/
-    │   └── wpmod.sh              # Site modification
+    │   └── wpmod.sh              # Site modification (writes)
+    ├── get/
+    │   └── wpget.sh              # Read-only retrieval/query
     └── utils/
         └── wphelpfunctions.sh    # Shared helper functions
 ```
@@ -476,26 +478,43 @@ webwerk update -h
 
 # Health check — verify wp core is-installed for every site
 ./webwerk mod -H
+```
 
-# Per-site status: core version (+ available update), plugin and theme lists
-# (any key = next site, c = stop)
-./webwerk mod -C
+> **Read vs. write:** `mod` is for *changing* sites. Read-only inspection
+> (status, lists, URLs, db queries) lives in `webwerk get` — see below. The old
+> `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`, and `-T` listing) still work but
+> **forward to `webwerk get` with a deprecation notice** and will be removed.
 
-# Brief status for all sites: core version + plugin/theme totals and
-# updatable counts (non-interactive)
-./webwerk mod -B
+### Get Commands (read-only)
 
-# Brief status, only sites with errors (broken / WP not installed)
-./webwerk mod -e
+`webwerk get <what>` retrieves information from sites without changing anything.
+All targets accept `-s site1,site2` / `-a` selection (default: every site under
+the base dir).
 
-# Brief status, only sites with available updates
-./webwerk mod -O
+```bash
+# List plugins / themes per site (--format table|csv|json|count|yaml)
+./webwerk get plugins
+./webwerk get themes -s acme --format json
 
-# Git overview of each wp-content repo: remote, local/upstream branch, status
-./webwerk mod -g
+# Core version (+ available update) per site
+./webwerk get core
 
-# Any of the status views (-C/-B/-e/-O/-g) can be scoped to specific sites with -s
-./webwerk mod -s site1,site2 -g
+# Full per-site status (core + plugins + themes)
+./webwerk get status
+
+# Brief overview: core version + plugin/theme update counts
+./webwerk get brief
+./webwerk get brief --errors      # only broken sites
+./webwerk get brief --outdated    # only sites with updates
+
+# Git overview of each wp-content repo (remote, branch/upstream, dirty count)
+./webwerk get git
+
+# Site URLs (siteurl / home) per site
+./webwerk get url
+
+# Run a read query per site (warns, but proceeds, on non-SELECT statements)
+./webwerk get db "SELECT post_title FROM wp_posts LIMIT 5" -s acme
 ```
 
 ## 🏗️ Architecture

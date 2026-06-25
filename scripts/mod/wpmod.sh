@@ -62,6 +62,20 @@ require_arg() {
     fi
 }
 
+# DEPRECATED: the read-only views (status/brief/list/themes/git) moved to
+# `webwerk get`. These flags now forward there (carrying the -s/-a selection) and
+# print a one-line notice; the aliases will be removed in a future release.
+forward_to_get() {
+    local target="$1"; shift   # rest = extra get args (e.g. --outdated)
+    local sel=()
+    if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
+        sel=(-s "$(IFS=','; echo "${sites[*]}")")
+    fi
+    echo -e "\033[33m[deprecated] this view moved to 'webwerk get $target' — forwarding (alias will be removed)\033[0m" >&2
+    WORDPRESS_BASE_DIR="$WORDPRESS_BASE_DIR" WP_CLI_PATH="$WP_CLI_PATH" \
+        bash "${SCRIPT_DIR}/../get/wpget.sh" "$target" "${sel[@]}" "$@"
+}
+
 #===============================================================================
 # HELPER FUNCTIONS
 #===============================================================================
@@ -128,181 +142,6 @@ do_health_check() {
     log_info "Health check — $ok OK, $err ERR"
 }
 
-# Populate global SITE_DIRS with the -s/-a selected sites, or every install under
-# WORDPRESS_BASE_DIR when nothing is selected.
-collect_site_dirs() {
-    SITE_DIRS=()
-    if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
-        local s
-        for s in "${sites[@]}"; do
-            SITE_DIRS+=("$WORDPRESS_BASE_DIR/$s")
-        done
-    else
-        local config
-        while IFS= read -r config; do
-            SITE_DIRS+=("$(dirname "$config")")
-        done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
-    fi
-}
-
-# Site status — core version (+ available update), plugin and theme lists per site
-do_status() {
-    collect_site_dirs
-    local total=${#SITE_DIRS[@]} idx=0
-    local site_dir name version update key
-    for site_dir in "${SITE_DIRS[@]}"; do
-        (( ++idx ))
-        name="$(basename "$site_dir")"
-
-        echo -e "\033[36m================================\n  [$idx/$total] $name\n================================\033[0m"
-
-        if ! $WP_CLI_PATH --path="$site_dir" core is-installed &>/dev/null; then
-            echo -e "\033[31mWP ERR — not installed or broken\033[0m"
-        else
-            version=$($WP_CLI_PATH --path="$site_dir" core version 2>/dev/null || true)
-            update=$($WP_CLI_PATH --path="$site_dir" core check-update --field=version 2>/dev/null | grep -v '^Success' | xargs || true)
-            if [[ -n "$update" ]]; then
-                echo -e "\033[32mWP OK\033[0m  $version \033[33m(update available: $update)\033[0m"
-            else
-                echo -e "\033[32mWP OK\033[0m  $version (up to date)"
-            fi
-
-            if [[ ! -d "$site_dir/wp-content" || -z "$(find "$site_dir/wp-content" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
-                echo -e "\033[31mWARN — wp-content EMPTY (no plugins/themes, site broken)\033[0m"
-            fi
-
-            echo -e "\033[33mPlugins:\033[0m"
-            $WP_CLI_PATH --path="$site_dir" plugin list --fields=name,status,version,update_version 2>/dev/null || echo "  (failed to list plugins)"
-            echo -e "\033[33mThemes:\033[0m"
-            $WP_CLI_PATH --path="$site_dir" theme list --fields=name,status,version,update_version 2>/dev/null || echo "  (failed to list themes)"
-        fi
-
-        if (( idx < total )); then
-            read -rsn1 -p "Press any key for next site, c to stop... " key
-            echo
-            [[ "${key,,}" == "c" ]] && break
-        fi
-    done
-}
-
-# Brief status — core version + plugin/theme update counts, all sites, non-interactive.
-# $1 filter: all (default) | errors (only broken sites) | outdated (only sites with updates)
-do_status_brief() {
-    local filter="${1:-all}"
-    collect_site_dirs
-    local site_dir name version update p_total p_upd t_total t_upd shown=0 err_msg
-    for site_dir in "${SITE_DIRS[@]}"; do
-        name="$(basename "$site_dir")"
-
-        # Error conditions: broken DB install, or empty wp-content (no themes = unrenderable)
-        err_msg=""
-        if ! $WP_CLI_PATH --path="$site_dir" core is-installed &>/dev/null; then
-            err_msg="WP ERR — not installed or broken"
-        elif [[ ! -d "$site_dir/wp-content" || -z "$(find "$site_dir/wp-content" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
-            version=$($WP_CLI_PATH --path="$site_dir" core version 2>/dev/null || true)
-            err_msg="WP ${version:-?} — wp-content EMPTY (no plugins/themes, site broken)"
-        fi
-        if [[ -n "$err_msg" ]]; then
-            if [[ "$filter" != "outdated" ]]; then
-                echo -e "\033[31m$name   $err_msg\033[0m"
-                shown=1
-            fi
-            continue
-        fi
-
-        # errors filter: healthy installs are not of interest
-        [[ "$filter" == "errors" ]] && continue
-
-        version=$($WP_CLI_PATH --path="$site_dir" core version 2>/dev/null || true)
-        update=$($WP_CLI_PATH --path="$site_dir" core check-update --field=version 2>/dev/null | grep -v '^Success' | xargs || true)
-        p_total=$($WP_CLI_PATH --path="$site_dir" plugin list --format=count 2>/dev/null || echo 0)
-        p_upd=$($WP_CLI_PATH --path="$site_dir" plugin list --update=available --format=count 2>/dev/null || echo 0)
-        t_total=$($WP_CLI_PATH --path="$site_dir" theme list --format=count 2>/dev/null || echo 0)
-        t_upd=$($WP_CLI_PATH --path="$site_dir" theme list --update=available --format=count 2>/dev/null || echo 0)
-
-        # outdated filter: skip fully up-to-date sites
-        if [[ "$filter" == "outdated" && -z "$update" && "$p_upd" -eq 0 && "$t_upd" -eq 0 ]]; then
-            continue
-        fi
-
-        if [[ -n "$update" ]]; then
-            echo -e "\033[36m$name\033[0m   WP $version \033[33m(update: $update)\033[0m"
-        else
-            echo -e "\033[36m$name\033[0m   WP $version (up to date)"
-        fi
-        if [[ "$p_upd" -gt 0 ]]; then
-            echo -e "  plugins: $p_total total, \033[33m$p_upd can be updated\033[0m"
-        else
-            echo "  plugins: $p_total total, all up to date"
-        fi
-        if [[ "$t_upd" -gt 0 ]]; then
-            echo -e "  themes:  $t_total total, \033[33m$t_upd can be updated\033[0m"
-        else
-            echo "  themes:  $t_total total, all up to date"
-        fi
-        echo
-        shown=1
-    done
-
-    if [[ "$shown" -eq 0 ]]; then
-        case "$filter" in
-            errors)   echo "No sites with errors." ;;
-            outdated) echo "All sites up to date." ;;
-            *)        echo "No WordPress sites found." ;;
-        esac
-    fi
-}
-
-# Git overview for each site's wp-content repo: remote, local/upstream branch, status
-do_git_status() {
-    collect_site_dirs
-    local total=${#SITE_DIRS[@]} idx=0
-    local site_dir name repo remote branch upstream ahead behind dirty
-    for site_dir in "${SITE_DIRS[@]}"; do
-        (( ++idx ))
-        name="$(basename "$site_dir")"
-        repo="$site_dir/wp-content"
-
-        if ! git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
-            echo -e "\033[33m[$idx/$total] $name   no git repo in wp-content\033[0m"
-            continue
-        fi
-
-        echo -e "\033[36m[$idx/$total] $name\033[0m"
-
-        remote=$(git -C "$repo" remote -v 2>/dev/null || true)
-        if [[ -n "$remote" ]]; then
-            echo "  remote:"
-            echo "$remote" | sed 's/^/    /'
-        else
-            echo "  remote: <none>"
-        fi
-
-        branch=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)
-        if [[ -z "$branch" ]]; then
-            echo "  branch: (detached HEAD)"
-        elif ! git -C "$repo" rev-parse --verify -q HEAD >/dev/null 2>&1; then
-            echo "  branch: $branch (no commits yet)"
-        else
-            upstream=$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
-            if [[ -n "$upstream" ]]; then
-                read -r behind ahead < <(git -C "$repo" rev-list --left-right --count "$upstream"...HEAD 2>/dev/null || echo "0 0")
-                echo "  branch: $branch → $upstream (ahead ${ahead:-0}, behind ${behind:-0})"
-            else
-                echo "  branch: $branch (no upstream)"
-            fi
-        fi
-
-        dirty=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l || true)
-        if [[ "$dirty" -gt 0 ]]; then
-            echo -e "  status: \033[33m$dirty uncommitted change(s)\033[0m"
-        else
-            echo "  status: clean"
-        fi
-        echo
-    done
-}
-
 # Setup all license keys for current site
 setup_all_licenses() {
     log_info "Setting up all license keys for current site"
@@ -336,16 +175,17 @@ SITE SELECTION:
 INFORMATION & DISPLAY:
   -p, --print                  Print selected sites
   -H, --health-check           Check all sites with wp core is-installed
-  -C, --status                 Per-site status: core version (+update), plugin and
-                               theme lists; any key = next site, c = stop
-  -B, --brief                  Brief status for all sites: core version + plugin/
-                               theme totals and updatable counts (non-interactive)
-  -e, --errors                 Brief status, only sites with errors (broken/missing)
-  -O, --outdated               Brief status, only sites with available updates
-  -l, --list                   List plugins for selected sites
-  -T, --themes [NUM|NAME]      List themes; optionally activate by number or name
   -o, --os-detection           Show operating system information
   -c, --colors                 Initialize color scheme
+
+  Read-only views below have MOVED to 'webwerk get' (these aliases forward there
+  and will be removed in a future release):
+  -C, --status                 -> webwerk get status
+  -B, --brief                  -> webwerk get brief
+  -e, --errors                 -> webwerk get brief --errors
+  -O, --outdated               -> webwerk get brief --outdated
+  -l, --list                   -> webwerk get plugins
+  -T, --themes [NUM|NAME]      list -> webwerk get themes; with NUM|NAME activates
 
 OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
@@ -354,8 +194,7 @@ OUTPUT & FORMATTING:
 GIT OPERATIONS:
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
-  -g, --git-status            Overview of each wp-content git repo: remote,
-                              local/upstream branch (ahead/behind), and status
+  -g, --git-status            MOVED -> webwerk get git (this alias forwards)
 
 PLUGIN MANAGEMENT:
   -i, --install-plugin PLUGIN Install plugin on selected sites
@@ -452,7 +291,7 @@ parse_arguments() {
                 update_repo
                 ;;
             -g|--git-status)
-                do_git_status
+                forward_to_get git
                 ;;
             -d|--original-dir)
                 require_arg "$1" "${2:-}"
@@ -473,16 +312,16 @@ parse_arguments() {
                 do_health_check
                 ;;
             -C|--status)
-                do_status
+                forward_to_get status
                 ;;
             -B|--brief)
-                do_status_brief all
+                forward_to_get brief
                 ;;
             -e|--errors)
-                do_status_brief errors
+                forward_to_get brief --errors
                 ;;
             -O|--outdated)
-                do_status_brief outdated
+                forward_to_get brief --outdated
                 ;;
             -p|--print)
                 print_sites
@@ -491,14 +330,16 @@ parse_arguments() {
                 colors
                 ;;
             -l|--list)
-                list_wp_plugins
+                forward_to_get plugins
                 ;;
             -T|--themes)
                 if [[ $# -gt 1 && "${2}" != -* ]]; then
+                    # number/name given -> activate (a write, stays in mod)
                     shift
                     list_wp_themes "$1"
                 else
-                    list_wp_themes
+                    # list-only -> moved to `webwerk get themes`
+                    forward_to_get themes
                 fi
                 ;;
             -s|--sites)

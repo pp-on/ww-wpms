@@ -3,7 +3,17 @@
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 function __ww_no_cmd
-    not __fish_seen_subcommand_from install update mod remove ddev status
+    not __fish_seen_subcommand_from install update mod get remove ddev status
+end
+
+function __ww_get_ctx
+    __fish_seen_subcommand_from get
+    and not __fish_seen_subcommand_from install update mod remove ddev
+end
+
+function __ww_get_no_target
+    __ww_get_ctx
+    and not __fish_seen_subcommand_from plugins themes core status brief git url db
 end
 
 function __ww_install_ctx
@@ -41,6 +51,7 @@ end
 complete -c webwerk -f -n __ww_no_cmd -a install -d 'Install WordPress site'
 complete -c webwerk -f -n __ww_no_cmd -a update  -d 'Update WordPress (core+plugins+themes)'
 complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing WordPress sites'
+complete -c webwerk -f -n __ww_no_cmd -a get     -d 'Read-only: list plugins/themes/core, URLs, db query'
 complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a DDEV site'
 complete -c webwerk -f -n __ww_no_cmd -a ddev    -d 'DDEV operations'
 complete -c webwerk -f -n __ww_no_cmd -a status  -d 'Show configuration status'
@@ -189,3 +200,19 @@ complete -c webwerk -n __ww_mod_ctx -l htaccess                            -d 'C
 complete -c webwerk -n __ww_mod_ctx -s S -l force-https                    -d 'Force HTTPS'
 complete -c webwerk -n __ww_mod_ctx -s w -l location-wp                -r  -d 'Set WP-CLI path'
 complete -c webwerk -n __ww_mod_ctx -s h -l help                           -d 'Show help'
+
+# ── get: read-only retrieval ──────────────────────────────────────────────────
+complete -c webwerk -f -n __ww_get_no_target -a plugins -d 'List plugins per site'
+complete -c webwerk -f -n __ww_get_no_target -a themes  -d 'List themes per site'
+complete -c webwerk -f -n __ww_get_no_target -a core    -d 'Core version (+update) per site'
+complete -c webwerk -f -n __ww_get_no_target -a status  -d 'Full per-site status'
+complete -c webwerk -f -n __ww_get_no_target -a brief   -d 'Brief: core + plugin/theme update counts'
+complete -c webwerk -f -n __ww_get_no_target -a git     -d 'Git overview of each wp-content repo'
+complete -c webwerk -f -n __ww_get_no_target -a url     -d 'siteurl / home per site'
+complete -c webwerk -f -n __ww_get_no_target -a db      -d 'Run a query per site (warns on non-SELECT)'
+complete -c webwerk -n __ww_get_ctx -s s -l sites    -r -d 'Comma-separated site names'
+complete -c webwerk -n __ww_get_ctx -s a -l all-sites   -d 'All sites under the base dir'
+complete -c webwerk -n __ww_get_ctx -l format        -r -d 'Output format (table|csv|json|count|yaml)'
+complete -c webwerk -n __ww_get_ctx -l errors           -d 'brief: only broken sites'
+complete -c webwerk -n __ww_get_ctx -l outdated         -d 'brief: only sites with updates'
+complete -c webwerk -n __ww_get_ctx -s h -l help        -d 'Show help'

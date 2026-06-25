@@ -22,6 +22,7 @@ _webwerk() {
                 install)        _webwerk_install ;;
                 update)         _webwerk_update ;;
                 mod)            _webwerk_mod ;;
+                get)            _webwerk_get ;;
                 remove)         _webwerk_remove ;;
                 ddev)           _webwerk_ddev ;;
             esac
@@ -34,6 +35,7 @@ _webwerk_commands() {
         'install:Install WordPress site'
         'update:Update WordPress (core+plugins+themes)'
         'mod:Modify/manage existing WordPress sites'
+        'get:Read-only: list plugins/themes/core, URLs, db query'
         'remove:Remove a DDEV site'
         'ddev:DDEV operations'
         'status:Show configuration status'
@@ -111,6 +113,31 @@ _webwerk_update_targets() {
         'plugin:Update one plugin (name required)'
         'themes:Update all themes'
         'theme:Update one theme (name required)'
+    )
+    _describe 'target' targets
+}
+
+_webwerk_get() {
+    _arguments \
+        '1: :_webwerk_get_targets' \
+        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
+        '(-a --all-sites)'{-a,--all-sites}'[All sites under the base dir]' \
+        '--format=[Output format for plugins/themes]:format:(table csv json count yaml)' \
+        '--errors[brief: only broken sites]' \
+        '--outdated[brief: only sites with updates]' \
+        '(-h --help)'{-h,--help}'[Show help]'
+}
+
+_webwerk_get_targets() {
+    local targets=(
+        'plugins:List plugins per site'
+        'themes:List themes per site'
+        'core:Core version (+update) per site'
+        'status:Full per-site status'
+        'brief:Brief: core + plugin/theme update counts'
+        'git:Git overview of each wp-content repo'
+        'url:siteurl / home per site'
+        'db:Run a query per site (warns on non-SELECT)'
     )
     _describe 'target' targets
 }

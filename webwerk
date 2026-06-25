@@ -147,13 +147,14 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   install ddev     DDEV-based WordPress installation
   update [ddev]    Update WordPress core, plugins and themes (local default)
   mod [ddev]       Modify/manage existing WordPress sites (local default)
+  get [ddev]       Read-only: list plugins/themes/core, status, URLs, db query
   remove ddev      Remove DDEV containers and configuration
   remove local     DESTRUCTIVE: drop the DB + delete files of a WP site
                    (current dir; -s sites; -a/-A all sites; -y skip prompt)
   status           Show system configuration and script availability
 
   Verbs and modes accept any unambiguous abbreviation:
-  i->install  u->update  m->mod  r->remove  s->status
+  i->install  u->update  m->mod  g->get  r->remove  s->status
   l->local    b->bare    d->ddev
   (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
 
@@ -493,7 +494,7 @@ main() {
     # Accept unambiguous abbreviations for the top-level command
     # (i->install, u->update, m->mod, r->remove, s->status, d->ddev)
     if [[ -n "$command" && "$command" != -* ]]; then
-        command="$(resolve_word "$command" install update mod remove status ddev)"
+        command="$(resolve_word "$command" install update mod get remove status ddev)"
     fi
 
     # Handle special cases before loading configuration
@@ -525,6 +526,8 @@ main() {
                 exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
             "mod")
                 exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
+            "get")
+                exec bash "${SCRIPT_DIR}/scripts/get/wpget.sh" --help ;;
             "install")
                 exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
             "ddev")
@@ -699,6 +702,29 @@ main() {
                     ;;
             esac
             exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
+            ;;
+        "get")
+            if [[ ! -f "${SCRIPT_DIR}/scripts/get/wpget.sh" ]]; then
+                log_error "Retrieval script not found: ${SCRIPT_DIR}/scripts/get/wpget.sh"
+                exit 1
+            fi
+            # Optional environment target: local (default) or ddev. Match exactly
+            # so it can't swallow the 'db' target word.
+            case "${1:-}" in
+                "ddev")
+                    shift
+                    if ! ddev status >/dev/null 2>&1; then
+                        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
+                        exit 1
+                    fi
+                    export WP_CLI_PATH="ddev wp"
+                    export WORDPRESS_BASE_DIR="."
+                    ;;
+                "local")
+                    shift
+                    ;;
+            esac
+            exec bash "${SCRIPT_DIR}/scripts/get/wpget.sh" "$@"
             ;;
         "remove")
             # Syntax: webwerk remove local|ddev [OPTIONS]  (DESTRUCTIVE; mode required)
