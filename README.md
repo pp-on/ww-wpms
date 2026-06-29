@@ -517,6 +517,25 @@ the base dir).
 ./webwerk get db "SELECT post_title FROM wp_posts LIMIT 5" -s acme
 ```
 
+### Remove Commands (destructive)
+
+`webwerk remove` drops the database **and** deletes the site files. `local` is the
+default mode, so the mode word is optional. It only acts on real WordPress installs,
+refuses protected paths (`/`, `$HOME`), and confirms per site unless `-A`/`-y`.
+
+```bash
+# Remove the WP site in the current dir (local is the default; prompts to confirm)
+./webwerk remove
+./webwerk remove local            # explicit, same as above
+
+# Remove specific / all sites under the base dir
+./webwerk remove -s acme          # the 'acme' site
+./webwerk remove -A               # every WP site under the base dir, no prompt
+
+# Remove the DDEV containers + configuration here
+./webwerk remove ddev
+```
+
 ## 🏗️ Architecture
 
 ### Core Components
