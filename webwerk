@@ -503,6 +503,17 @@ main() {
             show_help
             exit 0
             ;;
+        "help")
+            # `webwerk help` -> top-level help; `webwerk help <cmd>` -> that cmd's help
+            case "$(resolve_word "${2:-}" install update mod get remove status ddev)" in
+                install|update|mod|get|ddev)
+                    command="$(resolve_word "$2" install update mod get remove status ddev)"
+                    set -- "$command" --help ;;
+                *)
+                    show_help
+                    exit 0 ;;
+            esac
+            ;;
         "status")
             # Load config for status display
             load_environment
@@ -512,10 +523,11 @@ main() {
             ;;
     esac
 
-    # Pass -h/--help directly to subcommand scripts, bypassing config loading
+    # Pass -h/--help (or a bare 'help' word) directly to subcommand scripts,
+    # bypassing config loading
     local help_requested=false
     for arg in "${@:2}"; do
-        if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+        if [[ "$arg" == "-h" || "$arg" == "--help" || "$arg" == "help" ]]; then
             help_requested=true
             break
         fi
