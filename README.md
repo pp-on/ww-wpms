@@ -313,11 +313,11 @@ Features:
 
 ```
 webwerk VERB [MODE] [OPTIONS]
-  VERB = install | update | mod | remove | status
+  VERB = install | update | mod | get | remove | status
   MODE = local (default) | bare | ddev
 
 # Verbs and modes accept any unambiguous abbreviation:
-#   i->install  u->update  m->mod  r->remove  s->status
+#   i->install  u->update  m->mod  g->get  r->remove  s->status
 #   l->local    b->bare     d->ddev
 # (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
 ```
