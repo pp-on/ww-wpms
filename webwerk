@@ -542,6 +542,9 @@ main() {
                 exec bash "${SCRIPT_DIR}/scripts/get/wpget.sh" --help ;;
             "install")
                 exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
+            "remove")
+                # remove is handled in-dispatcher; its usage lives in top-level help
+                show_help; exit 0 ;;
             "ddev")
                 case "$(resolve_word "${2:-}" install remove mod update)" in
                     "update") exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
