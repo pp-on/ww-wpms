@@ -148,9 +148,9 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   update [ddev]    Update WordPress core, plugins and themes (local default)
   mod [ddev]       Modify/manage existing WordPress sites (local default)
   get [ddev]       Read-only: list plugins/themes/core, status, URLs, db query
-  remove ddev      Remove DDEV containers and configuration
-  remove local     DESTRUCTIVE: drop the DB + delete files of a WP site
+  remove [local]   DESTRUCTIVE: drop the DB + delete files of a WP site (default)
                    (current dir; -s sites; -a/-A all sites; -y skip prompt)
+  remove ddev      Remove DDEV containers and configuration
   status           Show system configuration and script availability
 
   Verbs and modes accept any unambiguous abbreviation:
@@ -742,18 +742,28 @@ main() {
             exec bash "${SCRIPT_DIR}/scripts/get/wpget.sh" "$@"
             ;;
         "remove")
-            # Syntax: webwerk remove local|ddev [OPTIONS]  (DESTRUCTIVE; mode required)
-            case "$(resolve_word "${1:-}" local bare ddev)" in
-                "ddev")  ddev_remove ;;
-                "local") shift; remove_local "$@" ;;
-                "bare")
-                    log_error "No separate 'bare' removal; use: webwerk remove local"
-                    exit 1
-                    ;;
+            # Syntax: webwerk remove [local|ddev] [OPTIONS]  (DESTRUCTIVE; local is the default)
+            local rmode="local"
+            case "${1:-}" in
+                -*|"") ;;  # no mode word (flag or none): keep default local, consume nothing
                 *)
-                    log_error "remove: specify a mode -> webwerk remove local|ddev"
-                    exit 1
+                    rmode="$(resolve_word "$1" local bare ddev)"
+                    case "$rmode" in
+                        local|ddev) shift ;;  # a real mode word -> consume it
+                        "bare")
+                            log_error "No separate 'bare' removal; use: webwerk remove local"
+                            exit 1
+                            ;;
+                        *)
+                            log_error "Unknown remove mode: '$1'. Use: local, ddev"
+                            exit 1
+                            ;;
+                    esac
                     ;;
+            esac
+            case "$rmode" in
+                "ddev")  ddev_remove ;;
+                "local") remove_local "$@" ;;
             esac
             ;;
         *)
