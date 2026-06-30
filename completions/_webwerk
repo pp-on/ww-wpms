@@ -144,7 +144,8 @@ _webwerk_get_targets() {
 
 _webwerk_mod() {
     _arguments \
-        '1:environment:(local ddev)' \
+        '1:target:(local ddev theme)' \
+        '2::theme:(webwerk)' \
         '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \

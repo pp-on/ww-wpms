@@ -177,6 +177,8 @@ complete -c webwerk -n __ww_mod_ctx -s O -l outdated                       -d 'B
 complete -c webwerk -n __ww_mod_ctx -s l -l list                           -d 'List plugins for selected sites'
 complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_mod_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
+complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
+complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
 complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'
 complete -c webwerk -n __ww_mod_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
 complete -c webwerk -n __ww_mod_ctx -s G -l git-pull                       -d 'Update repos via git pull'

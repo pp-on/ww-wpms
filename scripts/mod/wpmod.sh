@@ -188,8 +188,11 @@ INFORMATION & DISPLAY:
   -T, --themes [NUM|NAME]      list -> webwerk get themes; with NUM|NAME activates
 
 THEMES:
-  -W, --theme-webwerk          Activate the 'webwerk' theme (skip if already
-                               active; if not installed, pick one to activate)
+  theme [webwerk|NAME|NUM]     Activate a theme. No arg = list & pick. 'webwerk'
+                               = activate the webwerk theme (skip if already active;
+                               pick one if not installed). NAME|NUM = activate it.
+  -W, --theme-webwerk          Alias for 'theme webwerk'
+  (-T NUM|NAME also activates — see the forwarding note above)
 
 OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
@@ -349,6 +352,22 @@ parse_arguments() {
             -W|--theme-webwerk)
                 # activate the 'webwerk' theme (skip if active; pick one if missing)
                 wp_activate_webwerk_theme
+                ;;
+            theme)
+                # WHAT form: webwerk mod theme [webwerk|NAME|NUM]
+                #   no arg   -> list + interactive pick
+                #   webwerk  -> same as -W (skip if active, pick if missing)
+                #   NAME|NUM -> same as -T NAME|NUM (activate it)
+                if [[ $# -gt 1 && "${2}" != -* ]]; then
+                    shift
+                    if [[ "$1" == "webwerk" ]]; then
+                        wp_activate_webwerk_theme
+                    else
+                        list_wp_themes "$1"
+                    fi
+                else
+                    list_wp_themes ""
+                fi
                 ;;
             -s|--sites)
                 require_arg "$1" "${2:-}"

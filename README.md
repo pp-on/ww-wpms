@@ -473,8 +473,12 @@ webwerk update -h
 # Force HTTPS on site
 ./webwerk mod --sites=mysite --force-https
 
-# Activate the 'webwerk' theme (skips if already active; if it isn't
-# installed, lists themes and asks which one to activate)
+# Activate a theme (WHAT form). No arg lists & prompts; 'webwerk' activates the
+# webwerk theme (skips if active, picks one if missing); NAME|NUM activates it.
+./webwerk mod --sites=mysite theme webwerk
+./webwerk mod --sites=mysite theme            # list & pick interactively
+./webwerk mod --sites=mysite theme astra      # activate a named theme
+# -W is an alias for 'theme webwerk'; -T NUM|NAME also activates
 ./webwerk mod --sites=mysite -W
 
 # Select all sites without interactive prompts
