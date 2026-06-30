@@ -238,7 +238,7 @@ list_wp_plugins() {
 
     for site in "${sites[@]}"; do
         (
-            cd "${WORDPRESS_BASE_DIR}$site" || exit 1
+            cd "${WORDPRESS_BASE_DIR}/$site" || exit 1
             echo -e "${Green}----------------"
             echo -e "$site"
             echo -e "----------------${Color_Off}"
@@ -454,7 +454,7 @@ remove_plugins() {
     for site in "${sites[@]}"; do
         out "$site" 1
         (
-            cd "${WORDPRESS_BASE_DIR}${site}/wp-content/plugins" || exit 1
+            cd "${WORDPRESS_BASE_DIR}/${site}/wp-content/plugins" || exit 1
 
             if [[ -d "$plugin_name" ]]; then
                 out "Removing $plugin_name" 2
@@ -664,7 +664,7 @@ wp_new_user() {
 
     for site in "${sites[@]}"; do
         out "$site" 1
-        ( cd "${WORDPRESS_BASE_DIR}$site" && "${WP_CLI_PATH}" user create "$username" "$email" --user_pass="$password" --role=administrator )
+        ( cd "${WORDPRESS_BASE_DIR}/$site" && "${WP_CLI_PATH}" user create "$username" "$email" --user_pass="$password" --role=administrator )
     done
 }
 
@@ -680,8 +680,8 @@ wp_rights() {
 
     for site in "${sites[@]}"; do
         out "changing ownership ${site}"
-        chown "$webserver_user:$webserver_group" "${WORDPRESS_BASE_DIR}${site}/wp-content" -Rvf
-        chmod -Rv "${UPLOAD_PERMISSIONS:-755}" "${WORDPRESS_BASE_DIR}${site}/wp-content/uploads"
+        chown "$webserver_user:$webserver_group" "${WORDPRESS_BASE_DIR}/${site}/wp-content" -Rvf
+        chmod -Rv "${UPLOAD_PERMISSIONS:-755}" "${WORDPRESS_BASE_DIR}/${site}/wp-content/uploads"
     done
 }
 
@@ -772,7 +772,7 @@ wp_force_https() {
         if [[ "$site" == "." || "${WORDPRESS_BASE_DIR}${site}" == "." ]]; then
             target_dir="."
         else
-            target_dir="${WORDPRESS_BASE_DIR}${site}"
+            target_dir="${WORDPRESS_BASE_DIR}/${site}"
         fi
 
         (
@@ -827,7 +827,7 @@ update_repo() {
     for site in "${sites[@]}"; do
         out "${site}" 1
         (
-            cd "${WORDPRESS_BASE_DIR}${site}/wp-content" || exit 1
+            cd "${WORDPRESS_BASE_DIR}/${site}/wp-content" || exit 1
             out "updating repository..." 1
             git pull 1>/dev/null
         )
@@ -842,7 +842,7 @@ git_wp() {
     for site in "${sites[@]}"; do
         out "${site}" 1
         (
-            cd "${WORDPRESS_BASE_DIR}${site}/wp-content" || exit 1
+            cd "${WORDPRESS_BASE_DIR}/${site}/wp-content" || exit 1
 
             case "$subcommand" in
                 pull)

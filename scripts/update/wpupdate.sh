@@ -429,7 +429,7 @@ update_themes_fn() {
 # Process single WordPress site
 process_single_site() {
     local site="$1"
-    local site_dir="${WORDPRESS_BASE_DIR}${site}"
+    local site_dir="${WORDPRESS_BASE_DIR}/${site}"
     
     if [[ "$progress" == true ]]; then
         log_info "Processing site: $site"
