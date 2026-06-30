@@ -537,7 +537,13 @@ main() {
             "update")
                 exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
             "mod")
-                exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
+                # forward the real args so wpmod can show per-WHAT help (theme/plugin);
+                # drop a leading mode word (local/ddev)
+                local modargs=("${@:2}")
+                if [[ "${modargs[0]:-}" == "local" || "${modargs[0]:-}" == "ddev" ]]; then
+                    modargs=("${modargs[@]:1}")
+                fi
+                exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "${modargs[@]}" ;;
             "get")
                 # forward the real args so wpget can show per-target help;
                 # drop a leading mode word (local/ddev) — help needs no container

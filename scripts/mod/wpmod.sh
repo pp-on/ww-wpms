@@ -158,6 +158,43 @@ setup_all_licenses() {
 # COMMAND LINE INTERFACE
 #===============================================================================
 
+# Per-WHAT help: webwerk mod theme help
+show_theme_help() {
+    cat << EOF
+webwerk mod theme — activate a theme on selected sites
+
+Usage:
+  webwerk mod theme [webwerk|NAME|NUM] [-s sites | -a]
+
+  (no arg)   list installed themes and pick one to activate
+  webwerk    activate the 'webwerk' theme; skip if already active; if it
+             isn't installed, list themes and pick one
+  NAME       activate the theme by name
+  NUM        activate the theme by its number in the list
+
+Aliases: -W = 'theme webwerk'; -T NUM|NAME also activates.
+EOF
+}
+
+# Per-WHAT help: webwerk mod plugin help
+show_plugin_help() {
+    cat << EOF
+webwerk mod plugin — manage plugins on selected sites
+
+Usage:
+  webwerk mod plugin <action> [NAME|FROM] [-s sites | -a]
+
+Actions:
+  install NAME      install (and activate) a plugin   (alias: -i NAME)
+  copy FROM         copy a plugin from a path          (alias: -y FROM)
+  update NAME|all   update a plugin (or all)           (alias: -u NAME|all)
+  activate NAME     activate a plugin
+  deactivate NAME   deactivate a plugin
+  remove NAME       delete a plugin
+  list              list plugins (-> webwerk get plugins)
+EOF
+}
+
 # Show help information
 show_help() {
     cat << EOF
@@ -514,13 +551,22 @@ parse_arguments() {
 #===============================================================================
 
 main() {
-    # Handle help before anything else
+    # Handle help before anything else (generic, or WHAT-scoped: theme/plugin)
+    local _help_req=0 _help_what=""
     for arg in "$@"; do
-        if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
-            show_help
-            exit 0
-        fi
+        case "$arg" in
+            -h|--help|help) _help_req=1 ;;
+            theme|plugin)   _help_what="$arg" ;;
+        esac
     done
+    if [[ $_help_req -eq 1 ]]; then
+        case "$_help_what" in
+            theme)  show_theme_help ;;
+            plugin) show_plugin_help ;;
+            *)      show_help ;;
+        esac
+        exit 0
+    fi
 
     log_info "Starting $SCRIPT_NAME v$SCRIPT_VERSION"
 
