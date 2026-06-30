@@ -279,8 +279,106 @@ get_git() {
 # HELP
 #===============================================================================
 
+# show_help [target] — generic help, or focused help for a single get target.
 show_help() {
-    cat <<EOF
+    local topic="${1:-}"
+    case "$topic" in
+        plugins|themes)
+            local one="${topic%s}"   # plugins -> plugin
+            cat <<EOF
+webwerk get $topic — list ${topic} per site
+
+Lists every $one (name, status, version, available update) for each selected
+site. Read-only.
+
+Usage:
+  webwerk get $topic [-s sites | -a] [--format FORMAT]
+
+Options:
+  -s, --sites SITES    Comma-separated site names under the base dir
+  -a, --all-sites      All sites under the base dir (default when -s omitted)
+  --format FORMAT      table (default) | csv | json | count | yaml
+
+Examples:
+  webwerk get $topic
+  webwerk get $topic -s acme
+  webwerk get $topic --format count
+EOF
+            ;;
+        core)
+            cat <<EOF
+webwerk get core — WordPress core version per site
+
+Shows each site's core version and whether an update is available. Broken or
+uninstalled sites are flagged. Read-only.
+
+Usage:
+  webwerk get core [-s sites | -a]
+EOF
+            ;;
+        status)
+            cat <<EOF
+webwerk get status — full per-site status
+
+Per site: core version (+ available update), then the full plugin and theme
+lists. The verbose view; use 'get brief' for a condensed one. Read-only.
+
+Usage:
+  webwerk get status [-s sites | -a]
+EOF
+            ;;
+        brief)
+            cat <<EOF
+webwerk get brief — condensed per-site overview
+
+Per site: core version plus plugin/theme totals and how many can be updated.
+Broken installs (and DB-installed sites with an empty wp-content) are flagged.
+
+Usage:
+  webwerk get brief [-s sites | -a] [--errors | --outdated]
+
+Options:
+  --errors     Only sites that are broken
+  --outdated   Only sites with available updates
+EOF
+            ;;
+        git)
+            cat <<EOF
+webwerk get git — git overview of each site's wp-content repo
+
+Per site: remote(s), branch/upstream with ahead/behind, and uncommitted-change
+count. Sites whose wp-content is not a git repo are noted. Read-only.
+
+Usage:
+  webwerk get git [-s sites | -a]
+EOF
+            ;;
+        url)
+            cat <<EOF
+webwerk get url — site URLs per site
+
+Shows the 'siteurl' and 'home' options for each selected site. Read-only.
+
+Usage:
+  webwerk get url [-s sites | -a]
+EOF
+            ;;
+        db)
+            cat <<EOF
+webwerk get db — run a read query per site
+
+Runs the given SQL on each selected site's database. 'get' is read-only by
+intent, so a non-SELECT/SHOW/DESCRIBE/EXPLAIN statement warns but still runs.
+
+Usage:
+  webwerk get db "SQL" [-s sites | -a]
+
+Example:
+  webwerk get db "SELECT post_title FROM wp_posts LIMIT 5" -s acme
+EOF
+            ;;
+        *)
+            cat <<EOF
 $SCRIPT_NAME v$SCRIPT_VERSION
 
 Read-only retrieval/query for existing WordPress sites. (For changes, use
@@ -288,6 +386,7 @@ Read-only retrieval/query for existing WordPress sites. (For changes, use
 
 Usage:
   webwerk get <what> [OPTIONS]
+  webwerk get <what> help     Show help for a single target
 
 WHAT:
   plugins              List plugins per site
@@ -314,6 +413,8 @@ EXAMPLES:
   webwerk get url -a
   webwerk get db "SELECT post_title FROM wp_posts LIMIT 5" -s acme
 EOF
+            ;;
+    esac
 }
 
 #===============================================================================
@@ -326,12 +427,13 @@ main() {
         exit 0
     fi
 
-    local what="" positionals=()
+    local what="" positionals=() want_help=0
     BRIEF_FILTER="all"
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -h|--help)
-                show_help; exit 0 ;;
+            -h|--help|help)
+                # defer: remember the target parsed so far -> per-target help
+                want_help=1; shift ;;
             -s|--sites)
                 require_arg "$1" "${2:-}"
                 IFS=',' read -ra sites <<< "$2"
@@ -356,6 +458,11 @@ main() {
                 shift ;;
         esac
     done
+
+    if (( want_help )); then
+        show_help "$what"   # generic when no target, focused otherwise
+        exit 0
+    fi
 
     case "$what" in
         plugins) get_plugins ;;

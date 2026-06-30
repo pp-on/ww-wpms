@@ -539,7 +539,13 @@ main() {
             "mod")
                 exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
             "get")
-                exec bash "${SCRIPT_DIR}/scripts/get/wpget.sh" --help ;;
+                # forward the real args so wpget can show per-target help;
+                # drop a leading mode word (local/ddev) — help needs no container
+                local getargs=("${@:2}")
+                if [[ "${getargs[0]:-}" == "local" || "${getargs[0]:-}" == "ddev" ]]; then
+                    getargs=("${getargs[@]:1}")
+                fi
+                exec bash "${SCRIPT_DIR}/scripts/get/wpget.sh" "${getargs[@]}" ;;
             "install")
                 exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
             "remove")
