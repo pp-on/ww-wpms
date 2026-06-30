@@ -27,6 +27,32 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/mod/wpmod.sh`** - Site modification tools (writes)
 - **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. The `mod` read flags (-C/-B/-e/-O/-l/-g, -T list) now forward here (deprecated).
 
+## Command Grammar
+
+The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
+
+- **VERB** = `install | update | mod | get | remove | status` — the action/intent.
+- **MODE** = `local (default) | bare | ddev` — where it runs. `bare` is install-only;
+  `local` is the default for every verb (including `remove`); `ddev` runs against the
+  DDEV container. `status` takes no mode.
+- **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
+  `update plugins`, `update plugin <name>`.
+- Verbs and modes accept any unambiguous prefix abbreviation (`i/u/m/g/r/s`,
+  `l/b/d`). A bare `help` word works at any level: `webwerk help`, `webwerk <verb> help`,
+  and `webwerk get <what> help` (per-target help).
+
+### Why verb-first (and not wp-cli's noun-first)
+
+wp-cli is `wp NOUN VERB` (`wp plugin list`) because it does **resource CRUD on one
+site** — the noun is the stable thing you act on. webwerk is **intent/orchestration
+across many sites**: its top level is genuinely verbs (install a site, update
+everything, remove a site, get an overview), and `install`/`mod`/`remove`/`status`
+have no natural noun. Going noun-first would force noun-first onto `get`/`update`
+while the rest stayed verb-first — a fractured grammar. So keep verb-first for every
+command. The `WHAT` words (`plugins`, `themes`, `core`, `db`) intentionally reuse
+wp-cli's noun names, so users get the familiarity without the reordering. When adding
+a command, make it a verb (or a `WHAT` under an existing verb), not a noun-first form.
+
 ## Configuration System
 
 The suite uses a dual-configuration approach:
