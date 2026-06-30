@@ -187,6 +187,10 @@ INFORMATION & DISPLAY:
   -l, --list                   -> webwerk get plugins
   -T, --themes [NUM|NAME]      list -> webwerk get themes; with NUM|NAME activates
 
+THEMES:
+  -W, --theme-webwerk          Activate the 'webwerk' theme (skip if already
+                               active; if not installed, pick one to activate)
+
 OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
   -t, --text-color TEXT COLOR  Output colored text
@@ -341,6 +345,10 @@ parse_arguments() {
                     # list-only -> moved to `webwerk get themes`
                     forward_to_get themes
                 fi
+                ;;
+            -W|--theme-webwerk)
+                # activate the 'webwerk' theme (skip if active; pick one if missing)
+                wp_activate_webwerk_theme
                 ;;
             -s|--sites)
                 require_arg "$1" "${2:-}"

@@ -134,6 +134,7 @@ _webwerk() {
                 -O --outdated
                 -l --list
                 -T --themes
+                -W --theme-webwerk
                 -o --os-detection
                 --git -G --git-pull -g --git-status -u --update
                 -i --install-plugin

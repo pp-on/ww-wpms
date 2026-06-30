@@ -327,6 +327,78 @@ list_wp_themes() {
     done
 }
 
+# Activate the 'webwerk' theme on each selected site:
+#   - already active   -> skip
+#   - installed        -> activate it
+#   - not installed    -> list themes and let the user pick one to activate
+wp_activate_webwerk_theme() {
+    local site
+    for site in "${sites[@]}"; do
+        local site_path
+        if [[ "$site" = /* ]]; then
+            site_path="$site"
+        else
+            site_path="${WORDPRESS_BASE_DIR}/${site}"
+        fi
+
+        (
+            cd "$site_path" || exit 0
+
+            echo -e "${Green}----------------"
+            echo -e "$site"
+            echo -e "----------------${Color_Off}"
+
+            local active
+            active=$("${WP_CLI_PATH}" theme list --status=active --field=name 2>/dev/null | head -n1)
+            if [[ "$active" == "webwerk" ]]; then
+                echo "webwerk theme already active — skipping."
+                exit 0
+            fi
+
+            if "${WP_CLI_PATH}" theme is-installed webwerk 2>/dev/null; then
+                echo -e "${Yellow}Activating: webwerk${Color_Off}"
+                "${WP_CLI_PATH}" theme activate webwerk
+                exit 0
+            fi
+
+            echo -e "${Yellow}webwerk theme not installed — pick one to activate.${Color_Off}"
+            local themes
+            mapfile -t themes < <("${WP_CLI_PATH}" theme list --field=name 2>/dev/null)
+            if [[ ${#themes[@]} -eq 0 ]]; then
+                echo "No themes found."
+                exit 0
+            fi
+            "${WP_CLI_PATH}" theme list --fields=name,status,title --color
+            echo ""
+            local i
+            for ((i=0; i<${#themes[@]}; i++)); do
+                echo "  $((i+1))) ${themes[$i]}"
+            done
+
+            echo -e "${Purple}Activate which theme? (number/name, or Enter to skip): ${Color_Off}"
+            local choice target
+            read -r choice
+            if [[ -z "$choice" ]]; then
+                echo "Skipped."
+                exit 0
+            fi
+            if [[ "$choice" =~ ^[0-9]+$ ]]; then
+                local idx=$(( choice - 1 ))
+                if [[ $idx -ge 0 && $idx -lt ${#themes[@]} ]]; then
+                    target="${themes[$idx]}"
+                else
+                    echo -e "${Red}Invalid number${Color_Off}"
+                    exit 0
+                fi
+            else
+                target="$choice"
+            fi
+            echo -e "${Yellow}Activating: $target${Color_Off}"
+            "${WP_CLI_PATH}" theme activate "$target"
+        )
+    done
+}
+
 # Copy plugins between sites
 copy_plugins() {
     local from="$1"
@@ -850,7 +922,7 @@ assign_env() {
 export -f colors out txt
 export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
-export -f list_wp_plugins list_wp_themes copy_plugins remove_plugins install_plugins wp_update
+export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https

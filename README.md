@@ -473,6 +473,10 @@ webwerk update -h
 # Force HTTPS on site
 ./webwerk mod --sites=mysite --force-https
 
+# Activate the 'webwerk' theme (skips if already active; if it isn't
+# installed, lists themes and asks which one to activate)
+./webwerk mod --sites=mysite -W
+
 # Select all sites without interactive prompts
 ./webwerk mod -A --update all
 
