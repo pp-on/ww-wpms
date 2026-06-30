@@ -481,6 +481,15 @@ webwerk update -h
 # -W is an alias for 'theme webwerk'; -T NUM|NAME also activates
 ./webwerk mod --sites=mysite -W
 
+# Plugin actions (WHAT form): install/copy/update wrap -i/-y/-u;
+# activate/deactivate/remove are new; list forwards to 'get plugins'
+./webwerk mod --sites=mysite plugin install wordpress-seo
+./webwerk mod --sites=mysite plugin update all
+./webwerk mod --sites=mysite plugin activate akismet
+./webwerk mod --sites=mysite plugin deactivate hello-dolly
+./webwerk mod --sites=mysite plugin remove hello-dolly
+./webwerk mod --sites=mysite plugin copy /path/to/plugin
+
 # Select all sites without interactive prompts
 ./webwerk mod -A --update all
 

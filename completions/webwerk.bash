@@ -120,10 +120,11 @@ _webwerk() {
                 --git) COMPREPLY=( $(compgen -W 'pull log' -- "$cur") ); return 0 ;;
                 -x|--wp-debug) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 theme) COMPREPLY=( $(compgen -W 'webwerk' -- "$cur") ); return 0 ;;
+                plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove list' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '
                 local ddev
-                theme
+                theme plugin
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites

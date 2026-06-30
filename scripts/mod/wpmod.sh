@@ -204,9 +204,17 @@ GIT OPERATIONS:
   -g, --git-status            MOVED -> webwerk get git (this alias forwards)
 
 PLUGIN MANAGEMENT:
-  -i, --install-plugin PLUGIN Install plugin on selected sites
-  -y, --copy-plugins FROM     Copy plugin from path to selected sites
-  -u, --update PLUGIN         Update specific plugin (or 'all') (legacy alias: -up)
+  plugin install NAME          Install (+activate) a plugin on selected sites
+  plugin copy FROM             Copy a plugin from a path to selected sites
+  plugin update NAME|all       Update a plugin (or all)
+  plugin activate NAME         Activate a plugin
+  plugin deactivate NAME       Deactivate a plugin
+  plugin remove NAME           Delete a plugin
+  plugin list                  List plugins (-> webwerk get plugins)
+  Flag aliases for the first three:
+  -i, --install-plugin PLUGIN  = plugin install
+  -y, --copy-plugins FROM      = plugin copy
+  -u, --update PLUGIN          = plugin update (legacy alias: -up)
 
 LICENSE KEYS:
   -f, --acf-pro-lk            Setup ACF Pro license key
@@ -368,6 +376,24 @@ parse_arguments() {
                 else
                     list_wp_themes ""
                 fi
+                ;;
+            plugin)
+                # WHAT form: webwerk mod plugin <action> [NAME|FROM]
+                #   install NAME | copy FROM | update NAME|all  (= -i / -y / -u)
+                #   activate NAME | deactivate NAME | remove NAME
+                #   list  (-> webwerk get plugins)
+                require_arg "plugin" "${2:-}"
+                shift
+                case "$1" in
+                    install)    require_arg "plugin install" "${2:-}";    shift; install_plugins "$1" ;;
+                    copy)       require_arg "plugin copy" "${2:-}";       shift; copy_plugins "$1" ;;
+                    update)     require_arg "plugin update" "${2:-}";     shift; wp_update "$1" ;;
+                    activate)   require_arg "plugin activate" "${2:-}";   shift; wp_plugin_action activate "$1" ;;
+                    deactivate) require_arg "plugin deactivate" "${2:-}"; shift; wp_plugin_action deactivate "$1" ;;
+                    remove)     require_arg "plugin remove" "${2:-}";     shift; wp_plugin_action delete "$1" ;;
+                    list)       forward_to_get plugins ;;
+                    *) log_error "plugin: unknown action '$1'. Use: install, copy, update, activate, deactivate, remove, list"; exit 1 ;;
+                esac
                 ;;
             -s|--sites)
                 require_arg "$1" "${2:-}"

@@ -399,6 +399,28 @@ wp_activate_webwerk_theme() {
     done
 }
 
+# Run `wp plugin <action> <name>` on each selected site (activate|deactivate|delete).
+wp_plugin_action() {
+    local action="$1" name="$2"
+    local site
+    for site in "${sites[@]}"; do
+        local site_path
+        if [[ "$site" = /* ]]; then
+            site_path="$site"
+        else
+            site_path="${WORDPRESS_BASE_DIR}/${site}"
+        fi
+        (
+            cd "$site_path" || exit 0
+            echo -e "${Green}----------------"
+            echo -e "$site"
+            echo -e "----------------${Color_Off}"
+            echo -e "${Yellow}plugin $action: $name${Color_Off}"
+            "${WP_CLI_PATH}" plugin "$action" "$name"
+        )
+    done
+}
+
 # Copy plugins between sites
 copy_plugins() {
     local from="$1"
@@ -408,7 +430,7 @@ copy_plugins() {
 
     for site in "${sites[@]}"; do
         out "${site}" 1
-        target="${WORDPRESS_BASE_DIR}${site}/wp-content/plugins/"
+        target="${WORDPRESS_BASE_DIR}/${site}/wp-content/plugins/"
 
         if [[ -d "${target}${plugin_name}" ]]; then
             out "${plugin_name} already exists" 3
@@ -418,7 +440,7 @@ copy_plugins() {
             echo "Done"
 
             out "Activating $plugin_name" 2
-            ( cd "${WORDPRESS_BASE_DIR}${site}" && "${WP_CLI_PATH}" plugin activate "$plugin_name" )
+            ( cd "${WORDPRESS_BASE_DIR}/${site}" && "${WP_CLI_PATH}" plugin activate "$plugin_name" )
         fi
     done
 }
@@ -456,7 +478,7 @@ install_plugins() {
     for site in "${sites[@]}"; do
         out "${site}" 1
         (
-            cd "${WORDPRESS_BASE_DIR}${site}" || exit 1
+            cd "${WORDPRESS_BASE_DIR}/${site}" || exit 1
 
             local target="wp-content/plugins/"
             if [[ -d "${target}${plugin_name}" ]]; then
@@ -482,7 +504,7 @@ wp_update() {
         if [[ "$site" == "." || "${WORDPRESS_BASE_DIR}${site}" == "." ]]; then
             target_dir="."
         else
-            target_dir="${WORDPRESS_BASE_DIR}${site}"
+            target_dir="${WORDPRESS_BASE_DIR}/${site}"
         fi
 
         (
@@ -922,7 +944,7 @@ assign_env() {
 export -f colors out txt
 export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
-export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update
+export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update wp_plugin_action
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
