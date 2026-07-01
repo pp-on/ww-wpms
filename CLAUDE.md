@@ -43,7 +43,8 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `theme`/`plugin`/`site` are the resource-shaped WHATs, with the old flags `-T`/`-W`,
   `-i`/`-y`/`-u`, and `-f`/`-m`/`-k` kept as aliases. `mod site` groups the site-level
   config views/writes: license applied-status (+`--values`), git remote, home/siteurl.
-  Selection flags `-s`/`-a` must precede `site`.)
+  `mod` hoists config/selection flags (`-d`/`-w`/`-s`/`-a`/`-A`) to the front in
+  `main()`, so they may appear anywhere on the line — even after a WHAT action.)
 - Verbs and modes accept any unambiguous prefix abbreviation (`i/u/m/g/r/s`,
   `l/b/d`). A bare `help` word works at any level: `webwerk help`, `webwerk <verb> help`,
   and `webwerk get <what> help` (per-target help).

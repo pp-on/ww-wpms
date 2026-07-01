@@ -212,7 +212,7 @@ No sub-action (or 'show') displays current values; 'set'/'add' change them.
   remote set     set origin's URL; omit URL to edit the current value inline
   url set        update home/siteurl; omit URL to edit the current value inline
 
-Selection flags (-s/-a) must come before 'site', e.g. webwerk mod -s acme site url
+Selection flags (-s/-a/-A) may appear anywhere, e.g. webwerk mod site url -s acme
 EOF
 }
 
@@ -461,8 +461,8 @@ parse_arguments() {
                 ;;
             site)
                 # WHAT form: webwerk mod site <license|remote|url> [show|set|add ...]
-                # Terminal: reads positionals directly and returns (selection flags
-                # like -s must come before 'site').
+                # Terminal: reads positionals directly and returns. Selection/config
+                # flags are hoisted to the front in main(), so they may appear anywhere.
                 local _sub="${2:-}" a3="${3:-}" a4="${4:-}" a5="${5:-}"
                 case "$_sub" in
                     license)
@@ -650,6 +650,27 @@ main() {
     # Set verbose mode for search functions
     verbose=1
     export verbose
+
+    # Forgiving ordering: hoist config (-d/-w) then selection (-s/-a/-A) to the
+    # front, so they take effect no matter where they appear on the line (WHAT
+    # actions like 'site' consume the rest and run in place, so a trailing
+    # '-s'/'-A' would otherwise be missed). Relative order is otherwise preserved.
+    local _cfg=() _sel=() _rest=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -d|--original-dir|-w|--location-wp)
+                _cfg+=("$1"); shift
+                [[ $# -gt 0 ]] && { _cfg+=("$1"); shift; } ;;
+            -s|--sites)
+                _sel+=("$1"); shift
+                [[ $# -gt 0 ]] && { _sel+=("$1"); shift; } ;;
+            -a|--all-sites|-A|--all-sites-auto)
+                _sel+=("$1"); shift ;;
+            *)
+                _rest+=("$1"); shift ;;
+        esac
+    done
+    set -- ${_cfg[@]+"${_cfg[@]}"} ${_sel[@]+"${_sel[@]}"} ${_rest[@]+"${_rest[@]}"}
 
     # Action flags execute inline during parsing, so the no-selection
     # fallback (current directory) must be prepared before parsing
