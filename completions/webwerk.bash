@@ -121,10 +121,14 @@ _webwerk() {
                 -x|--wp-debug) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 theme) COMPREPLY=( $(compgen -W 'webwerk' -- "$cur") ); return 0 ;;
                 plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove list' -- "$cur") ); return 0 ;;
+                site) COMPREPLY=( $(compgen -W 'license remote url' -- "$cur") ); return 0 ;;
+                license) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
+                remote) COMPREPLY=( $(compgen -W 'show add set' -- "$cur") ); return 0 ;;
+                url) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '
                 local ddev
-                theme plugin
+                theme plugin site
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites

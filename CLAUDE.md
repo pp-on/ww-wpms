@@ -37,10 +37,13 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   DDEV container. `status` takes no mode.
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
   `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
-  `mod plugin <install|copy|update|activate|deactivate|remove|list> [NAME]`.
+  `mod plugin <install|copy|update|activate|deactivate|remove|list> [NAME]`,
+  `mod site <license|remote|url> [show|set|add …]`.
   (`mod` is otherwise flag-based — most of its actions are toggles with no object;
-  `theme`/`plugin` are the resource-shaped WHATs, with the old flags `-T`/`-W` and
-  `-i`/`-y`/`-u` kept as aliases.)
+  `theme`/`plugin`/`site` are the resource-shaped WHATs, with the old flags `-T`/`-W`,
+  `-i`/`-y`/`-u`, and `-f`/`-m`/`-k` kept as aliases. `mod site` groups the site-level
+  config views/writes: license applied-status (+`--values`), git remote, home/siteurl.
+  Selection flags `-s`/`-a` must precede `site`.)
 - Verbs and modes accept any unambiguous prefix abbreviation (`i/u/m/g/r/s`,
   `l/b/d`). A bare `help` word works at any level: `webwerk help`, `webwerk <verb> help`,
   and `webwerk get <what> help` (per-target help).

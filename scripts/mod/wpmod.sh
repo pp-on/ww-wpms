@@ -195,6 +195,27 @@ Actions:
 EOF
 }
 
+# Per-WHAT help: webwerk mod site help
+show_site_help() {
+    cat << EOF
+webwerk mod site — view/change site config on selected sites
+
+Usage:
+  webwerk mod site license [show [--values] | set <acf|wpmdb|akeeba|all>]
+  webwerk mod site remote  [show | add NAME URL | set [URL]]
+  webwerk mod site url     [show | set <home|siteurl|both> [URL]]
+
+No sub-action (or 'show') displays current values; 'set'/'add' change them.
+  license show   per-site: is each license applied? (--values also prints the
+                 configured keys from ~/.keys/.env)
+  license set    apply a license (acf=-f, wpmdb=-m, akeeba=-k, all)
+  remote set     set origin's URL; omit URL to edit the current value inline
+  url set        update home/siteurl; omit URL to edit the current value inline
+
+Selection flags (-s/-a) must come before 'site', e.g. webwerk mod -s acme site url
+EOF
+}
+
 # Show help information
 show_help() {
     cat << EOF
@@ -223,6 +244,12 @@ INFORMATION & DISPLAY:
   -O, --outdated               -> webwerk get brief --outdated
   -l, --list                   -> webwerk get plugins
   -T, --themes [NUM|NAME]      list -> webwerk get themes; with NUM|NAME activates
+
+SITE CONFIG (webwerk mod site help for details):
+  site license [show|set ...]  Show if ACF/WP-Migrate/Akeeba licenses are applied
+                               (--values reveals keys); set applies them
+  site remote  [show|add|set]  Show/add/set the wp-content git remote
+  site url     [show|set ...]  Show/set home & siteurl
 
 THEMES:
   theme [webwerk|NAME|NUM]     Activate a theme. No arg = list & pick. 'webwerk'
@@ -432,6 +459,50 @@ parse_arguments() {
                     *) log_error "plugin: unknown action '$1'. Use: install, copy, update, activate, deactivate, remove, list"; exit 1 ;;
                 esac
                 ;;
+            site)
+                # WHAT form: webwerk mod site <license|remote|url> [show|set|add ...]
+                # Terminal: reads positionals directly and returns (selection flags
+                # like -s must come before 'site').
+                local _sub="${2:-}" a3="${3:-}" a4="${4:-}" a5="${5:-}"
+                case "$_sub" in
+                    license)
+                        case "$a3" in
+                            ""|show)
+                                if [[ "$a4" == "--values" || "$a4" == "-x" ]]; then
+                                    site_license_status 1; else site_license_status 0; fi ;;
+                            --values|-x) site_license_status 1 ;;
+                            set)
+                                [[ -z "$a4" ]] && { log_error "site license set <acf|wpmdb|akeeba|all>"; exit 1; }
+                                site_license_set "$a4" ;;
+                            *) log_error "site license: use [show [--values]] | set <acf|wpmdb|akeeba|all>"; exit 1 ;;
+                        esac ;;
+                    remote)
+                        case "$a3" in
+                            ""|show) site_remote_show ;;
+                            add)
+                                [[ -z "$a4" || -z "$a5" ]] && { log_error "site remote add NAME URL"; exit 1; }
+                                site_remote_add "$a4" "$a5" ;;
+                            set) site_remote_set "$a4" ;;
+                            *) log_error "site remote: use [show] | add NAME URL | set [URL]"; exit 1 ;;
+                        esac ;;
+                    url)
+                        case "$a3" in
+                            ""|show) site_url_show ;;
+                            set)
+                                case "$a4" in
+                                    home)         site_url_set home "$a5" ;;
+                                    siteurl|site) site_url_set siteurl "$a5" ;;
+                                    both)         site_url_set both "$a5" ;;
+                                    "") log_error "site url set <home|siteurl|both> [URL]"; exit 1 ;;
+                                    *)  site_url_set both "$a4" ;;
+                                esac ;;
+                            *) log_error "site url: use [show] | set <home|siteurl|both> [URL]"; exit 1 ;;
+                        esac ;;
+                    "") log_error "site: use license | remote | url"; exit 1 ;;
+                    *) log_error "site: unknown target '$_sub'. Use: license, remote, url"; exit 1 ;;
+                esac
+                return 0
+                ;;
             -s|--sites)
                 require_arg "$1" "${2:-}"
                 shift
@@ -555,14 +626,15 @@ main() {
     local _help_req=0 _help_what=""
     for arg in "$@"; do
         case "$arg" in
-            -h|--help|help) _help_req=1 ;;
-            theme|plugin)   _help_what="$arg" ;;
+            -h|--help|help)     _help_req=1 ;;
+            theme|plugin|site)  _help_what="$arg" ;;
         esac
     done
     if [[ $_help_req -eq 1 ]]; then
         case "$_help_what" in
             theme)  show_theme_help ;;
             plugin) show_plugin_help ;;
+            site)   show_site_help ;;
             *)      show_help ;;
         esac
         exit 0

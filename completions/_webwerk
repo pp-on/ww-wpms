@@ -144,8 +144,8 @@ _webwerk_get_targets() {
 
 _webwerk_mod() {
     _arguments \
-        '1:target:(local ddev theme plugin)' \
-        '2::value:(webwerk install copy update activate deactivate remove list)' \
+        '1:target:(local ddev theme plugin site)' \
+        '2::value:(webwerk install copy update activate deactivate remove list license remote url)' \
         '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \

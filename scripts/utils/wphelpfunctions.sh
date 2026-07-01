@@ -536,7 +536,7 @@ wp_license_plugins() {
     case "$plugin" in
         "ACF_PRO")
             if [[ -n "${ACF_PRO_LICENSE:-}" ]]; then
-                read -r -d '' license <<- EOM
+                read -r -d '' license <<- EOM || true
 if (!defined('${plugin}_LICENSE')){
     define( 'ACF_PRO_LICENSE', '${ACF_PRO_LICENSE}' );
 }
@@ -548,7 +548,7 @@ EOM
             ;;
         "WPMDB")
             if [[ -n "${WPMDB_LICENCE:-}" ]]; then
-                read -r -d '' license <<- EOM
+                read -r -d '' license <<- EOM || true
 if (!defined('${plugin}_LICENSE')){
     define( 'WPMDB_LICENCE', '${WPMDB_LICENCE}');
 }
@@ -601,7 +601,7 @@ wp_key_akeeba() {
 
         if ! grep -q "AKEEBA_DOWNLOAD_ID" wp-config.php 2>/dev/null; then
             local akeeba_config
-            read -r -d '' akeeba_config <<- EOM
+            read -r -d '' akeeba_config <<- EOM || true
 if (!defined('AKEEBA_DOWNLOAD_ID')) {
     define('AKEEBA_DOWNLOAD_ID', '${AKEEBA_DOWNLOAD_ID}');
 }
@@ -647,6 +647,143 @@ wp_setup_all_licenses() {
     else
         out "No license keys were configured" 3
     fi
+}
+
+#===============================================================================
+# SITE CONFIG (mod site license|remote|url)
+#===============================================================================
+
+# Resolve a site name to its filesystem path (absolute stays; else BASE/site).
+_site_path() {
+    if [[ "$1" = /* ]]; then echo "$1"; else echo "${WORDPRESS_BASE_DIR}/$1"; fi
+}
+
+_site_header() {
+    echo -e "${Green}----------------"
+    echo -e "$1"
+    echo -e "----------------${Color_Off}"
+}
+
+# mod site license [show_values] — per site: is each license applied?
+site_license_status() {
+    local show_values="${1:-0}" site sp cfg mark
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; cfg="$sp/wp-config.php"
+        _site_header "$site"
+        if grep -q "ACF_PRO_LICENSE" "$cfg" 2>/dev/null; then mark="${Green}applied${Color_Off}"; else mark="${Yellow}not applied${Color_Off}"; fi
+        echo -e "  ACF Pro:     $mark"
+        if grep -q "WPMDB_LICENCE" "$cfg" 2>/dev/null; then mark="${Green}applied${Color_Off}"; else mark="${Yellow}not applied${Color_Off}"; fi
+        echo -e "  WP Migrate:  $mark"
+        if grep -q "AKEEBA_DOWNLOAD_ID" "$cfg" 2>/dev/null \
+           || [[ -n "$(${WP_CLI_PATH} --path="$sp" option get akeeba_download_id 2>/dev/null || true)" ]]; then
+            mark="${Green}applied${Color_Off}"; else mark="${Yellow}not applied${Color_Off}"; fi
+        echo -e "  Akeeba:      $mark"
+    done
+    if [[ "$show_values" == "1" ]]; then
+        echo -e "${Purple}Configured license values (from ~/.keys / .env):${Color_Off}"
+        echo "  ACF_PRO_LICENSE    = ${ACF_PRO_LICENSE:-<not set>}"
+        echo "  WPMDB_LICENCE      = ${WPMDB_LICENCE:-<not set>}"
+        echo "  AKEEBA_DOWNLOAD_ID = ${AKEEBA_DOWNLOAD_ID:-<not set>}"
+    fi
+}
+
+# mod site license set <acf|wpmdb|akeeba|all>
+site_license_set() {
+    local which="$1" site sp
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"
+        _site_header "$site"
+        ( cd "$sp" || exit 0
+          case "$which" in
+              acf)    wp_license_plugins "ACF_PRO" ;;
+              wpmdb)  wp_key_migrate ;;
+              akeeba) wp_key_akeeba ;;
+              all)    wp_setup_all_licenses ;;
+              *) log_error "license set: use acf, wpmdb, akeeba, or all"; exit 1 ;;
+          esac )
+    done
+}
+
+# mod site remote — show remotes per site
+site_remote_show() {
+    local site sp repo
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
+            git -C "$repo" remote -v | sed 's/^/  /' || echo "  <none>"
+        else
+            echo -e "  ${Yellow}no git repo in wp-content${Color_Off}"
+        fi
+    done
+}
+
+# mod site remote add <name> <url>
+site_remote_add() {
+    local name="$1" url="$2" site sp repo
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
+            git -C "$repo" remote add "$name" "$url" \
+                && echo -e "  ${Green}added remote $name -> $url${Color_Off}"
+        else
+            echo -e "  ${Yellow}no git repo in wp-content — skipped${Color_Off}"
+        fi
+    done
+}
+
+# mod site remote set [url] — set origin url; omit url to edit the current value
+site_remote_set() {
+    local url="${1:-}" site sp repo cur new
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if ! git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
+            echo -e "  ${Yellow}no git repo in wp-content — skipped${Color_Off}"; continue
+        fi
+        cur="$(git -C "$repo" remote get-url origin 2>/dev/null || echo '')"
+        if [[ -n "$url" ]]; then new="$url"; else read -e -i "$cur" -p "  origin url: " new || true; fi
+        [[ -z "$new" ]] && { echo "  (skipped)"; continue; }
+        if [[ -n "$cur" ]]; then
+            git -C "$repo" remote set-url origin "$new" && echo -e "  ${Green}origin -> $new${Color_Off}"
+        else
+            git -C "$repo" remote add origin "$new" && echo -e "  ${Green}added origin -> $new${Color_Off}"
+        fi
+    done
+}
+
+# mod site url — show home/siteurl per site
+site_url_show() {
+    local site sp
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"
+        _site_header "$site"
+        echo "  home:    $(${WP_CLI_PATH} --path="$sp" option get home 2>/dev/null || echo '?')"
+        echo "  siteurl: $(${WP_CLI_PATH} --path="$sp" option get siteurl 2>/dev/null || echo '?')"
+    done
+}
+
+# mod site url set <home|siteurl|both> [url] — omit url to edit the current value
+site_url_set() {
+    local which="$1" url="${2:-}" site sp opt c n
+    local opts=()
+    case "$which" in
+        home) opts=(home) ;;
+        siteurl) opts=(siteurl) ;;
+        both) opts=(home siteurl) ;;
+    esac
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"
+        _site_header "$site"
+        for opt in "${opts[@]}"; do
+            c="$(${WP_CLI_PATH} --path="$sp" option get "$opt" 2>/dev/null || echo '')"
+            if [[ -n "$url" ]]; then n="$url"; else read -e -i "$c" -p "  $opt: " n || true; fi
+            [[ -z "$n" ]] && { echo "  ($opt skipped)"; continue; }
+            ${WP_CLI_PATH} --path="$sp" option update "$opt" "$n" >/dev/null 2>&1 \
+                && echo -e "  ${Green}$opt -> $n${Color_Off}"
+        done
+    done
 }
 
 #===============================================================================
@@ -946,6 +1083,8 @@ export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
 export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update wp_plugin_action
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
+export -f _site_path _site_header site_license_status site_license_set
+export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se wp_enable_se

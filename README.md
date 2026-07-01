@@ -490,6 +490,17 @@ webwerk update -h
 ./webwerk mod --sites=mysite plugin remove hello-dolly
 ./webwerk mod --sites=mysite plugin copy /path/to/plugin
 
+# Site config (WHAT form): view with no sub-action, change with set/add.
+# (selection flags -s/-a must come before 'site')
+./webwerk mod -s mysite site license               # is ACF/WP-Migrate/Akeeba applied?
+./webwerk mod -s mysite site license --values      # also reveal the configured keys
+./webwerk mod -s mysite site license set acf       # apply a license (acf|wpmdb|akeeba|all)
+./webwerk mod -s mysite site remote                # show the wp-content git remote
+./webwerk mod -s mysite site remote set URL        # set origin (omit URL to edit inline)
+./webwerk mod -s mysite site remote add backup URL # add a named remote
+./webwerk mod -s mysite site url                   # show home + siteurl
+./webwerk mod -s mysite site url set home URL      # set home (or: siteurl | both)
+
 # Select all sites without interactive prompts
 ./webwerk mod -A --update all
 
