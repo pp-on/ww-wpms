@@ -33,7 +33,9 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 - **Environment Detection**: Automatic detection of WSL2, DDEV, Docker, and Git Bash environments
 - **Debug Management**: Easy toggle of WordPress debug modes
 - **User Management**: Create and manage WordPress admin users
-- **Plugin Management**: Copy and activate plugins across multiple sites
+- **Plugin Management**: Install, copy, update, (de)activate, and remove plugins across sites (`mod plugin …`)
+- **Site Config**: View/change per-site license status, git remote, and home/siteurl (`mod site …`)
+- **Read-only Queries**: Inspect plugins/themes/core/status/URLs and run DB reads without changes (`webwerk get …`)
 - **Security Hardening**: Automated file permissions and database security
 - **Comprehensive Logging**: Detailed operation logs with timestamps
 - **Accessibility Focus**: Built-in support for WCAG compliance and German localization
@@ -312,14 +314,23 @@ Features:
 ### Command Grammar
 
 ```
-webwerk VERB [MODE] [OPTIONS]
+webwerk VERB [MODE] [WHAT] [OPTIONS]
   VERB = install | update | mod | get | remove | status
   MODE = local (default) | bare | ddev
+  WHAT = the verb's object/scope, where it has one:
+           get    plugins | themes | core | status | brief | git | url | db
+           update plugins | plugin <name> | themes | theme <name> | core
+           mod    theme [webwerk|NAME|NUM]
+                  plugin <install|copy|update|activate|deactivate|remove|list> [NAME]
+                  site   <license|remote|url> [show|set|add …]
 
 # Verbs and modes accept any unambiguous abbreviation:
 #   i->install  u->update  m->mod  g->get  r->remove  s->status
 #   l->local    b->bare     d->ddev
 # (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
+
+# Any command also takes 'help': webwerk help, webwerk <verb> help,
+# and per-target/-WHAT: webwerk get themes help, webwerk mod site help
 ```
 
 ### Installation Commands
