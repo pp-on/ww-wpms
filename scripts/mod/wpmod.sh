@@ -164,13 +164,19 @@ show_theme_help() {
 webwerk mod theme — activate a theme on selected sites
 
 Usage:
-  webwerk mod theme [webwerk|NAME|NUM] [-s sites | -a]
+  webwerk mod theme [webwerk|NAME|NUM] [-s sites | -a | -A]
 
   (no arg)   list installed themes and pick one to activate
   webwerk    activate the 'webwerk' theme; skip if already active; if it
              isn't installed, list themes and pick one
   NAME       activate the theme by name
   NUM        activate the theme by its number in the list
+
+Site selection (may appear anywhere on the line):
+  -s NAMES   comma-separated site names under the base dir
+  -a         all sites under the base dir, prompting y/N per site
+  -A         all sites under the base dir, no prompts
+  (default: the current directory)
 
 Aliases: -W = 'theme webwerk'; -T NUM|NAME also activates.
 EOF
@@ -182,7 +188,7 @@ show_plugin_help() {
 webwerk mod plugin — manage plugins on selected sites
 
 Usage:
-  webwerk mod plugin <action> [NAME|FROM] [-s sites | -a]
+  webwerk mod plugin <action> [NAME|FROM] [-s sites | -a | -A]
 
 Actions:
   install NAME      install (and activate) a plugin   (alias: -i NAME)
@@ -192,6 +198,12 @@ Actions:
   deactivate NAME   deactivate a plugin
   remove NAME       delete a plugin
   list              list plugins (-> webwerk get plugins)
+
+Site selection (may appear anywhere on the line):
+  -s NAMES   comma-separated site names under the base dir
+  -a         all sites under the base dir, prompting y/N per site
+  -A         all sites under the base dir, no prompts
+  (default: the current directory)
 EOF
 }
 
@@ -212,7 +224,10 @@ No sub-action (or 'show') displays current values; 'set'/'add' change them.
   remote set     set origin's URL; omit URL to edit the current value inline
   url set        update home/siteurl; omit URL to edit the current value inline
 
-Selection flags (-s/-a/-A) may appear anywhere, e.g. webwerk mod site url -s acme
+Site selection (may appear anywhere on the line; default: current directory):
+  -s NAMES   comma-separated site names under the base dir
+  -a         all sites under the base dir, prompting y/N per site
+  -A         all sites under the base dir, no prompts
 EOF
 }
 
