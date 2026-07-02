@@ -258,7 +258,8 @@ Usage:
   webwerk mod user add NAME [--role R] [--pass P] [--email E]
 
   --role   administrator (default; 'admin' accepted) | editor | author |
-           contributor | subscriber
+           contributor | subscriber. If omitted and interactive, you're prompted
+           to pick one (Enter = administrator); non-interactive keeps the default.
   --pass   password (a random 16-char one is generated if omitted)
   --email  email address
 
@@ -577,18 +578,24 @@ parse_arguments() {
                     ""|show) site_user_show ;;
                     add)
                         shift  # consume 'add'
-                        local u_name="" u_role="administrator" u_pass="" u_email=""
+                        local u_name="" u_role="administrator" u_role_set=0 u_pass="" u_email=""
                         while [[ $# -gt 0 ]]; do
                             case "$1" in
-                                --role)  shift; [[ $# -gt 0 ]] && { u_role="$1"; shift; } ;;
+                                --role)  shift; [[ $# -gt 0 ]] && { u_role="$1"; u_role_set=1; shift; } ;;
                                 --pass)  shift; [[ $# -gt 0 ]] && { u_pass="$1"; shift; } ;;
                                 --email) shift; [[ $# -gt 0 ]] && { u_email="$1"; shift; } ;;
                                 -*) log_error "user add: unknown option '$1'"; exit 1 ;;
                                 *)  [[ -z "$u_name" ]] && u_name="$1"; shift ;;
                             esac
                         done
-                        [[ "$u_role" == "admin" ]] && u_role="administrator"
                         [[ -z "$u_name" ]]  && { log_error "user add NAME [--role R] [--pass P] [--email E]"; exit 1; }
+                        # role omitted + interactive -> pick one (Enter = administrator);
+                        # non-interactive (piped/scripted) keeps the administrator default
+                        if [[ $u_role_set -eq 0 && -t 0 ]]; then
+                            u_role="$(pick_user_role)"
+                        fi
+                        [[ "$u_role" == "admin" ]] && u_role="administrator"
+                        [[ -z "$u_role" ]]  && u_role="administrator"
                         [[ -z "$u_pass" ]]  && u_pass="$(generate_random_string 16)"
                         [[ -z "$u_email" ]] && u_email="${wp_email:-}"
                         out "Creating user ${u_name} (role: ${u_role})" 1

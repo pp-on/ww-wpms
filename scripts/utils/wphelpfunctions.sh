@@ -841,6 +841,25 @@ site_config_show() {
     done
 }
 
+# Interactive role picker (prompts on /dev/tty, echoes the chosen role to stdout;
+# Enter = administrator). Callers should only invoke this when interactive.
+pick_user_role() {
+    local rc
+    {
+        echo "Role? [1] administrator (default)  2) editor  3) author  4) contributor  5) subscriber"
+        printf "  > "
+    } >/dev/tty
+    read -r rc </dev/tty || rc=""
+    case "$rc" in
+        ""|1|admin|administrator) echo administrator ;;
+        2|editor)                 echo editor ;;
+        3|author)                 echo author ;;
+        4|contributor)            echo contributor ;;
+        5|subscriber)             echo subscriber ;;
+        *)                        echo "$rc" ;;
+    esac
+}
+
 # mod user add — create a user (role defaults to administrator) on each site.
 site_user_add() {
     local username="$1" role="${2:-administrator}" password="$3" email="$4" site sp
@@ -1162,7 +1181,7 @@ export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins 
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
 export -f _site_path _site_header site_license_status site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
-export -f wp_show_errors site_config site_config_show site_user_add site_user_show
+export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se wp_enable_se
