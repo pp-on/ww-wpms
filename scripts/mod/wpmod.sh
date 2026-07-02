@@ -623,10 +623,10 @@ parse_arguments() {
             -x|--wp-debug)
                 require_arg "$1" "${2:-}"
                 shift
-                wp_debug "$1"
+                site_config debug "$1"
                 ;;
             -z|--hide-errors)
-                wp_hide_errors
+                site_config errors hide
                 ;;
             -f|--acf-pro-lk)
                 wp_license_plugins "ACF_PRO"
