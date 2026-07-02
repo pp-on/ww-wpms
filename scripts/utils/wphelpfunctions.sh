@@ -149,19 +149,20 @@ process_dirs() {
 # Process sites interactively
 process_sites() {
     local search_dir="${1:-${WORDPRESS_BASE_DIR}}"
-    local site
+    search_dir="${search_dir%/}"
+    local site site_name answer
 
     if [[ -z "${sites:-}" ]]; then
-        for site in "$search_dir"*/; do
+        for site in "$search_dir"/*/; do
             if [[ -d "$site/wp-content/" ]]; then
-                local site_name=${site##"$search_dir"}
+                site_name="${site##"$search_dir/"}"
+                site_name="${site_name%%/}"
                 echo "Found $site_name"
                 echo "Should it be processed? [y/N] "
                 read -r answer
                 echo -e "\n--------------"
 
                 if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
-                    site_name=${site_name%%/}
                     sites+=("$site_name")
                 fi
             fi
