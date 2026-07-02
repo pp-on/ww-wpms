@@ -184,6 +184,7 @@ complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from license
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add set' -a 'show add set' -d 'remote action'
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'url action'
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from url; and __fish_seen_subcommand_from set' -a 'home siteurl both' -d 'which url'
+complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme plugin site' -a help -d 'Show help for this WHAT'
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site' -a plugin -d 'Plugin actions: plugin <install|copy|update|activate|deactivate|remove|list>'
@@ -228,3 +229,4 @@ complete -c webwerk -n __ww_get_ctx -l format        -r -d 'Output format (table
 complete -c webwerk -n __ww_get_ctx -l errors           -d 'brief: only broken sites'
 complete -c webwerk -n __ww_get_ctx -l outdated         -d 'brief: only sites with updates'
 complete -c webwerk -n __ww_get_ctx -s h -l help        -d 'Show help'
+complete -c webwerk -f -n __ww_get_ctx -a help          -d 'Show help (per-target after a target word)'

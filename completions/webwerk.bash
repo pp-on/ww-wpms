@@ -119,9 +119,9 @@ _webwerk() {
                 -R|--search-replace) return 0 ;;
                 --git) COMPREPLY=( $(compgen -W 'pull log' -- "$cur") ); return 0 ;;
                 -x|--wp-debug) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
-                theme) COMPREPLY=( $(compgen -W 'webwerk' -- "$cur") ); return 0 ;;
-                plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove list' -- "$cur") ); return 0 ;;
-                site) COMPREPLY=( $(compgen -W 'license remote url' -- "$cur") ); return 0 ;;
+                theme) COMPREPLY=( $(compgen -W 'webwerk help' -- "$cur") ); return 0 ;;
+                plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove list help' -- "$cur") ); return 0 ;;
+                site) COMPREPLY=( $(compgen -W 'license remote url help' -- "$cur") ); return 0 ;;
                 license) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
                 remote) COMPREPLY=( $(compgen -W 'show add set' -- "$cur") ); return 0 ;;
                 url) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
@@ -177,7 +177,9 @@ _webwerk() {
                         case "$w" in plugins|themes|core|status|brief|git|url|db) has_target=true; break ;; esac
                     done
                     if [[ "$has_target" == false ]]; then
-                        COMPREPLY=( $(compgen -W "$get_targets" -- "$cur") )
+                        COMPREPLY=( $(compgen -W "$get_targets help" -- "$cur") )
+                    else
+                        COMPREPLY=( $(compgen -W "help" -- "$cur") )
                     fi
                     ;;
             esac

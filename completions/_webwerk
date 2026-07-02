@@ -120,6 +120,7 @@ _webwerk_update_targets() {
 _webwerk_get() {
     _arguments \
         '1: :_webwerk_get_targets' \
+        '2::action:(help)' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
         '(-a --all-sites)'{-a,--all-sites}'[All sites under the base dir]' \
         '--format=[Output format for plugins/themes]:format:(table csv json count yaml)' \
@@ -138,6 +139,7 @@ _webwerk_get_targets() {
         'git:Git overview of each wp-content repo'
         'url:siteurl / home per site'
         'db:Run a query per site (warns on non-SELECT)'
+        'help:Show help (generic, or per-target)'
     )
     _describe 'target' targets
 }
@@ -145,7 +147,7 @@ _webwerk_get_targets() {
 _webwerk_mod() {
     _arguments \
         '1:target:(local ddev theme plugin site)' \
-        '2::value:(webwerk install copy update activate deactivate remove list license remote url)' \
+        '2::value:(webwerk install copy update activate deactivate remove list license remote url help)' \
         '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
