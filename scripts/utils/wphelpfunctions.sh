@@ -50,7 +50,7 @@ colors
 # Enhanced output function with customizable formatting
 out() {
     local text="$1"
-    local color_key="${2,,}"  # Convert to lowercase
+    local color_key="${2:-}"; color_key="${color_key,,}"  # optional; lowercase
     local line_char="${3:--}" # Default to '-'
     local color="$Cyan"       # Default color
     local total_width="${OUTPUT_LINE_WIDTH:-60}"
@@ -83,6 +83,13 @@ out() {
     echo -e "${color}${line}"
     echo -e "${centered_line}"
     echo -e "${line}${Color_Off}"
+}
+
+# Generate a random alphanumeric string of the given length (default 16).
+generate_random_string() {
+    local len="${1:-16}" s
+    s="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c "$len" || true)"
+    printf '%s' "$s"
 }
 
 # Colored text output
@@ -787,6 +794,75 @@ site_url_set() {
     done
 }
 
+# Undo wp_hide_errors: turn error display back on (cwd-based, like wp_hide_errors).
+wp_show_errors() {
+    out "showing errors" 4
+    sed -i "/ini_set('display_errors'/d; /ini_set('error_reporting'/d; /DEBUG/d" wp-config.php
+    cat <<EOF >> wp-config.php
+ini_set('display_errors','On');
+define('WP_DEBUG', true);
+define('WP_DEBUG_DISPLAY', true);
+EOF
+}
+
+# mod config <debug|errors|indexing|htaccess> <value> — per selected site.
+# Wraps the cwd-based primitives (wp_debug/wp_hide_errors/wp_show_errors/
+# wp_block_se/wp_enable_se/htaccess) with the site loop they lack.
+site_config() {
+    local action="$1" value="${2:-}" site sp
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"
+        _site_header "$site"
+        ( cd "$sp" || exit 0
+          case "$action" in
+              debug)    wp_debug "$value" ;;
+              errors)   if [[ "$value" == show ]]; then wp_show_errors; else wp_hide_errors; fi ;;
+              indexing) if [[ "$value" == off ]]; then wp_block_se; else wp_enable_se; fi ;;
+              htaccess) htaccess ;;
+          esac )
+    done
+}
+
+# mod config (no arg) — show debug / indexing / https state per site.
+site_config_show() {
+    local site sp cfg dbg bp
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; cfg="$sp/wp-config.php"
+        _site_header "$site"
+        dbg="$(${WP_CLI_PATH} --path="$sp" config get WP_DEBUG 2>/dev/null || echo '?')"
+        bp="$(${WP_CLI_PATH} --path="$sp" option get blog_public 2>/dev/null || echo '?')"
+        echo "  debug (WP_DEBUG):        $dbg"
+        echo "  indexing (blog_public):  $bp  (1=indexed, 0=blocked)"
+        if grep -q "FORCE_SSL_ADMIN" "$cfg" 2>/dev/null; then
+            echo -e "  https:                   ${Green}forced${Color_Off}"
+        else
+            echo "  https:                   not forced"
+        fi
+    done
+}
+
+# mod user add — create a user (role defaults to administrator) on each site.
+site_user_add() {
+    local username="$1" role="${2:-administrator}" password="$3" email="$4" site sp
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"
+        _site_header "$site"
+        ( cd "$sp" && "${WP_CLI_PATH}" user create "$username" "$email" \
+              --user_pass="$password" --role="$role" )
+    done
+}
+
+# mod user (no arg) — list users per site.
+site_user_show() {
+    local site sp
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"
+        _site_header "$site"
+        ${WP_CLI_PATH} --path="$sp" user list --fields=ID,user_login,user_email,roles 2>/dev/null \
+            || echo "  (failed)"
+    done
+}
+
 #===============================================================================
 # USER MANAGEMENT
 #===============================================================================
@@ -1079,13 +1155,14 @@ assign_env() {
 #===============================================================================
 
 # Export all functions for use by other scripts
-export -f colors out txt
+export -f colors out txt generate_random_string
 export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
 export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update wp_plugin_action
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
 export -f _site_path _site_header site_license_status site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
+export -f wp_show_errors site_config site_config_show site_user_add site_user_show
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se wp_enable_se

@@ -125,10 +125,15 @@ _webwerk() {
                 license) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
                 remote) COMPREPLY=( $(compgen -W 'show add set' -- "$cur") ); return 0 ;;
                 url) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
+                config) COMPREPLY=( $(compgen -W 'debug errors indexing https htaccess help' -- "$cur") ); return 0 ;;
+                debug|indexing) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
+                errors) COMPREPLY=( $(compgen -W 'hide show' -- "$cur") ); return 0 ;;
+                user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
+                --role) COMPREPLY=( $(compgen -W 'admin editor author contributor subscriber' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '
                 local ddev
-                theme plugin site
+                theme plugin site config user
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites

@@ -231,6 +231,42 @@ Site selection (may appear anywhere on the line; default: current directory):
 EOF
 }
 
+# Per-WHAT help: webwerk mod config help
+show_config_help() {
+    cat << EOF
+webwerk mod config — view/change WordPress config toggles on selected sites
+
+Usage:
+  webwerk mod config                 show debug / indexing / https state per site
+  webwerk mod config debug on|off    toggle WP_DEBUG        (= -x on|off)
+  webwerk mod config errors hide|show   hide/show PHP errors   (hide = -z)
+  webwerk mod config indexing on|off search-engine indexing (off = -r)
+  webwerk mod config https           force HTTPS in wp-config + URLs (= -S)
+  webwerk mod config htaccess        create/update .htaccess (= --htaccess)
+
+Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
+EOF
+}
+
+# Per-WHAT help: webwerk mod user help
+show_user_help() {
+    cat << EOF
+webwerk mod user — manage users on selected sites
+
+Usage:
+  webwerk mod user                   list users per site
+  webwerk mod user add NAME [--role R] [--pass P] [--email E]
+
+  --role   administrator (default; 'admin' accepted) | editor | author |
+           contributor | subscriber
+  --pass   password (a random 16-char one is generated if omitted)
+  --email  email address
+
+Aliases: -n (+ -U/-P/-E) creates an administrator.
+Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
+EOF
+}
+
 # Show help information
 show_help() {
     cat << EOF
@@ -301,8 +337,9 @@ LICENSE KEYS:
   -k, --akeeba-license        Setup Akeeba Download ID
   --setup-all-licenses        Setup all available license keys
 
-USER MANAGEMENT:
-  -n, --new-user              Create new admin user
+USER MANAGEMENT (webwerk mod user help for details):
+  user [add …]                List users, or add one (role defaults to admin)
+  -n, --new-user              Create new admin user (with -U/-P/-E)
   -U, --wp-user USER          Set username for new user (default: ${wp_user})
   -P, --wp-password PASS      Set password for new user
   -E, --wp-email EMAIL        Set email for new user (default: ${wp_email})
@@ -310,7 +347,8 @@ USER MANAGEMENT:
 DATABASE:
   -R, --search-replace OLD NEW  Run wp search-replace across selected sites
 
-WORDPRESS CONFIGURATION:
+WORDPRESS CONFIGURATION (webwerk mod config help for details):
+  config [debug|errors|indexing|https|htaccess …]  View/toggle the settings below
   -x, --wp-debug MODE         Enable/disable debug mode (on/off)
   -z, --hide-errors           Hide WordPress errors
   -r, --disable-search-engine-indexing  Disable search engine indexing
@@ -518,6 +556,47 @@ parse_arguments() {
                 esac
                 return 0
                 ;;
+            config)
+                # WHAT form: webwerk mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]
+                local c_what="${2:-}" c_val="${3:-}"
+                case "$c_what" in
+                    ""|show)  site_config_show ;;
+                    debug)    [[ "$c_val" =~ ^(on|off)$ ]]   || { log_error "config debug on|off"; exit 1; };    site_config debug "$c_val" ;;
+                    errors)   [[ "$c_val" =~ ^(hide|show)$ ]] || { log_error "config errors hide|show"; exit 1; }; site_config errors "$c_val" ;;
+                    indexing) [[ "$c_val" =~ ^(on|off)$ ]]   || { log_error "config indexing on|off"; exit 1; }; site_config indexing "$c_val" ;;
+                    https)    wp_force_https ;;
+                    htaccess) site_config htaccess ;;
+                    *) log_error "config: use [show] | debug on|off | errors hide|show | indexing on|off | https | htaccess"; exit 1 ;;
+                esac
+                return 0
+                ;;
+            user)
+                # WHAT form: webwerk mod user [add NAME [--role R] [--pass P] [--email E]]
+                shift  # consume 'user'
+                case "${1:-show}" in
+                    ""|show) site_user_show ;;
+                    add)
+                        shift  # consume 'add'
+                        local u_name="" u_role="administrator" u_pass="" u_email=""
+                        while [[ $# -gt 0 ]]; do
+                            case "$1" in
+                                --role)  shift; [[ $# -gt 0 ]] && { u_role="$1"; shift; } ;;
+                                --pass)  shift; [[ $# -gt 0 ]] && { u_pass="$1"; shift; } ;;
+                                --email) shift; [[ $# -gt 0 ]] && { u_email="$1"; shift; } ;;
+                                -*) log_error "user add: unknown option '$1'"; exit 1 ;;
+                                *)  [[ -z "$u_name" ]] && u_name="$1"; shift ;;
+                            esac
+                        done
+                        [[ "$u_role" == "admin" ]] && u_role="administrator"
+                        [[ -z "$u_name" ]]  && { log_error "user add NAME [--role R] [--pass P] [--email E]"; exit 1; }
+                        [[ -z "$u_pass" ]]  && u_pass="$(generate_random_string 16)"
+                        [[ -z "$u_email" ]] && u_email="${wp_email:-}"
+                        out "Creating user ${u_name} (role: ${u_role})" 1
+                        site_user_add "$u_name" "$u_role" "$u_pass" "$u_email" ;;
+                    *) log_error "user: use [show] | add NAME [--role R] [--pass P] [--email E]"; exit 1 ;;
+                esac
+                return 0
+                ;;
             -s|--sites)
                 require_arg "$1" "${2:-}"
                 shift
@@ -641,8 +720,8 @@ main() {
     local _help_req=0 _help_what=""
     for arg in "$@"; do
         case "$arg" in
-            -h|--help|help)     _help_req=1 ;;
-            theme|plugin|site)  _help_what="$arg" ;;
+            -h|--help|help)              _help_req=1 ;;
+            theme|plugin|site|config|user) _help_what="$arg" ;;
         esac
     done
     if [[ $_help_req -eq 1 ]]; then
@@ -650,6 +729,8 @@ main() {
             theme)  show_theme_help ;;
             plugin) show_plugin_help ;;
             site)   show_site_help ;;
+            config) show_config_help ;;
+            user)   show_user_help ;;
             *)      show_help ;;
         esac
         exit 0

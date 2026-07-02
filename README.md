@@ -512,6 +512,18 @@ webwerk update -h
 ./webwerk mod -s mysite site url                   # show home + siteurl
 ./webwerk mod -s mysite site url set home URL      # set home (or: siteurl | both)
 
+# WordPress config toggles (WHAT form): view with no sub-action, change with a value
+./webwerk mod -s mysite config                     # show debug/indexing/https state
+./webwerk mod -s mysite config debug on            # WP_DEBUG on|off   (= -x)
+./webwerk mod -s mysite config errors show         # show|hide PHP errors (hide = -z)
+./webwerk mod -s mysite config indexing off        # search-engine indexing (off = -r)
+./webwerk mod -s mysite config https               # force HTTPS       (= -S)
+
+# Users (WHAT form)
+./webwerk mod -s mysite user                       # list users per site
+./webwerk mod -s mysite user add jane --role editor --email jane@x.test
+./webwerk mod -s mysite user add bob               # role defaults to admin, random pass
+
 # Select all sites without interactive prompts
 ./webwerk mod -A --update all
 

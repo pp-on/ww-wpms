@@ -38,11 +38,14 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
   `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
   `mod plugin <install|copy|update|activate|deactivate|remove|list> [NAME]`,
-  `mod site <license|remote|url> [show|set|add …]`.
-  (`mod` is otherwise flag-based — most of its actions are toggles with no object;
-  `theme`/`plugin`/`site` are the resource-shaped WHATs, with the old flags `-T`/`-W`,
-  `-i`/`-y`/`-u`, and `-f`/`-m`/`-k` kept as aliases. `mod site` groups the site-level
-  config views/writes: license applied-status (+`--values`), git remote, home/siteurl.
+  `mod site <license|remote|url> [show|set|add …]`,
+  `mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
+  `mod user [add NAME [--role R] [--pass P] [--email E]]`.
+  (`mod` WHATs wrap the old flags, kept as aliases: `-T`/`-W`, `-i`/`-y`/`-u`,
+  `-f`/`-m`/`-k`, `-x`/`-z`/`-S`/`-r`/`--htaccess`, `-n`+`-U`/`-P`/`-E`. `mod site`
+  groups site-level config views/writes: license applied-status (+`--values`),
+  git remote, home/siteurl. `mod config` shows/toggles the WP settings; `mod user`
+  lists/adds users (role defaults to administrator).
   `mod` hoists config/selection flags (`-d`/`-w`/`-s`/`-a`/`-A`) to the front in
   `main()`, so they may appear anywhere on the line — even after a WHAT action.)
 - Verbs and modes accept any unambiguous prefix abbreviation (`i/u/m/g/r/s`,
