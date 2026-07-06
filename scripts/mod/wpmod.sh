@@ -178,7 +178,8 @@ Site selection (may appear anywhere on the line):
   -A         all sites under the base dir, no prompts
   (default: the current directory)
 
-Aliases: -W = 'theme webwerk'; -T NUM|NAME also activates.
+Aliases: -W = 'theme webwerk'; -W=NAME gives NAME the same treatment
+(skip if active, pick if missing); -T NUM|NAME also activates.
 EOF
 }
 
@@ -307,7 +308,8 @@ THEMES:
   theme [webwerk|NAME|NUM]     Activate a theme. No arg = list & pick. 'webwerk'
                                = activate the webwerk theme (skip if already active;
                                pick one if not installed). NAME|NUM = activate it.
-  -W, --theme-webwerk          Alias for 'theme webwerk'
+  -W[=NAME], --theme-webwerk   Alias for 'theme webwerk'; -W=NAME does the
+                               same for NAME (skip if active, pick if missing)
   (-T NUM|NAME also activates — see the forwarding note above)
 
 OUTPUT & FORMATTING:
@@ -483,6 +485,10 @@ parse_arguments() {
             -W|--theme-webwerk)
                 # activate the 'webwerk' theme (skip if active; pick one if missing)
                 wp_activate_webwerk_theme
+                ;;
+            -W=*|--theme-webwerk=*)
+                # same semantics for a named theme: -W=NAME
+                wp_activate_webwerk_theme "${1#*=}"
                 ;;
             theme)
                 # WHAT form: webwerk mod theme [webwerk|NAME|NUM]
