@@ -384,22 +384,27 @@ EOF
 }
 
 # Parse command line arguments
-parse_arguments() {
-    # Expand combined short flags (e.g. -Ag -> -A -g)
-    # Multi-char short flags (-gl, -up) must not be split
-    local expanded=()
+# Expand combined short flags (e.g. -Ag -> -A -g) into EXPANDED_ARGS
+# Multi-char short flags (-gl, -up) must not be split
+expand_bundled_flags() {
+    EXPANDED_ARGS=()
+    local arg i
     for arg in "$@"; do
         if [[ "$arg" == "-gl" || "$arg" == "-up" ]]; then
-            expanded+=("$arg")
+            EXPANDED_ARGS+=("$arg")
         elif [[ "$arg" =~ ^-[^-][a-zA-Z]+$ ]]; then
             for ((i=1; i<${#arg}; i++)); do
-                expanded+=("-${arg:$i:1}")
+                EXPANDED_ARGS+=("-${arg:$i:1}")
             done
         else
-            expanded+=("$arg")
+            EXPANDED_ARGS+=("$arg")
         fi
     done
-    set -- "${expanded[@]}"
+}
+
+parse_arguments() {
+    expand_bundled_flags "$@"
+    set -- ${EXPANDED_ARGS[@]+"${EXPANDED_ARGS[@]}"}
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -754,6 +759,11 @@ main() {
     verbose=1
     export verbose
 
+    # Split bundled short flags first (e.g. -Wa -> -W -a), so the hoist below
+    # also catches selection flags hidden inside a bundle.
+    expand_bundled_flags "$@"
+    set -- ${EXPANDED_ARGS[@]+"${EXPANDED_ARGS[@]}"}
+
     # Forgiving ordering: hoist config (-d/-w) then selection (-s/-a/-A) to the
     # front, so they take effect no matter where they appear on the line (WHAT
     # actions like 'site' consume the rest and run in place, so a trailing
@@ -781,8 +791,6 @@ main() {
     for arg in "$@"; do
         case "$arg" in
             -a|--all-sites|-A|--all-sites-auto|-s|--sites) has_selection=1 ;;
-            --*) ;;
-            -[!-]*) [[ "$arg" == *[aAs]* ]] && has_selection=1 ;;
         esac
     done
     if [[ $has_selection -eq 0 ]]; then
