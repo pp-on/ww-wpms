@@ -178,7 +178,8 @@ Site selection (may appear anywhere on the line):
   -A         all sites under the base dir, no prompts
   (default: the current directory)
 
-Aliases: -W = 'theme webwerk'; -T NUM|NAME also activates.
+Aliases: -W abbreviates the word 'webwerk' (theme -W = theme webwerk);
+-T NUM|NAME also activates.
 EOF
 }
 
@@ -307,7 +308,7 @@ THEMES:
   theme [webwerk|NAME|NUM]     Activate a theme. No arg = list & pick. 'webwerk'
                                = activate the webwerk theme (skip if already active;
                                pick one if not installed). NAME|NUM = activate it.
-  -W, --theme-webwerk          Alias for 'theme webwerk'
+  -W                           Abbreviates the word 'webwerk' ('theme -W')
   (-T NUM|NAME also activates — see the forwarding note above)
 
 OUTPUT & FORMATTING:
@@ -480,14 +481,10 @@ parse_arguments() {
                     forward_to_get themes
                 fi
                 ;;
-            -W|--theme-webwerk)
-                # activate the 'webwerk' theme (skip if active; pick one if missing)
-                wp_activate_webwerk_theme
-                ;;
             theme)
                 # WHAT form: webwerk mod theme [webwerk|NAME|NUM]
                 #   no arg   -> list + interactive pick
-                #   webwerk  -> same as -W (skip if active, pick if missing)
+                #   webwerk  -> skip if active, pick if missing (-W = 'webwerk')
                 #   NAME|NUM -> same as -T NAME|NUM (activate it)
                 if [[ $# -gt 1 && "${2}" != -* ]]; then
                     shift
@@ -763,6 +760,14 @@ main() {
     # also catches selection flags hidden inside a bundle.
     expand_bundled_flags "$@"
     set -- ${EXPANDED_ARGS[@]+"${EXPANDED_ARGS[@]}"}
+
+    # -W abbreviates the word 'webwerk' (e.g. 'theme -W' = 'theme webwerk')
+    local _args=() _arg
+    for _arg in "$@"; do
+        [[ "$_arg" == "-W" ]] && _arg="webwerk"
+        _args+=("$_arg")
+    done
+    set -- ${_args[@]+"${_args[@]}"}
 
     # Forgiving ordering: hoist config (-d/-w) then selection (-s/-a/-A) to the
     # front, so they take effect no matter where they appear on the line (WHAT

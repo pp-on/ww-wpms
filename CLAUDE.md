@@ -41,7 +41,7 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `mod site <license|remote|url> [show|set|add …]`,
   `mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
   `mod user [add NAME [--role R] [--pass P] [--email E]]`.
-  (`mod` WHATs wrap the old flags, kept as aliases: `-T`/`-W`, `-i`/`-y`/`-u`,
+  (`mod` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
   `-f`/`-m`/`-k`, `-x`/`-z`/`-S`/`-r`/`--htaccess`, `-n`+`-U`/`-P`/`-E`. `mod site`
   groups site-level config views/writes: license applied-status (+`--values`),
   git remote, home/siteurl. `mod config` shows/toggles the WP settings; `mod user`

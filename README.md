@@ -489,8 +489,8 @@ webwerk update -h
 ./webwerk mod --sites=mysite theme webwerk
 ./webwerk mod --sites=mysite theme            # list & pick interactively
 ./webwerk mod --sites=mysite theme astra      # activate a named theme
-# -W is an alias for 'theme webwerk'; -T NUM|NAME also activates
-./webwerk mod --sites=mysite -W
+# -W abbreviates the word 'webwerk'; -T NUM|NAME also activates
+./webwerk mod --sites=mysite theme -W
 
 # Plugin actions (WHAT form): install/copy/update wrap -i/-y/-u;
 # activate/deactivate/remove are new; list forwards to 'get plugins'
