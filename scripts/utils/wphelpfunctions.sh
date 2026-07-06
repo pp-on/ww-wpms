@@ -340,7 +340,6 @@ list_wp_themes() {
 #   - installed        -> activate it
 #   - not installed    -> list themes and let the user pick one to activate
 wp_activate_webwerk_theme() {
-    local theme="${1:-webwerk}"
     local site
     for site in "${sites[@]}"; do
         local site_path
@@ -359,18 +358,18 @@ wp_activate_webwerk_theme() {
 
             local active
             active=$("${WP_CLI_PATH}" theme list --status=active --field=name 2>/dev/null | head -n1)
-            if [[ "$active" == "$theme" ]]; then
-                echo "$theme theme already active — skipping."
+            if [[ "$active" == "webwerk" ]]; then
+                echo "webwerk theme already active — skipping."
                 exit 0
             fi
 
-            if "${WP_CLI_PATH}" theme is-installed "$theme" 2>/dev/null; then
-                echo -e "${Yellow}Activating: $theme${Color_Off}"
-                "${WP_CLI_PATH}" theme activate "$theme"
+            if "${WP_CLI_PATH}" theme is-installed webwerk 2>/dev/null; then
+                echo -e "${Yellow}Activating: webwerk${Color_Off}"
+                "${WP_CLI_PATH}" theme activate webwerk
                 exit 0
             fi
 
-            echo -e "${Yellow}$theme theme not installed — pick one to activate.${Color_Off}"
+            echo -e "${Yellow}webwerk theme not installed — pick one to activate.${Color_Off}"
             local themes
             mapfile -t themes < <("${WP_CLI_PATH}" theme list --field=name 2>/dev/null)
             if [[ ${#themes[@]} -eq 0 ]]; then
