@@ -65,15 +65,19 @@ require_arg() {
 # DEPRECATED: the read-only views (status/brief/list/themes/git) moved to
 # `webwerk get`. These flags now forward there (carrying the -s/-a selection) and
 # print a one-line notice; the aliases will be removed in a future release.
-forward_to_get() {
+run_get() {
     local target="$1"; shift   # rest = extra get args (e.g. --outdated)
     local sel=()
     if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
         sel=(-s "$(IFS=','; echo "${sites[*]}")")
     fi
-    echo -e "\033[33m[deprecated] this view moved to 'webwerk get $target' — forwarding (alias will be removed)\033[0m" >&2
     WORDPRESS_BASE_DIR="$WORDPRESS_BASE_DIR" WP_CLI_PATH="$WP_CLI_PATH" \
         bash "${SCRIPT_DIR}/../get/wpget.sh" "$target" "${sel[@]}" "$@"
+}
+
+forward_to_get() {
+    echo -e "\033[33m[deprecated] this view moved to 'webwerk get $1' — forwarding (alias will be removed)\033[0m" >&2
+    run_get "$@"
 }
 
 #===============================================================================
@@ -166,7 +170,8 @@ webwerk mod theme — activate a theme on selected sites
 Usage:
   webwerk mod theme [webwerk|NAME|NUM] [-s sites | -a | -A]
 
-  (no arg)   list installed themes and pick one to activate
+  (no arg)   list installed themes and pick one to activate; with -A
+             (no prompts) print the per-site overview like 'get themes'
   webwerk    activate the 'webwerk' theme; skip if already active; if it
              isn't installed, list themes and pick one
   NAME       activate the theme by name
@@ -445,6 +450,7 @@ parse_arguments() {
                 process_sites
                 ;;
             -A|--all-sites-auto)
+                all_sites_auto=1
                 process_sites_all
                 ;;
             -H|--health-check)
@@ -493,6 +499,10 @@ parse_arguments() {
                     else
                         list_wp_themes "$1"
                     fi
+                elif [[ ${all_sites_auto:-0} -eq 1 ]]; then
+                    # -A is no-prompt; print the per-site overview instead of
+                    # the interactive picker (same view as 'get themes')
+                    run_get themes
                 else
                     list_wp_themes ""
                 fi
