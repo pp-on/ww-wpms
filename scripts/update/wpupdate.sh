@@ -267,7 +267,6 @@ finalize_git_updates() {
 
         if git commit -F- << EOF &>/dev/null
 chore: update $what $(date "+%d-%m-%y")
---------------------------------
 
 $(printf "%s\n" "${updated_plugins[@]}" "${updated_themes[@]}")
 EOF
