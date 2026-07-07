@@ -132,7 +132,7 @@ _webwerk() {
                         -y --yes-update
                         -c --skip-core
                         -m --minor
-                        -g --sum
+                        -g -S --sum
                         -p --git-push
                         -P --push-only
                         -x --exclude-plugins

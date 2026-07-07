@@ -179,7 +179,7 @@ complete -c webwerk -n __ww_update_ctx -s y -l yes-update      -d 'Auto-confirm 
 complete -c webwerk -n __ww_update_ctx -s c -l skip-core       -d 'Skip core update'
 complete -c webwerk -n __ww_update_ctx -s m -l minor           -d 'Patch-level only (e.g. 8.1.1 → 8.1.2)'
 complete -c webwerk -n __ww_update_ctx -s g                    -d 'Git mode (commit per plugin)'
-complete -c webwerk -n __ww_update_ctx -l sum                  -d 'Single summary git commit'
+complete -c webwerk -n __ww_update_ctx -s S -l sum             -d 'Single summary git commit'
 complete -c webwerk -n __ww_update_ctx -s p -l git-push        -d 'Push after updates'
 complete -c webwerk -n __ww_update_ctx -s P -l push-only       -d 'Push only (no update)'
 complete -c webwerk -n __ww_update_ctx -s x -l exclude-plugins -r -d 'Exclude plugins (comma-separated)'

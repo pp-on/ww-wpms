@@ -541,7 +541,7 @@ UPDATE OPTIONS:
 
 GIT INTEGRATION:
   -g                          Enable git mode (commit each plugin separately)
-  --sum                       Single summary commit for all updates (implies git mode)
+  -S, --sum                   Single summary commit for all updates (implies git mode)
   -p, --git-push              Enable git push after updates
   -P, --push-only             Skip updates; just git push selected sites
 
@@ -655,7 +655,7 @@ parse_arguments() {
             --colors)
                 colors
                 ;;
-            --sum)
+            -S|--sum)
                 summary_commit="true"
                 # --sum implies git mode (commit); don't downgrade push mode if -p already set
                 if [[ "$git_mode" -lt 1 ]]; then git_mode=1; fi

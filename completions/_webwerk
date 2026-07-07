@@ -132,7 +132,7 @@ _webwerk_update() {
         '(-c --skip-core)'{-c,--skip-core}'[Skip core update]' \
         '(-m --minor)'{-m,--minor}'[Patch-level only (e.g. 8.1.1→8.1.2)]' \
         '-g[Git mode (commit per plugin)]' \
-        '--sum[Single summary git commit]' \
+        '(-S --sum)'{-S,--sum}'[Single summary git commit]' \
         '(-p --git-push)'{-p,--git-push}'[Push after updates]' \
         '(-P --push-only)'{-P,--push-only}'[Push only (no update)]' \
         '(-x --exclude-plugins)'{-x,--exclude-plugins}'=[Exclude plugins (comma-separated)]:plugins' \
