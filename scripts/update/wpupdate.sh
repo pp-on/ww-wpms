@@ -282,8 +282,14 @@ EOF
         fi
     fi
     
-    # Handle git push
-    if [[ "$auto_yes" != "true" ]]; then
+    # Handle git push: -p pushes without asking; otherwise prompt (or skip with -y)
+    if [[ "$git_mode" -eq 2 ]]; then
+        if git push &>/dev/null; then
+            log_success "Auto-pushed changes to remote repository"
+        else
+            log_error "Auto-push failed"
+        fi
+    elif [[ "$auto_yes" != "true" ]]; then
         echo "Push to remote repository? [y/N]: "
         read -r push_answer
         if [[ "$push_answer" = "y" || "$push_answer" = "Y" ]]; then
@@ -296,15 +302,7 @@ EOF
             log_info "Changes not pushed to remote repository"
         fi
     else
-        if [[ "$git_mode" -eq 2 ]]; then
-            if git push &>/dev/null; then
-                log_success "Auto-pushed changes to remote repository"
-            else
-                log_error "Auto-push failed"
-            fi
-        else
-            log_info "Auto-push disabled"
-        fi
+        log_info "Auto-push disabled"
     fi
     
     [[ "$progress" != true ]] && sleep 2
