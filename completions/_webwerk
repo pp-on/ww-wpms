@@ -18,7 +18,7 @@ _webwerk() {
 
     case $state in
         args)
-            case $line[1] in
+            case $(_webwerk_resolve "$line[1]" install update mod get remove ddev status) in
                 install)        _webwerk_install ;;
                 update)         _webwerk_update ;;
                 mod)            _webwerk_mod ;;
@@ -28,6 +28,39 @@ _webwerk() {
             esac
             ;;
     esac
+}
+
+# Resolve TOK against WORDS like the dispatcher's resolve_word
+# (exact match wins, else unique prefix: u -> update, dd -> ddev)
+_webwerk_resolve() {
+    local tok=$1 w; shift
+    local -a m
+    for w in "$@"; do
+        [[ "$w" == "$tok" ]] && { print -r -- $w; return 0; }
+    done
+    for w in "$@"; do
+        [[ "$w" == "$tok"* ]] && m+=("$w")
+    done
+    (( $#m == 1 )) && { print -r -- $m[1]; return 0; }
+    return 1
+}
+
+# Site dirs (containing wp-content/) under the current dir; comma lists ok
+_webwerk_site_names() {
+    local -a names
+    names=( */wp-content(/N:h) )
+    compset -P '*,'
+    compadd -a names
+}
+
+# Installed plugin/theme names in the current dir's site(s); comma lists ok
+_webwerk_content_names() { # plugins|themes
+    local kind=$1
+    local -a names
+    names=( wp-content/$kind/*(/N:t) */wp-content/$kind/*(/N:t) )
+    names=( ${(u)names} )
+    compset -P '*,'
+    compadd -a names
 }
 
 _webwerk_commands() {
@@ -86,13 +119,15 @@ _webwerk_install_modes() {
 }
 
 _webwerk_update() {
-    _arguments \
+    local curcontext="$curcontext" state line
+    _arguments -C \
         '1: :_webwerk_update_targets' \
+        '2:: :->arg2' \
         '(-a --all-sites)'{-a,--all-sites}'[Prompt y/n/x per site]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Auto all sites, pause between each]' \
         '(-B --batch)'{-B,--batch}'[Auto all sites, no pause, compact output]' \
         '(-V --progress)'{-V,--progress}'[Progress-only output, normal output goes to log file]' \
-        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
+        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-y --yes-update)'{-y,--yes-update}'[Auto-confirm all updates]' \
         '(-c --skip-core)'{-c,--skip-core}'[Skip core update]' \
         '(-m --minor)'{-m,--minor}'[Patch-level only (e.g. 8.1.1→8.1.2)]' \
@@ -102,6 +137,15 @@ _webwerk_update() {
         '(-P --push-only)'{-P,--push-only}'[Push only (no update)]' \
         '(-x --exclude-plugins)'{-x,--exclude-plugins}'=[Exclude plugins (comma-separated)]:plugins' \
         '(-h --help)'{-h,--help}'[Show help]'
+
+    case $state in
+        arg2)
+            case $line[1] in
+                plugin) _webwerk_content_names plugins ;;
+                theme)  _webwerk_content_names themes ;;
+            esac
+            ;;
+    esac
 }
 
 _webwerk_update_targets() {
@@ -121,7 +165,7 @@ _webwerk_get() {
     _arguments \
         '1: :_webwerk_get_targets' \
         '2::action:(help)' \
-        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
+        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-a --all-sites)'{-a,--all-sites}'[All sites under the base dir]' \
         '--format=[Output format for plugins/themes]:format:(table csv json count yaml)' \
         '--errors[brief: only broken sites]' \
@@ -153,7 +197,7 @@ _webwerk_mod() {
         '--email[User email]:email' \
         '(-a --all-sites)'{-a,--all-sites}'[Process all sites (interactive)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Process all sites (non-interactive)]' \
-        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites' \
+        '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-d --original-dir)'{-d,--original-dir}'=[Set base directory]:dir:_files -/' \
         '(-p --print)'{-p,--print}'[Print selected sites]' \
         '(-H --health-check)'{-H,--health-check}'[Check sites with wp core is-installed]' \
@@ -193,7 +237,7 @@ _webwerk_mod() {
 _webwerk_remove() {
     if (( ${words[(I)local]} )); then
         _arguments \
-            '(-s --sites)'{-s,--sites}'=[Site(s) to remove (comma-separated)]:sites' \
+            '(-s --sites)'{-s,--sites}'=[Site(s) to remove (comma-separated)]:sites:_webwerk_site_names' \
             '(-a --all-sites)'{-a,--all-sites}'[All sites under base dir (prompt each)]' \
             '(-A --all-sites-auto)'{-A,--all-sites-auto}'[All sites under base dir (no prompt)]' \
             '(-y --yes)'{-y,--yes}'[Skip the confirmation prompt]'
@@ -207,6 +251,20 @@ _webwerk_remove() {
 }
 
 _webwerk_ddev() {
+    # Legacy 'ddev VERB': hand off to the verb's completion (abbreviations ok)
+    # (words[1] is 'ddev' here, so the sub lives in words[2])
+    local sub
+    if (( CURRENT > 2 )) && sub=$(_webwerk_resolve "$words[2]" install mod update remove); then
+        words=( "${(@)words[2,-1]}" )
+        (( CURRENT-- ))
+        case $sub in
+            install) _webwerk_install ;;
+            mod)     _webwerk_mod ;;
+            update)  _webwerk_update ;;
+            remove)  _webwerk_remove ;;
+        esac
+        return
+    fi
     local subs=(
         'install:DDEV WordPress install'
         'mod:Modify DDEV site'

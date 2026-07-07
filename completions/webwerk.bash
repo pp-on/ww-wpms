@@ -24,13 +24,56 @@ _webwerk() {
         return 1
     }
 
-    # Determine primary subcommand
+    # Helper: resolve TOK against WORDS like the dispatcher's resolve_word
+    # (exact match wins, else unique prefix: u -> update, dd -> ddev)
+    _webwerk_resolve() {
+        local tok="$1" w; shift
+        local -a m=()
+        for w in "$@"; do [[ "$w" == "$tok" ]] && { echo "$w"; return 0; }; done
+        for w in "$@"; do [[ "$w" == "$tok"* ]] && m+=("$w"); done
+        (( ${#m[@]} == 1 )) && { echo "${m[0]}"; return 0; }
+        return 1
+    }
+
+    # Helper: complete site dirs (containing wp-content/); comma lists ok
+    _webwerk_sites() {
+        local prefix='' d
+        local -a names=()
+        [[ "$cur" == *,* ]] && prefix="${cur%,*},"
+        for d in */; do
+            [[ -d "${d}wp-content" ]] && names+=("$prefix${d%/}")
+        done
+        COMPREPLY=( $(compgen -W "${names[*]}" -- "$cur") )
+    }
+
+    # Helper: installed plugin/theme names in ./ or ./*/ sites; comma lists ok
+    _webwerk_content_names() {
+        local kind="$1" prefix='' d
+        local -a names=()
+        [[ "$cur" == *,* ]] && prefix="${cur%,*},"
+        for d in wp-content/"$kind"/*/ */wp-content/"$kind"/*/; do
+            [[ -d "$d" ]] || continue
+            d="${d%/}"
+            names+=("$prefix${d##*/}")
+        done
+        COMPREPLY=( $(compgen -W "$(printf '%s\n' "${names[@]}" | sort -u)" -- "$cur") )
+    }
+
+    # Determine primary subcommand (abbreviations resolve like the dispatcher;
+    # legacy 'ddev VERB' resolves to VERB)
     local cmd=''
-    local i
+    local i j sub
     for (( i=1; i<cword; i++ )); do
-        case "${words[i]}" in
-            install|update|mod|get|remove|ddev|status) cmd="${words[i]}"; break ;;
-        esac
+        [[ "${words[i]}" == -* ]] && continue
+        cmd="$(_webwerk_resolve "${words[i]}" install update mod get remove ddev status)" || cmd=''
+        if [[ "$cmd" == ddev ]]; then
+            for (( j=i+1; j<cword; j++ )); do
+                [[ "${words[j]}" == -* ]] && continue
+                sub="$(_webwerk_resolve "${words[j]}" install mod update remove)" && cmd="$sub"
+                break
+            done
+        fi
+        break
     done
 
     case "$cmd" in
@@ -71,15 +114,12 @@ _webwerk() {
             esac
             ;;
 
-        update|u)
+        update)
             case "$prev" in
-                -s|--sites|--exclude-plugins|-x) return 0 ;;
-                plugin)
-                    # plugin name required — no completions
-                    return 0 ;;
-                theme)
-                    # theme name required — no completions
-                    return 0 ;;
+                -s|--sites) _webwerk_sites; return 0 ;;
+                --exclude-plugins|-x) return 0 ;;
+                plugin) _webwerk_content_names plugins; return 0 ;;
+                theme)  _webwerk_content_names themes;  return 0 ;;
             esac
             case "$cur" in
                 -*)
@@ -114,7 +154,8 @@ _webwerk() {
 
         mod)
             case "$prev" in
-                -s|--sites|-d|--original-dir|-i|--install-plugin|-y|--copy-plugins) return 0 ;;
+                -s|--sites) _webwerk_sites; return 0 ;;
+                -d|--original-dir|-i|--install-plugin|-y|--copy-plugins) return 0 ;;
                 -U|--wp-user|-P|--wp-password|-E|--wp-email|-w|--location-wp) return 0 ;;
                 -R|--search-replace) return 0 ;;
                 --git) COMPREPLY=( $(compgen -W 'pull log' -- "$cur") ); return 0 ;;
@@ -170,7 +211,8 @@ _webwerk() {
 
         get)
             case "$prev" in
-                -s|--sites|--format) return 0 ;;
+                -s|--sites) _webwerk_sites; return 0 ;;
+                --format) return 0 ;;
             esac
             case "$cur" in
                 -*)
@@ -204,6 +246,9 @@ _webwerk() {
             ;;
 
         remove)
+            case "$prev" in
+                -s|--sites) _webwerk_sites; return 0 ;;
+            esac
             if _webwerk_has_word local; then
                 COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto -y --yes' -- "$cur") )
             elif ! _webwerk_has_word ddev; then
