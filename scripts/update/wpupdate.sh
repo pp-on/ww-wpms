@@ -37,6 +37,8 @@ update_themes=false
 only_theme=""
 exclude_plugins=""
 sites=()
+updated_plugins=()   # "name: old → new" lines collected per site in git mode
+updated_themes=()    # "theme name: old → new" lines collected per site in git mode
 interactive_select=false
 auto_all=false
 push_only=false
@@ -147,8 +149,6 @@ update_core() {
 
 # Update plugins with git integration
 update_plugins_with_git() {
-    local git_commit_summary=""
-    local plugins=()
     local plugin_count=0
     local old_version new_version commit_message
     
@@ -208,14 +208,14 @@ update_plugins_with_git() {
             new_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
 
             if [[ "$old_version" != "$new_version" ]]; then
-                plugins[$plugin_count]="$plugin: $old_version → $new_version"
+                updated_plugins[$plugin_count]="$plugin: $old_version → $new_version"
                 [[ "$compact" == true && "$progress" != true ]] && echo -e "  ${Green}↑${Color_Off} $plugin $old_version → $new_version"
 
                 [[ "$compact" != true && "$progress" != true ]] && out "Staging changes..." 2
                 [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
                 if git add -A "plugins/$plugin" &>/dev/null; then
-                    commit_message="plugin ${plugins[$plugin_count]}"
+                    commit_message="plugin ${updated_plugins[$plugin_count]}"
 
                     [[ "$compact" != true && "$progress" != true ]] && out "Writing commit:" 2
                     [[ "$compact" != true && "$progress" != true ]] && out "chore: update $commit_message" 4
@@ -227,11 +227,8 @@ update_plugins_with_git() {
                         else
                             log_warning "Failed to commit update for $plugin"
                         fi
-                    else
-                        # Add to summary for single commit
-                        git_commit_summary="$git_commit_summary $((plugin_count + 1)). \"$commit_message\""
                     fi
-                    
+
                     ((plugin_count++))
                 else
                     log_warning "Failed to stage changes for $plugin"
@@ -244,20 +241,35 @@ update_plugins_with_git() {
         fi
     done
     
+    cd - &>/dev/null
+
+    return 0
+}
+
+# Summary commit, update summary and push for git mode.
+# Runs after plugins AND themes so theme updates land in the same commit/push.
+finalize_git_updates() {
+    if ! cd wp-content &>/dev/null; then
+        return 0
+    fi
+
+    local total=$(( ${#updated_plugins[@]} + ${#updated_themes[@]} ))
+
     # Handle summary commit
-    if [[ -n "$summary_commit" && $plugin_count -gt 0 ]]; then
-        log_info "Creating summary commit for $plugin_count plugins"
-        
-        local commit_body=""
-        for plugin_info in "${plugins[@]}"; do
-            commit_body="$commit_body$plugin_info\n"
-        done
-        
+    if [[ -n "$summary_commit" && $total -gt 0 ]]; then
+        local what=""
+        (( ${#updated_plugins[@]} > 0 )) && what="${#updated_plugins[@]} plugins"
+        if (( ${#updated_themes[@]} > 0 )); then
+            [[ -n "$what" ]] && what+=", "
+            what+="${#updated_themes[@]} themes"
+        fi
+        log_info "Creating summary commit for $what"
+
         if git commit -F- << EOF &>/dev/null
-chore: update $plugin_count plugins $(date "+%d-%m-%y")
+chore: update $what $(date "+%d-%m-%y")
 --------------------------------
 
-$(printf "%s\n" "${plugins[@]}")
+$(printf "%s\n" "${updated_plugins[@]}" "${updated_themes[@]}")
 EOF
         then
             log_success "Summary commit created successfully"
@@ -265,23 +277,24 @@ EOF
             log_error "Failed to create summary commit"
         fi
     fi
-    
+
     # Display summary
     if [[ "$progress" != true ]]; then
         sleep 1
         out "Update Summary:" 1
-        out "$plugin_count plugins updated" 2
+        out "$total updates" 2
 
         if [[ -z "$summary_commit" ]]; then
-            for plugin_info in "${plugins[@]}"; do
-                echo "$plugin_info"
+            local update_info
+            for update_info in "${updated_plugins[@]}" "${updated_themes[@]}"; do
+                echo "$update_info"
                 echo "------------------------------"
             done
         else
-            echo "Summary commit with $plugin_count plugin updates"
+            echo "Summary commit with $total updates"
         fi
     fi
-    
+
     # Handle git push: -p pushes without asking; otherwise prompt (or skip with -y)
     if [[ "$git_mode" -eq 2 ]]; then
         if git push &>/dev/null; then
@@ -304,7 +317,7 @@ EOF
     else
         log_info "Auto-push disabled"
     fi
-    
+
     [[ "$progress" != true ]] && sleep 2
     cd - &>/dev/null
 
@@ -389,8 +402,9 @@ update_themes_fn() {
 
     log_info "Checking for theme updates"
 
-    local _th_list _th_count=0
+    local _th_list _th_csv _th_count=0 did_update=false
     _th_list=$("${WP_CLI_PATH}" theme list --update=available --field=name 2>/dev/null)
+    _th_csv=$("${WP_CLI_PATH}" theme list --update=available --fields=name,version,update_version --format=csv 2>/dev/null | tail -n +2)
     [[ -n "$_th_list" ]] && _th_count=$(echo "$_th_list" | wc -l)
     prog "themes → ${_th_count} pending"
 
@@ -402,6 +416,7 @@ update_themes_fn() {
             # shellcheck disable=SC2086
             if quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
                 log_success "Themes updated successfully"
+                did_update=true
             else
                 log_error "Theme update failed"
                 return 1
@@ -413,9 +428,34 @@ update_themes_fn() {
         # shellcheck disable=SC2086
         if quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
             log_success "Themes auto-updated successfully"
+            did_update=true
         else
             log_error "Auto-update failed for themes"
             return 1
+        fi
+    fi
+
+    # In git mode, stage the updated themes; with -S they join the summary
+    # commit (finalize_git_updates), otherwise commit them right away
+    if [[ "$did_update" == true && "$git_mode" -ge 1 && -n "$_th_csv" ]]; then
+        if git -C wp-content rev-parse --git-dir &>/dev/null; then
+            local name old new
+            while IFS=, read -r name old new; do
+                [[ -z "$name" ]] && continue
+                [[ -n "$only_theme" && "$name" != "$only_theme" ]] && continue
+                updated_themes+=("theme $name: $old → $new")
+            done <<< "$_th_csv"
+            if git -C wp-content add -A themes &>/dev/null; then
+                if [[ -z "$summary_commit" && ${#updated_themes[@]} -gt 0 ]]; then
+                    if git -C wp-content commit -m "chore: update ${#updated_themes[@]} themes $(date "+%d-%m-%y")" &>/dev/null; then
+                        log_info "Committed theme updates"
+                    else
+                        log_warning "Failed to commit theme updates"
+                    fi
+                fi
+            else
+                log_warning "Failed to stage theme updates"
+            fi
         fi
     fi
 }
@@ -444,6 +484,9 @@ process_single_site() {
         log_error "Cannot access site directory: $site_dir"
         return 1
     fi
+
+    updated_plugins=()
+    updated_themes=()
 
     [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
@@ -496,7 +539,12 @@ process_single_site() {
             log_warning "Theme update failed for site: $site"
         fi
     fi
-    
+
+    # Git mode: summary commit + push, now that plugins AND themes are done
+    if [[ "$git_mode" -ge 1 ]] && [[ "$skip_plugins" != true || "$update_themes" == true ]]; then
+        finalize_git_updates
+    fi
+
     log_success "Finished processing site: $site"
     cd - &>/dev/null
     
