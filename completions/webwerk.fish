@@ -2,13 +2,72 @@
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+# Resolve TOKEN against WORDS like the dispatcher's resolve_word:
+# exact match wins, else a unique prefix (u -> update, dd -> ddev).
+function __ww_resolve
+    set -l tok $argv[1]
+    set -l words $argv[2..-1]
+    if contains -- $tok $words
+        echo $tok
+        return 0
+    end
+    set -l m (string match -- "$tok*" $words)
+    test (count $m) -eq 1; and echo $m[1]
+end
+
+# Print the verb on the command line, with abbreviations resolved.
+# Legacy 'ddev VERB' resolves to VERB. Fails if no verb has been given yet.
+function __ww_verb
+    set -l verbs install update mod get remove ddev status
+    set -l toks
+    for tok in (commandline -opc)[2..-1]
+        string match -q -- '-*' $tok; or set -a toks $tok
+    end
+    set -q toks[1]; or return 1
+    set -l v (__ww_resolve $toks[1] $verbs); or return 1
+    if test "$v" = ddev; and set -q toks[2]
+        set -l sub (__ww_resolve $toks[2] install mod update remove)
+        and set v $sub
+    end
+    echo $v
+end
+
+function __ww_is_verb
+    set -l v (__ww_verb); or return 1
+    contains -- $v $argv
+end
+
+# True when the previous word is exactly ARGV[1] (e.g. right after 'plugin')
+function __ww_after_word
+    set -l toks (commandline -opc)
+    test "$toks[-1]" = "$argv[1]"
+end
+
+# Site dirs (containing wp-content/) under the current dir; comma lists ok
+function __ww_site_names
+    set -l prefix (string replace -r '[^,]*$' '' -- (commandline -ct))
+    for d in */
+        if test -d "$d"wp-content
+            echo "$prefix"(string trim -rc / -- $d)
+        end
+    end
+end
+
+# Installed plugin/theme names in the current dir's site(s); comma lists ok
+function __ww_content_names # plugins|themes
+    set -l kind $argv[1]
+    set -l prefix (string replace -r '[^,]*$' '' -- (commandline -ct))
+    for d in wp-content/$kind/*/ */wp-content/$kind/*/
+        echo "$prefix"(string split / -- $d)[-2]
+    end | sort -u
+end
+
 function __ww_no_cmd
-    not __fish_seen_subcommand_from install update mod get remove ddev status
+    not __ww_verb >/dev/null
 end
 
 function __ww_get_ctx
-    __fish_seen_subcommand_from get
-    and not __fish_seen_subcommand_from install update mod remove ddev
+    __ww_is_verb get
 end
 
 function __ww_get_no_target
@@ -17,13 +76,11 @@ function __ww_get_no_target
 end
 
 function __ww_install_ctx
-    __fish_seen_subcommand_from install
-    and not __fish_seen_subcommand_from update mod remove ddev
+    __ww_is_verb install
 end
 
 function __ww_update_ctx
-    __fish_seen_subcommand_from update
-    and not __fish_seen_subcommand_from install mod remove ddev
+    __ww_is_verb update
 end
 
 function __ww_update_no_target
@@ -32,13 +89,11 @@ function __ww_update_no_target
 end
 
 function __ww_ddev_no_sub
-    __fish_seen_subcommand_from ddev
-    and not __fish_seen_subcommand_from install mod update remove
+    __ww_is_verb ddev
 end
 
 function __ww_mod_ctx
-    __fish_seen_subcommand_from mod
-    and not __fish_seen_subcommand_from install update remove
+    __ww_is_verb mod
 end
 
 function __ww_mod_env
@@ -110,6 +165,8 @@ complete -c webwerk -f -n __ww_update_no_target -a plugins -d 'Update all plugin
 complete -c webwerk -f -n __ww_update_no_target -a plugin  -d 'Update one plugin (name required)'
 complete -c webwerk -f -n __ww_update_no_target -a themes  -d 'Update all themes'
 complete -c webwerk -f -n __ww_update_no_target -a theme   -d 'Update one theme (name required)'
+complete -c webwerk -f -n '__ww_update_ctx; and __ww_after_word plugin' -a '(__ww_content_names plugins)' -d 'Installed plugin'
+complete -c webwerk -f -n '__ww_update_ctx; and __ww_after_word theme'  -a '(__ww_content_names themes)'  -d 'Installed theme'
 
 # ── update: options ───────────────────────────────────────────────────────────
 
@@ -117,7 +174,7 @@ complete -c webwerk -n __ww_update_ctx -s a -l all-sites      -d 'Prompt y/n/x p
 complete -c webwerk -n __ww_update_ctx -s A -l all-sites-auto -d 'Auto all sites, pause between each (x=exit)'
 complete -c webwerk -n __ww_update_ctx -s B -l batch          -d 'Auto all sites, no pause, compact output'
 complete -c webwerk -n __ww_update_ctx -s V -l progress       -d 'Progress-only output, normal output goes to log file'
-complete -c webwerk -n __ww_update_ctx -s s -l sites       -r  -d 'Specific sites (comma-separated)'
+complete -c webwerk -n __ww_update_ctx -s s -l sites       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
 complete -c webwerk -n __ww_update_ctx -s y -l yes-update      -d 'Auto-confirm all updates'
 complete -c webwerk -n __ww_update_ctx -s c -l skip-core       -d 'Skip core update'
 complete -c webwerk -n __ww_update_ctx -s m -l minor           -d 'Patch-level only (e.g. 8.1.1 → 8.1.2)'
@@ -138,8 +195,7 @@ complete -c webwerk -f -n __ww_ddev_no_sub -a remove  -d 'Remove DDEV containers
 # ── remove: mode + options ────────────────────────────────────────────────────
 
 function __ww_remove_ctx
-    __fish_seen_subcommand_from remove
-    and not __fish_seen_subcommand_from install update mod
+    __ww_is_verb remove
 end
 function __ww_remove_no_mode
     __ww_remove_ctx
@@ -152,7 +208,7 @@ end
 
 complete -c webwerk -f -n __ww_remove_no_mode -a local -d 'DESTRUCTIVE: drop DB + delete files of a WP site'
 complete -c webwerk -f -n __ww_remove_no_mode -a ddev  -d 'Remove DDEV containers'
-complete -c webwerk    -n __ww_remove_local -s s -l sites          -r -d 'Site(s) to remove (comma-separated)'
+complete -c webwerk    -n __ww_remove_local -s s -l sites          -x -a '(__ww_site_names)' -d 'Site(s) to remove (comma-separated)'
 complete -c webwerk -f -n __ww_remove_local -s a -l all-sites          -d 'All sites under base dir (prompt each)'
 complete -c webwerk -f -n __ww_remove_local -s A -l all-sites-auto     -d 'All sites under base dir (no prompt)'
 complete -c webwerk -f -n __ww_remove_local -s y -l yes                -d 'Skip the confirmation prompt'
@@ -166,7 +222,7 @@ complete -c webwerk -f -n __ww_mod_env -a ddev  -d 'Modify DDEV WordPress site'
 
 complete -c webwerk -n __ww_mod_ctx -s a -l all-sites                      -d 'Process all sites (interactive)'
 complete -c webwerk -n __ww_mod_ctx -s A -l all-sites-auto                 -d 'Process all sites (non-interactive)'
-complete -c webwerk -n __ww_mod_ctx -s s -l sites                       -r  -d 'Specific sites (comma-separated)'
+complete -c webwerk -n __ww_mod_ctx -s s -l sites                       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
 complete -c webwerk -n __ww_mod_ctx -s d -l original-dir                -r  -d 'Set base directory'
 complete -c webwerk -n __ww_mod_ctx -s p -l print                          -d 'Print selected sites'
 complete -c webwerk -n __ww_mod_ctx -s H -l health-check                   -d 'Check sites with wp core is-installed'
@@ -232,7 +288,7 @@ complete -c webwerk -f -n __ww_get_no_target -a brief   -d 'Brief: core + plugin
 complete -c webwerk -f -n __ww_get_no_target -a git     -d 'Git overview of each wp-content repo'
 complete -c webwerk -f -n __ww_get_no_target -a url     -d 'siteurl / home per site'
 complete -c webwerk -f -n __ww_get_no_target -a db      -d 'Run a query per site (warns on non-SELECT)'
-complete -c webwerk -n __ww_get_ctx -s s -l sites    -r -d 'Comma-separated site names'
+complete -c webwerk -n __ww_get_ctx -s s -l sites    -x -a '(__ww_site_names)' -d 'Comma-separated site names'
 complete -c webwerk -n __ww_get_ctx -s a -l all-sites   -d 'All sites under the base dir'
 complete -c webwerk -n __ww_get_ctx -l format        -r -d 'Output format (table|csv|json|count|yaml)'
 complete -c webwerk -n __ww_get_ctx -l errors           -d 'brief: only broken sites'
