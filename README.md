@@ -174,11 +174,11 @@ webwerk install ddev
 # Modify DDEV site
 webwerk mod ddev -S
 
-# Update WordPress sites (interactive, prompt per site)
+# Update every WordPress site in the dir (pause between each)
 webwerk update -a
 
-# Update all sites automatically
-webwerk update -A
+# Same, no prompts at all
+webwerk update -Ay
 
 # Manage existing sites
 webwerk mod -s mysite -x on
@@ -411,11 +411,9 @@ but accept the shorter aliases `--wpu` (user), `--wpp` (pass), `--wpe` (email).
 Default updates core + plugins + themes. Short alias: `webwerk u`. Combined short flags supported (e.g. `-Ayg`).
 
 ```bash
-# Interactive: prompt y/n/x per site
-webwerk update -a
-
-# Auto all sites, pause between each (any key = next, x = exit)
-webwerk update -A
+# Update every site in the base dir, one after another under a
+# '== [N/total] site ==' header; pause after each (any key = next, x = exit)
+webwerk update -a          # --all / -A are aliases
 
 # Auto all, no prompts
 webwerk update -Ay
@@ -879,11 +877,11 @@ webwerk mod -s accessible-company -n -U webmaster -P SecurePass123
 ### Example 2: Batch Update Multiple Sites
 
 ```bash
-# Interactive: review each site before updating (core+plugins+themes)
+# Update all sites, pause between each to review output (core+plugins+themes)
 webwerk update -a
 
-# Auto update all sites, pause between each to review output
-webwerk update -A
+# Same, no prompts (unattended)
+webwerk update -Ay
 
 # Update only plugins across all sites
 webwerk update plugins -Ay

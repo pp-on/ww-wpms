@@ -123,7 +123,7 @@ _webwerk_update() {
     _arguments -C \
         '1: :_webwerk_update_targets' \
         '2:: :->arg2' \
-        '(-a --all-sites)'{-a,--all-sites}'[Prompt y/n/x per site]' \
+        '(-a --all --all-sites)'{-a,--all,--all-sites}'[Update all sites, pause between each (x=exit)]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Auto all sites, pause between each]' \
         '(-B --batch)'{-B,--batch}'[Auto all sites, no pause, compact output]' \
         '(-V --progress)'{-V,--progress}'[Progress-only output, normal output goes to log file]' \

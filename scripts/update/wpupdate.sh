@@ -39,7 +39,6 @@ exclude_plugins=""
 sites=()
 updated_plugins=()   # "name: old → new" lines collected per site in git mode
 updated_themes=()    # "theme name: old → new" lines collected per site in git mode
-interactive_select=false
 auto_all=false
 push_only=false
 compact=false
@@ -477,11 +476,9 @@ process_single_site() {
     if [[ "$progress" == true ]]; then
         log_info "Processing site: $site"
     elif [[ "$compact" == true ]]; then
-        echo -e "${Cyan}→ $site${Color_Off}"
+        echo -e "${Cyan}→ [${_prog_idx}/${_prog_total}] $site${Color_Off}"
     else
-        echo -e "${Cyan}================================"
-        echo -e "\t$site"
-        echo -e "================================${Color_Off}"
+        echo -e "${Cyan}== [${_prog_idx}/${_prog_total}] $site ==${Color_Off}"
         log_info "Processing site: $site"
     fi
 
@@ -577,10 +574,10 @@ TARGET (optional):
   (omit)                       Update core + plugins + themes (default)
 
 SITE SELECTION:
-  -a, --all-sites              Discover all sites; prompt y/n/x per site before updating
-  -A, --all-sites-auto         Discover all sites; update all without prompting,
-                               pause after each site (any key = next, x = exit)
-  -B, --batch                  Like -A but no pause; compact one-line-per-plugin output
+  -a, --all,                   Update every site in the base dir, one after another
+  -A, --all-sites,             under a '== [N/total] site ==' header; pause after each
+      --all-sites-auto         site (any key = next, x = exit). -a and -A are aliases.
+  -B, --batch                  Like -a/-A but no pause; compact one-line-per-plugin output
   -s, --sites SITES            Update specific sites (comma-separated)
   -d DIR                       Set base directory (default: ${WORDPRESS_BASE_DIR:-./})
 
@@ -607,8 +604,8 @@ OUTPUT & DISPLAY:
   -h, --help                  Show this help message
 
 EXAMPLES:
-  webwerk update -a                                    # prompt per site (core + plugins)
-  webwerk update -A                                    # auto all, pause between sites
+  webwerk update -a                                    # update all sites, pause between each
+  webwerk update -A                                    # same as -a (alias)
   webwerk update -Ay                                   # auto all, no confirmations
   webwerk update core -Ay                              # core only, auto all
   webwerk update plugins -Ay                           # plugins only, auto all
@@ -652,11 +649,7 @@ parse_arguments() {
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -a|--all-sites)
-                process_sites
-                interactive_select=true
-                ;;
-            -A|--all-sites-auto)
+            -a|--all|--all-sites|-A|--all-sites-auto)
                 process_sites_all
                 auto_all=true
                 ;;
@@ -798,16 +791,6 @@ main() {
         (( ++_prog_idx ))
         _prog_site="$site"
 
-        if [[ "$interactive_select" == true ]]; then
-            read -rp "Update site '$site'? [y/n/x]: " choice
-            case "$choice" in
-                y|Y) ;;
-                n|N) continue ;;
-                x|X) log_info "Aborted by user."; exit 0 ;;
-                *)   continue ;;
-            esac
-        fi
-
         if [[ "$push_only" == true ]]; then
             if (cd "$site" && git push); then
                 log_success "Pushed: $site"
@@ -823,7 +806,9 @@ main() {
             log_error "Failed to process site: $site"
         fi
 
-        if [[ "$auto_all" == true && "$compact" != true ]]; then
+        # Pause between sites only when there's a terminal to read from;
+        # piped/cron runs (no TTY) fall through and process every site.
+        if [[ "$auto_all" == true && "$compact" != true && -t 0 ]]; then
             read -rsn1 -p "Press any key to continue, x to exit... " key
             echo
             if [[ "${key,,}" == "x" ]]; then

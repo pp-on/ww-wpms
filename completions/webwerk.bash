@@ -135,7 +135,7 @@ _webwerk() {
             case "$cur" in
                 -*)
                     COMPREPLY=( $(compgen -W '
-                        -a --all-sites
+                        -a --all --all-sites
                         -A --all-sites-auto
                         -B --batch
                         -V --progress
