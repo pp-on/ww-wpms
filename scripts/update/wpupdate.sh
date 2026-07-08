@@ -255,8 +255,14 @@ finalize_git_updates() {
 
     local total=$(( ${#updated_plugins[@]} + ${#updated_themes[@]} ))
 
+    # Nothing updated this run: no commit, summary or push to do
+    if [[ $total -eq 0 ]]; then
+        cd - &>/dev/null
+        return 0
+    fi
+
     # Handle summary commit
-    if [[ -n "$summary_commit" && $total -gt 0 ]]; then
+    if [[ -n "$summary_commit" ]]; then
         local what=""
         (( ${#updated_plugins[@]} > 0 )) && what="${#updated_plugins[@]} plugins"
         if (( ${#updated_themes[@]} > 0 )); then
