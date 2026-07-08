@@ -159,7 +159,8 @@ update_core() {
 update_plugins_with_git() {
     local plugin_count=0
     local old_version new_version commit_message
-    
+    local _pwd="$PWD"
+
     # Change to repository directory
     if ! cd wp-content &>/dev/null; then
         log_error "Cannot access wp-content directory"
@@ -186,7 +187,7 @@ update_plugins_with_git() {
     
     if [[ -z "$available_updates" ]]; then
         log_info "No plugin updates available"
-        cd - &>/dev/null
+        cd "$_pwd" &>/dev/null
         return 0
     fi
 
@@ -250,8 +251,8 @@ update_plugins_with_git() {
             log_error "Failed to update plugin: $plugin"
         fi
     done
-    
-    cd - &>/dev/null
+
+    cd "$_pwd" &>/dev/null
 
     return 0
 }
@@ -259,6 +260,7 @@ update_plugins_with_git() {
 # Summary commit, update summary and push for git mode.
 # Runs after plugins AND themes so theme updates land in the same commit/push.
 finalize_git_updates() {
+    local _pwd="$PWD"
     if ! cd wp-content &>/dev/null; then
         return 0
     fi
@@ -267,7 +269,7 @@ finalize_git_updates() {
 
     # Nothing updated this run: no commit, summary or push to do
     if [[ $total -eq 0 ]]; then
-        cd - &>/dev/null
+        cd "$_pwd" &>/dev/null
         return 0
     fi
 
@@ -334,7 +336,7 @@ EOF
     fi
 
     [[ "$progress" != true ]] && sleep 2
-    cd - &>/dev/null
+    cd "$_pwd" &>/dev/null
 
     return 0
 }
@@ -500,6 +502,7 @@ process_single_site() {
         log_info "Processing site: $site"
     fi
 
+    local _base_pwd="$PWD"
     if ! cd "$site_dir" &>/dev/null; then
         log_error "Cannot access site directory: $site_dir"
         return 1
@@ -516,7 +519,7 @@ process_single_site() {
 
     if [[ "$site_check" == *"error"* ]]; then
         echo -e "${Red}✗ $site: site check failed${Color_Off}"
-        cd - &>/dev/null
+        cd "$_base_pwd" &>/dev/null
         return 1
     fi
 
@@ -564,8 +567,8 @@ process_single_site() {
     fi
 
     log_success "Finished processing site: $site"
-    cd - &>/dev/null
-    
+    cd "$_base_pwd" &>/dev/null
+
     return 0
 }
 
