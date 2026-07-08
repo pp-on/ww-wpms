@@ -46,6 +46,17 @@ _webwerk() {
         COMPREPLY=( $(compgen -W "${names[*]}" -- "$cur") )
     }
 
+    # Helper: git branch names across ./ or ./*/ wp-content repos
+    _webwerk_branches() {
+        local d
+        local -a names=()
+        for d in wp-content */wp-content; do
+            [[ -d "$d" ]] || continue
+            names+=( $(git -C "$d" branch --format='%(refname:short)' 2>/dev/null) )
+        done
+        COMPREPLY=( $(compgen -W "$(printf '%s\n' "${names[@]}" | sort -u)" -- "$cur") )
+    }
+
     # Helper: installed plugin/theme names in ./ or ./*/ sites; comma lists ok
     _webwerk_content_names() {
         local kind="$1" prefix='' d
@@ -170,11 +181,13 @@ _webwerk() {
                 debug|indexing) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 errors) COMPREPLY=( $(compgen -W 'hide show' -- "$cur") ); return 0 ;;
                 user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
+                branch) COMPREPLY=( $(compgen -W 'merge help' -- "$cur") ); return 0 ;;
+                merge) _webwerk_branches; return 0 ;;
                 --role) COMPREPLY=( $(compgen -W 'admin editor author contributor subscriber' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '
                 local ddev
-                theme plugin site config user
+                theme plugin site config user branch
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites

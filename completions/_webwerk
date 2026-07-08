@@ -190,8 +190,8 @@ _webwerk_get_targets() {
 
 _webwerk_mod() {
     _arguments \
-        '1:target:(local ddev theme plugin site config user)' \
-        '2::value:(webwerk install copy update activate deactivate remove list license remote url debug errors indexing https htaccess add help)' \
+        '1:target:(local ddev theme plugin site config user branch)' \
+        '2::value:(webwerk install copy update activate deactivate remove list license remote url debug errors indexing https htaccess add merge help)' \
         '--role[User role]:role:(admin editor author contributor subscriber)' \
         '--pass[User password]:password' \
         '--email[User email]:email' \

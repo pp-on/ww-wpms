@@ -882,6 +882,78 @@ site_user_show() {
     done
 }
 
+# mod branch [show] — per site: wp-content repo branch overview (fetches first)
+site_branch_show() {
+    local site sp repo cur up ahead behind dirty
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if ! git -C "$repo" rev-parse --git-dir &>/dev/null; then
+            echo -e "  ${Yellow}no git repository in wp-content${Color_Off}"
+            continue
+        fi
+        git -C "$repo" fetch --quiet 2>/dev/null \
+            || echo -e "  ${Yellow}fetch failed (no remote?)${Color_Off}"
+        cur="$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || echo 'detached')"
+        up="$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo '-')"
+        dirty="$(git -C "$repo" status --porcelain 2>/dev/null | wc -l)"
+        echo "  branch:    $cur"
+        echo "  tracking:  $up"
+        if [[ "$up" != "-" ]]; then
+            ahead="$(git -C "$repo" rev-list --count '@{u}..HEAD' 2>/dev/null || echo '?')"
+            behind="$(git -C "$repo" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo '?')"
+            echo "  ahead/behind: $ahead/$behind"
+        fi
+        echo "  branches:  $(git -C "$repo" branch --format='%(refname:short)' 2>/dev/null | tr '\n' ' ')"
+        if [[ "$dirty" -gt 0 ]]; then
+            echo -e "  status:    ${Yellow}$dirty uncommitted change(s)${Color_Off}"
+        else
+            echo -e "  status:    ${Green}clean${Color_Off}"
+        fi
+    done
+}
+
+# mod branch merge [NAME] — per site: merge the wp-content repo's current
+# branch into NAME (default live), then switch back. No push. Skips sites
+# with dirty trees or a missing target branch; aborts cleanly on conflicts.
+site_branch_merge() {
+    local target="${1:-live}" site sp repo cur
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if ! git -C "$repo" rev-parse --git-dir &>/dev/null; then
+            echo -e "  ${Yellow}skipped: no git repository in wp-content${Color_Off}"; continue
+        fi
+        cur="$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)"
+        if [[ -z "$cur" ]]; then
+            echo -e "  ${Yellow}skipped: detached HEAD${Color_Off}"; continue
+        fi
+        if [[ "$cur" == "$target" ]]; then
+            echo -e "  ${Yellow}skipped: already on '$target'${Color_Off}"; continue
+        fi
+        if [[ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ]]; then
+            echo -e "  ${Yellow}skipped: working tree dirty${Color_Off}"; continue
+        fi
+        if ! git -C "$repo" show-ref --verify --quiet "refs/heads/$target"; then
+            echo -e "  ${Yellow}skipped: no local branch '$target'${Color_Off}"; continue
+        fi
+        if [[ "$(git -C "$repo" rev-list --count "$target..$cur" 2>/dev/null)" == "0" ]]; then
+            echo "  nothing to merge: '$target' already contains '$cur'"; continue
+        fi
+        if ! git -C "$repo" checkout --quiet "$target" 2>/dev/null; then
+            echo -e "  ${Red}failed: cannot checkout '$target'${Color_Off}"; continue
+        fi
+        if git -C "$repo" merge --no-edit "$cur" &>/dev/null; then
+            echo -e "  ${Green}$cur → $target: merged ✓${Color_Off} (not pushed)"
+        else
+            git -C "$repo" merge --abort &>/dev/null
+            echo -e "  ${Red}$cur → $target: merge conflict — aborted, nothing changed${Color_Off}"
+        fi
+        git -C "$repo" checkout --quiet "$cur" 2>/dev/null \
+            || echo -e "  ${Red}could not switch back to '$cur'${Color_Off}"
+    done
+}
+
 #===============================================================================
 # USER MANAGEMENT
 #===============================================================================
@@ -1182,6 +1254,7 @@ export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setu
 export -f _site_path _site_header site_license_status site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
 export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
+export -f site_branch_show site_branch_merge
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se wp_enable_se

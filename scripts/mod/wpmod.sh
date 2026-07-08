@@ -254,6 +254,26 @@ Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
 EOF
 }
 
+# Per-WHAT help: webwerk mod branch help
+show_branch_help() {
+    cat << EOF
+webwerk mod branch — wp-content git branch overview and merges per site
+
+Usage:
+  webwerk mod branch                 per site: fetch, then show current branch,
+                                     tracking branch, ahead/behind, local
+                                     branches and working-tree status
+  webwerk mod branch merge [NAME]    merge the current branch into NAME
+                                     (default: live), then switch back
+
+merge never pushes (push with 'webwerk update -P' or manually) and never
+leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
+target branch are skipped, and conflicting merges are aborted.
+
+Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
+EOF
+}
+
 # Per-WHAT help: webwerk mod user help
 show_user_help() {
     cat << EOF
@@ -320,7 +340,11 @@ OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
   -t, --text-color TEXT COLOR  Output colored text
 
-GIT OPERATIONS:
+GIT OPERATIONS (webwerk mod branch help for details):
+  branch                      Per-site branch overview (fetch, branch, tracking,
+                              ahead/behind, status)
+  branch merge [NAME]         Merge current branch into NAME (default live),
+                              no push, switch back afterwards
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
   -g, --git-status            MOVED -> webwerk get git (this alias forwards)
@@ -569,6 +593,18 @@ parse_arguments() {
                 esac
                 return 0
                 ;;
+            branch)
+                # WHAT form: webwerk mod branch [merge [NAME]]
+                #   no action -> per-site wp-content branch overview (fetches first)
+                #   merge     -> merge current branch into NAME (default live), no push
+                local b_sub="${2:-}" b_target="${3:-}"
+                case "$b_sub" in
+                    ""|show) site_branch_show ;;
+                    merge)   site_branch_merge "${b_target:-live}" ;;
+                    *) log_error "branch: use [show] | merge [NAME]  (NAME defaults to 'live')"; exit 1 ;;
+                esac
+                return 0
+                ;;
             config)
                 # WHAT form: webwerk mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]
                 local c_what="${2:-}" c_val="${3:-}"
@@ -740,7 +776,7 @@ main() {
     for arg in "$@"; do
         case "$arg" in
             -h|--help|help)              _help_req=1 ;;
-            theme|plugin|site|config|user) _help_what="$arg" ;;
+            theme|plugin|site|config|user|branch) _help_what="$arg" ;;
         esac
     done
     if [[ $_help_req -eq 1 ]]; then
@@ -750,6 +786,7 @@ main() {
             site)   show_site_help ;;
             config) show_config_help ;;
             user)   show_user_help ;;
+            branch) show_branch_help ;;
             *)      show_help ;;
         esac
         exit 0

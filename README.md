@@ -519,6 +519,15 @@ webwerk update -h
 ./webwerk mod -s mysite config indexing off        # search-engine indexing (off = -r)
 ./webwerk mod -s mysite config https               # force HTTPS       (= -S)
 
+# Git branches (WHAT form): overview + merge into the live branch.
+# 'branch' fetches, then shows current branch, tracking, ahead/behind, status.
+# 'branch merge [NAME]' merges the current branch into NAME (default: live),
+# switches back afterwards and never pushes; dirty trees, detached HEADs and
+# missing target branches are skipped, conflicting merges are aborted.
+./webwerk mod -A branch                            # overview of every site
+./webwerk mod -s mysite branch merge               # merge current -> live
+./webwerk mod -A branch merge staging              # merge current -> staging
+
 # Users (WHAT form)
 ./webwerk mod -s mysite user                       # list users per site
 ./webwerk mod -s mysite user add jane --role editor --email jane@x.test

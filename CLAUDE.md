@@ -39,6 +39,8 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
   `mod plugin <install|copy|update|activate|deactivate|remove|list> [NAME]`,
   `mod site <license|remote|url> [show|set|add …]`,
+  `mod branch [merge [NAME]]` (overview / merge current branch into NAME,
+  default `live`, no push),
   `mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
   `mod user [add NAME [--role R] [--pass P] [--email E]]`.
   (`mod` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
