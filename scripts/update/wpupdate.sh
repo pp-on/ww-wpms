@@ -167,13 +167,15 @@ update_plugins_with_git() {
     fi
     
     # Update repository first
-    [[ "$compact" != true && "$progress" != true ]] && out "Updating repository..." 1
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Purple}▸ Updating repo${Color_Off}"
     [[ "$compact" != true && "$progress" != true ]] && sleep 1
 
     if ! git pull &>/dev/null; then
         log_warning "Git pull failed or no remote repository"
     fi
-    
+
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Cyan}▸ Updating plugins${Color_Off}"
+
     # Process each plugin that needs updating
     local available_updates
     if [[ $minor -eq 0 ]]; then
@@ -339,8 +341,9 @@ EOF
 
 # Update plugins without git
 update_plugins_simple() {
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Cyan}▸ Updating plugins${Color_Off}"
     log_info "Checking for plugin updates"
-    
+
     local plugins_needing_update
     if [[ $minor -eq 0 ]]; then
         plugins_needing_update=$("${WP_CLI_PATH}" plugin list --fields=name,update 2>/dev/null | grep available || echo "")
@@ -420,6 +423,12 @@ update_themes_fn() {
     _th_csv=$("${WP_CLI_PATH}" theme list --update=available --fields=name,version,update_version --format=csv 2>/dev/null | tail -n +2)
     [[ -n "$_th_list" ]] && _th_count=$(echo "$_th_list" | wc -l)
     prog "themes → ${_th_count} pending"
+
+    # Nothing to update: don't prompt, don't print an empty table
+    if [[ "$_th_count" -eq 0 ]]; then
+        log_info "No theme updates available"
+        return 0
+    fi
 
     if [[ "$auto_yes" != "true" ]]; then
         "${WP_CLI_PATH}" theme list --update=available
@@ -511,11 +520,11 @@ process_single_site() {
         return 1
     fi
 
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}---------------\nChecking Site\n---------------${Color_Off}"
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}▸ Checking site${Color_Off}"
     [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}Site is functional${Color_Off}"
 
     # Update WordPress core
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}---------------\nChecking Core Updates\n---------------${Color_Off}"
+    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Blue}▸ Updating core${Color_Off}"
     prog "core"
 
     if [[ "$core_update" == true ]]; then
@@ -530,8 +539,6 @@ process_single_site() {
     if [[ "$skip_plugins" == true ]]; then
         log_info "Plugin updates skipped (core only)"
     else
-        [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}---------------\nChecking Plugin Updates\n---------------${Color_Off}"
-
         if [[ "$git_mode" -ge 1 ]]; then
             if ! update_plugins_with_git; then
                 log_warning "Git-based plugin updates failed for site: $site"
@@ -545,7 +552,7 @@ process_single_site() {
 
     # Update themes (only when explicitly requested)
     if [[ "$update_themes" == true ]]; then
-        [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}---------------\nChecking Theme Updates\n---------------${Color_Off}"
+        [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}▸ Updating themes${Color_Off}"
         if ! update_themes_fn; then
             log_warning "Theme update failed for site: $site"
         fi
