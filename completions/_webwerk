@@ -124,7 +124,8 @@ _webwerk_update() {
         '1: :_webwerk_update_targets' \
         '2:: :->arg2' \
         '(-a --all --all-sites)'{-a,--all,--all-sites}'[Update all sites, pause between each (x=exit)]' \
-        '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Auto all sites, pause between each]' \
+        '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Update all sites, no pause, no prompts (= -ay)]' \
+        '(-l --list-select)'{-l,--list-select}'[List sites numbered; pick a subset (e.g. 1,2,4,11)]' \
         '(-B --batch)'{-B,--batch}'[Auto all sites, no pause, compact output]' \
         '(-V --progress)'{-V,--progress}'[Progress-only output, normal output goes to log file]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \

@@ -411,14 +411,21 @@ but accept the shorter aliases `--wpu` (user), `--wpp` (pass), `--wpe` (email).
 Default updates core + plugins + themes. Short alias: `webwerk u`. Combined short flags supported (e.g. `-Ayg`).
 
 ```bash
-# Update every site in the base dir, one after another under a
-# '== [N/total] site ==' header; pause after each (any key = next, x = exit)
-webwerk update -a          # --all / -A are aliases
+# No selection: discover every site in the base dir and ask y/n/x before each
+# (y = update, n = skip, x = abort), under a '== [N/total] site ==' header
+webwerk update
 
-# Auto all, no prompts
-webwerk update -Ay
+# Update every site, pausing after each (any key = next, x = exit)
+webwerk update -a          # --all / --all-sites are aliases
 
-# Batch: auto all sites, no pause, compact output
+# Update every site, no pause and no prompts (fully automatic)
+webwerk update -A          # same as -ay
+
+# List every site numbered, then update the ones you pick (e.g. 1,2,4,11),
+# pausing after each
+webwerk update -l
+
+# Batch: all sites, no pause, compact output
 webwerk update -B
 
 # Progress-only output: [N/total] site + per-plugin lines, rest goes to log file

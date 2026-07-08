@@ -137,6 +137,7 @@ _webwerk() {
                     COMPREPLY=( $(compgen -W '
                         -a --all --all-sites
                         -A --all-sites-auto
+                        -l --list-select
                         -B --batch
                         -V --progress
                         -s --sites

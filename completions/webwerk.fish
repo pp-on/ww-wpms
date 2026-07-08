@@ -178,7 +178,8 @@ complete -c webwerk -f -n '__ww_update_ctx; and __ww_after_word theme'  -a '(__w
 # ── update: options ───────────────────────────────────────────────────────────
 
 complete -c webwerk -n __ww_update_ctx -s a -l all -l all-sites -d 'Update all sites, pause between each (x=exit)'
-complete -c webwerk -n __ww_update_ctx -s A -l all-sites-auto -d 'Update all sites, pause between each (alias of -a)'
+complete -c webwerk -n __ww_update_ctx -s A -l all-sites-auto -d 'Update all sites, no pause, no prompts (= -ay)'
+complete -c webwerk -n __ww_update_ctx -s l -l list-select -d 'List sites numbered; pick a subset (e.g. 1,2,4,11)'
 complete -c webwerk -n __ww_update_ctx -s B -l batch          -d 'Auto all sites, no pause, compact output'
 complete -c webwerk -n __ww_update_ctx -s V -l progress       -d 'Progress-only output, normal output goes to log file'
 complete -c webwerk -n __ww_update_ctx -s s -l sites       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'

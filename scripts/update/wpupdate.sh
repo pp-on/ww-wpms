@@ -40,6 +40,8 @@ sites=()
 updated_plugins=()   # "name: old → new" lines collected per site in git mode
 updated_themes=()    # "theme name: old → new" lines collected per site in git mode
 auto_all=false
+interactive_select=false  # bare `update` (no selection): ask y/n/x before each site
+selection_made=false      # any of -s/-a/-A/-B/-l seen? if not, default to interactive-all
 push_only=false
 compact=false
 progress=false
@@ -101,6 +103,13 @@ require_arg() {
         log_error "Option $1 requires an argument"
         exit 1
     fi
+}
+
+# True when we can actually read from the controlling terminal. /dev/tty may
+# exist as a device node yet fail to open when there's no controlling tty
+# (pipes, cron), so test by opening it rather than with -e.
+have_tty() {
+    { true </dev/tty; } 2>/dev/null
 }
 
 #===============================================================================
@@ -574,10 +583,15 @@ TARGET (optional):
   (omit)                       Update core + plugins + themes (default)
 
 SITE SELECTION:
-  -a, --all,                   Update every site in the base dir, one after another
-  -A, --all-sites,             under a '== [N/total] site ==' header; pause after each
-      --all-sites-auto         site (any key = next, x = exit). -a and -A are aliases.
-  -B, --batch                  Like -a/-A but no pause; compact one-line-per-plugin output
+  (no selection)               Discover every site in the base dir and ask y/n/x
+                               before each ('== [N/total] site ==' header)
+  -a, --all, --all-sites       Update every site, pausing after each (any key = next,
+                               x = exit)
+  -A, --all-sites-auto         Update every site, no pause and no confirmations
+                               (same as -ay)
+  -l, --list-select            List every site numbered, then update the ones you
+                               pick (e.g. 1,2,4,11), pausing after each
+  -B, --batch                  Like -A but compact one-line-per-plugin output
   -s, --sites SITES            Update specific sites (comma-separated)
   -d DIR                       Set base directory (default: ${WORDPRESS_BASE_DIR:-./})
 
@@ -604,9 +618,10 @@ OUTPUT & DISPLAY:
   -h, --help                  Show this help message
 
 EXAMPLES:
+  webwerk update                                       # ask y/n/x before each site
   webwerk update -a                                    # update all sites, pause between each
-  webwerk update -A                                    # same as -a (alias)
-  webwerk update -Ay                                   # auto all, no confirmations
+  webwerk update -A                                    # update all, no pause, no prompts (= -ay)
+  webwerk update -l                                    # pick sites by number, then update them
   webwerk update core -Ay                              # core only, auto all
   webwerk update plugins -Ay                           # plugins only, auto all
   webwerk update plugins -Ay                           # all plugins, auto all sites
@@ -632,6 +647,45 @@ For more information: https://github.com/ojnickel/ww-wpms
 EOF
 }
 
+# -l: list every site in the base dir with a number, then let the user pick a
+# subset (e.g. "1,2,4,11"). Populates `sites` with the chosen names. Needs a TTY.
+select_sites_numbered() {
+    local search_dir="${WORDPRESS_BASE_DIR%/}"
+    if ! have_tty; then
+        log_error "-l needs a terminal to show the list and read your selection."
+        exit 1
+    fi
+    local d name
+    local -a all=()
+    for d in "$search_dir"/*/; do
+        [[ -d "${d}wp-content/" ]] || continue
+        name="${d#"$search_dir/"}"; all+=("${name%/}")
+    done
+    if [[ ${#all[@]} -eq 0 ]]; then
+        log_error "No sites found in $search_dir"
+        exit 1
+    fi
+    local i
+    for i in "${!all[@]}"; do
+        printf '  [%d] %s\n' "$((i + 1))" "${all[i]}" >/dev/tty
+    done
+    printf 'Select sites (e.g. 1,2,4,11): ' >/dev/tty
+    local reply
+    read -r reply </dev/tty || reply=""
+    local -a picks=()
+    IFS=', ' read -ra picks <<< "$reply"
+    local p
+    for p in "${picks[@]}"; do
+        [[ "$p" =~ ^[0-9]+$ ]] || continue
+        (( p >= 1 && p <= ${#all[@]} )) || continue
+        sites+=("${all[$((p - 1))]}")
+    done
+    if [[ ${#sites[@]} -eq 0 ]]; then
+        log_error "No valid sites selected."
+        exit 1
+    fi
+}
+
 # Parse command line arguments
 parse_arguments() {
     # Expand combined short flags (e.g. -Ay -> -A -y)
@@ -649,15 +703,28 @@ parse_arguments() {
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -a|--all|--all-sites|-A|--all-sites-auto)
+            -a|--all|--all-sites)
                 process_sites_all
                 auto_all=true
+                selection_made=true
+                ;;
+            -A|--all-sites-auto)
+                process_sites_all
+                auto_all=true
+                auto_yes="true"   # -A == -ay: no confirmations, no between-site pause
+                selection_made=true
+                ;;
+            -l|--list-select)
+                select_sites_numbered
+                auto_all=true     # pause between the picked sites, like -a
+                selection_made=true
                 ;;
             -B|--batch)
                 process_sites_all
                 auto_all=true
                 auto_yes="true"
                 compact=true
+                selection_made=true
                 ;;
             -u)
                 require_arg "$1" "${2:-}"
@@ -669,6 +736,7 @@ parse_arguments() {
                 require_arg "$1" "${2:-}"
                 shift
                 process_dirs "$1"
+                selection_made=true
                 ;;
             -m|--minor)
                 minor=1
@@ -771,6 +839,18 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
 
+    # No site selection given (bare `update`): discover every site in the base
+    # dir and ask y/n/x before each one.
+    if [[ "$selection_made" != true ]]; then
+        process_sites_all
+        interactive_select=true
+        if ! have_tty; then
+            log_error "'webwerk update' with no site selection asks before each site and needs a terminal."
+            log_error "For unattended runs use -A (all, no prompts) or -B (batch)."
+            exit 1
+        fi
+    fi
+
     _prog_total=${#sites[@]}
     if [[ "$progress" == true && "$_prog_total" -gt 0 ]]; then
         echo -e "Found ${_prog_total} site$([[ "$_prog_total" -eq 1 ]] && echo "" || echo "s")"
@@ -791,6 +871,15 @@ main() {
         (( ++_prog_idx ))
         _prog_site="$site"
 
+        if [[ "$interactive_select" == true ]]; then
+            read -rp "Update site [${_prog_idx}/${_prog_total}] '$site'? [y/n/x]: " choice </dev/tty
+            case "$choice" in
+                y|Y) ;;
+                x|X) log_info "Aborted by user."; exit 0 ;;
+                *)   continue ;;
+            esac
+        fi
+
         if [[ "$push_only" == true ]]; then
             if (cd "$site" && git push); then
                 log_success "Pushed: $site"
@@ -806,9 +895,9 @@ main() {
             log_error "Failed to process site: $site"
         fi
 
-        # Pause between sites only when there's a terminal to read from;
-        # piped/cron runs (no TTY) fall through and process every site.
-        if [[ "$auto_all" == true && "$compact" != true && -t 0 ]]; then
+        # Pause between sites for -a/-l; -A/-ay/-B (auto_yes) skip it, and so do
+        # piped/cron runs (no TTY) so they process every site.
+        if [[ "$auto_all" == true && "$compact" != true && "$auto_yes" != "true" && -t 0 ]]; then
             read -rsn1 -p "Press any key to continue, x to exit... " key
             echo
             if [[ "${key,,}" == "x" ]]; then
