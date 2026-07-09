@@ -178,7 +178,7 @@ webwerk mod ddev -S
 webwerk update -a
 
 # Same, no prompts at all
-webwerk update -Ay
+webwerk update -A
 
 # Manage existing sites
 webwerk mod -s mysite -x on
@@ -323,6 +323,9 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
            mod    theme [webwerk|NAME|NUM]
                   plugin <install|copy|update|activate|deactivate|remove|list> [NAME]
                   site   <license|remote|url> [show|set|add …]
+                  config <debug|errors|indexing|https|htaccess> [on|off|…]
+                  branch [merge [NAME]]        # overview / merge current → NAME (live)
+                  user   [add NAME [--role R] [--pass P] [--email E]]
 
 # Verbs and modes accept any unambiguous abbreviation:
 #   i->install  u->update  m->mod  g->get  r->remove  s->status
@@ -408,7 +411,7 @@ but accept the shorter aliases `--wpu` (user), `--wpp` (pass), `--wpe` (email).
 
 ### Update Commands
 
-Default updates core + plugins + themes. Short alias: `webwerk u`. Combined short flags supported (e.g. `-Ayg`).
+Default updates core + plugins + themes. Short alias: `webwerk u`. Combined short flags supported (e.g. `-ASp`).
 
 ```bash
 # No selection: discover every site in the base dir and ask y/n/x before each
@@ -431,12 +434,12 @@ webwerk update -B
 # Progress-only output: [N/total] site + per-plugin lines, rest goes to log file
 webwerk update -BV
 
-# Update specific target only
-webwerk update core -Ay           # core only
-webwerk update plugins -Ay        # all plugins
-webwerk update plugin woocommerce -Ay  # one plugin
-webwerk update themes -Ay         # all themes
-webwerk update theme twentyfour -Ay   # one theme
+# Update specific target only (-A already runs unattended, no need for -y)
+webwerk update core -A            # core only
+webwerk update plugins -A         # all plugins
+webwerk update plugin woocommerce -A  # one plugin
+webwerk update themes -A          # all themes
+webwerk update theme twentyfour -A    # one theme
 
 # Update specific sites
 webwerk update -s site1,site2
@@ -447,19 +450,17 @@ webwerk update -Am
 # Skip core update
 webwerk update -Ac
 
-# With git commits (one per plugin)
-webwerk update -Ag
+# Git commits in wp-content: -g = one commit per plugin, -S/--sum = one
+# summary commit covering all plugins AND themes for the site
+webwerk update -Ag                # a commit per plugin
+webwerk update -AS                # single summary commit
 
-# With single summary git commit
-webwerk update -Ag --sum
-
-# Commit now, push later
-webwerk update -Agy --sum         # commits, no push
-webwerk update -AP                # push all sites (no update)
+# Push happens ONLY with -p — there is no push prompt. Without -p the run
+# commits locally and prints a quiet "· not pushed (use -p)" hint.
+webwerk update -AS                # commit only, not pushed
+webwerk update -ASp               # commit + push
+webwerk update -AP                # push selected sites, no update (-P = push-only)
 webwerk update -s site1,site2 -P  # push specific sites
-
-# Commit and push in one go
-webwerk update -Agpy
 
 # Exclude specific plugins
 webwerk update -A -x plugin1,plugin2
@@ -467,6 +468,26 @@ webwerk update -A -x plugin1,plugin2
 # Show all options
 webwerk update -h
 ```
+
+Output per site is a clean, aligned summary (wp-cli's own output goes to the
+log file):
+
+```
+== [1/35] alpha ==
+▸ core     up to date (6.4.1)
+▸ repo     pulled
+▸ plugins
+    akismet      5.1 → 5.2
+    woocommerce  8.3 → 8.4
+▸ themes
+    twentytwentyfour  1.0 → 1.1
+  ✓ committed  8a21a27  update 2 plugins, 1 theme
+  · not pushed (use -p)
+```
+
+There are no per-item confirmation prompts: bare `update` asks once per site
+(y/n/x), `-a` pauses between sites so you can review, and `-A`/`-ay`/`-B` run
+unattended.
 
 ### Management Commands
 
@@ -809,7 +830,7 @@ webwerk mod ddev -h                       # show all mod options
 # Update DDEV site plugins
 webwerk ddev update                        # update all plugins (core by default)
 webwerk ddev update -c                     # skip core, plugins only
-webwerk ddev update -Ay                    # auto all, no prompts
+webwerk ddev update -A                     # auto all, no prompts
 webwerk ddev update -h                    # show all update options
 
 # WP-CLI in container
@@ -888,20 +909,20 @@ webwerk mod -s accessible-company -n -U webmaster -P SecurePass123
 webwerk update -a
 
 # Same, no prompts (unattended)
-webwerk update -Ay
+webwerk update -A
 
 # Update only plugins across all sites
-webwerk update plugins -Ay
+webwerk update plugins -A
 
 # Update one plugin across all sites
-webwerk update plugin woocommerce -Ay
+webwerk update plugin woocommerce -A
 
-# Auto update all, commit, review, then push separately
-webwerk update -Agy --sum       # commits only
+# Auto update all, one summary commit per site, review, then push separately
+webwerk update -AS              # commits only (not pushed)
 webwerk update -AP              # push when ready
 
 # Commit and push in one go
-webwerk update -Agpy --sum
+webwerk update -ASp
 
 # Patch-level only, exclude specific plugins
 webwerk update -Am -x woocommerce,elementor
@@ -924,7 +945,7 @@ ddev wp theme list
 ddev import-db --src=backup.sql.gz
 
 # 5. Update site
-webwerk ddev update -Ay
+webwerk ddev update -A
 ```
 
 ### Example 4: Repository Management
@@ -973,7 +994,7 @@ webwerk mod -s mysite -i acf-pro
 5. **Log review**: Check logs regularly for errors or warnings
 
 ### Multi-Site Management
-1. **Batch operations**: Use `--all-sites` for consistent updates
+1. **Batch operations**: Use `-A` (unattended) or `-a` (pause to review) for consistent updates
 2. **Site naming**: Use consistent naming conventions
 3. **Documentation**: Document custom configurations in site-specific notes
 4. **Staging first**: Test on staging sites before applying to production
@@ -981,7 +1002,7 @@ webwerk mod -s mysite -i acf-pro
 ### Performance
 1. **Exclude unnecessary plugins**: Use `--exclude-plugins` for site-specific needs
 2. **Minor updates**: Use `--minor` flag for safer, incremental updates
-3. **Git integration**: Use `--git` flag to track changes
+3. **Git integration**: Use `-S` (one summary commit) or `-g` (per-plugin), add `-p` to push
 4. **Cleanup**: Remove unused plugins and themes regularly
 
 ## 🔄 Automation
@@ -994,8 +1015,8 @@ Automate regular maintenance with cron:
 # Edit crontab
 crontab -e
 
-# Update all sites weekly (Sunday 2 AM)
-0 2 * * 0 /usr/local/bin/webwerk update -Ayg --sum >> /var/log/webwerk-cron.log 2>&1
+# Update all sites weekly (Sunday 2 AM): unattended, summary commit + push
+0 2 * * 0 /usr/local/bin/webwerk update -ASp >> /var/log/webwerk-cron.log 2>&1
 
 # Daily backup at midnight
 0 0 * * * /usr/local/bin/webwerk backup --all-sites >> /var/log/webwerk-backup.log 2>&1
@@ -1026,7 +1047,7 @@ Description=Webwerk WordPress Update
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/webwerk update --all-sites --git
+ExecStart=/usr/local/bin/webwerk update -ASp
 User=www-data
 
 # Enable timer
@@ -1052,15 +1073,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install webwerk
         run: sudo ./install.sh
-      - name: Update WordPress
-        run: webwerk update --all-sites --git
-      - name: Commit changes
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "Automated WordPress update" || true
-          git push
+      - name: Update WordPress (summary commit + push per site)
+        run: webwerk update -ASp
 ```
 
 ## 🚨 Troubleshooting
