@@ -88,13 +88,10 @@ prog() {
     printf '\r%b%.*s%b\033[K' "${Cyan}" "$width" "$line" "${Color_Off}"
 }
 
-# Run a command; in progress mode send its output to the log file instead of the terminal
+# Run a command with its output routed to the log file, keeping the terminal
+# clean (we surface results ourselves via step/render_rows/the compact lines).
 quiet_run() {
-    if [[ "$progress" == true ]]; then
-        "$@" &>> "$LOG_FILE"
-    else
-        "$@"
-    fi
+    "$@" &>> "$LOG_FILE"
 }
 
 # Fail with a clear message when an option is missing its argument
@@ -113,41 +110,66 @@ have_tty() {
 }
 
 #===============================================================================
+# OUTPUT HELPERS (normal mode only; compact/-V handle their own output)
+#===============================================================================
+
+Dim="\033[2m"
+
+# Colored step line: "▸ label     status".  Status is optional and may itself
+# contain colors (printf pads the label; echo -e renders the status).
+step() { # color label [status]
+    [[ "$compact" == true || "$progress" == true ]] && return 0
+    if [[ -n "${3:-}" ]]; then
+        printf "${1}▸ %-8s${Color_Off} " "$2"
+        echo -e "$3"
+    else
+        echo -e "${1}▸ ${2}${Color_Off}"
+    fi
+}
+
+# Indented, name-aligned "name  old → new" rows.
+# Args are tab-separated "name<TAB>old<TAB>new" (no color escapes in the fields).
+render_rows() {
+    [[ "$compact" == true || "$progress" == true ]] && return 0
+    local maxw=0 e name old new
+    for e in "$@"; do name="${e%%$'\t'*}"; (( ${#name} > maxw )) && maxw=${#name}; done
+    for e in "$@"; do
+        IFS=$'\t' read -r name old new <<< "$e"
+        printf "    ${Green}%-*s${Color_Off}  %s → %s\n" "$maxw" "$name" "$old" "$new"
+    done
+}
+
+# A quiet, de-emphasized note line ("  · not pushed …").
+note() {
+    [[ "$compact" == true || "$progress" == true ]] && return 0
+    echo -e "  ${Dim}$1${Color_Off}"
+}
+
+# A "  ✓ text" / "  ✗ text" result line (text may contain colors).
+ok()   { [[ "$compact" == true || "$progress" == true ]] && return 0; echo -e "  ${Green}✓${Color_Off} $1"; }
+fail() { [[ "$compact" == true || "$progress" == true ]] && return 0; echo -e "  ${Red}✗${Color_Off} $1"; }
+
+#===============================================================================
 # CORE UPDATE FUNCTIONS
 #===============================================================================
 
 # Update WordPress core
 update_core() {
-    log_info "Checking WordPress core for updates"
-    
-    local success_check
-    success_check=$("${WP_CLI_PATH}" core check-update 2>/dev/null | grep Success || echo "")
-    
-    if [[ -z "$success_check" ]]; then
-        log_info "WordPress core update available"
-        
-        if [[ "$auto_yes" != "true" ]]; then
-            echo -e "\nProceed with Core Update? [y/N]: "
-            read -r answer
-        else
-            [[ "$progress" != true ]] && out "Auto-updating core..." 4
-            answer="y"
-        fi
+    local old_ver new_ver up_to_date
+    old_ver=$("${WP_CLI_PATH}" core version 2>/dev/null || echo "?")
+    up_to_date=$("${WP_CLI_PATH}" core check-update 2>/dev/null | grep -c Success || true)
 
-        [[ "$progress" != true ]] && echo -e "\n--------------"
-        if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
-            log_info "Updating WordPress core"
-            if quiet_run "${WP_CLI_PATH}" core update --locale="${WP_LOCALE}" --skip-themes; then
-                log_success "WordPress core updated successfully"
-            else
-                log_error "WordPress core update failed"
-                return 1
-            fi
-        else
-            log_info "Core update skipped by user"
-        fi
+    if [[ "${up_to_date:-0}" -gt 0 ]]; then
+        step "$Blue" core "up to date ${Dim}(${old_ver})${Color_Off}"
+        return 0
+    fi
+
+    if quiet_run "${WP_CLI_PATH}" core update --locale="${WP_LOCALE}" --skip-themes; then
+        new_ver=$("${WP_CLI_PATH}" core version 2>/dev/null || echo "?")
+        step "$Blue" core "updated ${old_ver} → ${new_ver}"
     else
-        log_info "WordPress core is up to date"
+        step "$Blue" core "update failed"
+        return 1
     fi
 }
 
@@ -168,92 +190,66 @@ update_plugins_with_git() {
     fi
     
     # Update repository first
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Purple}▸ Updating repo${Color_Off}"
-    [[ "$compact" != true && "$progress" != true ]] && sleep 1
-
-    if ! git pull &>/dev/null; then
-        log_warning "Git pull failed or no remote repository"
+    if git pull &>/dev/null; then
+        step "$Purple" repo "pulled"
+    else
+        step "$Purple" repo "no remote"
     fi
 
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Cyan}▸ Updating plugins${Color_Off}"
-
-    # Process each plugin that needs updating
+    # Which plugins have an update available?
     local available_updates
     if [[ $minor -eq 0 ]]; then
         available_updates=$("${WP_CLI_PATH}" plugin list --update=available --field=name 2>/dev/null || echo "")
     else
         available_updates=$("${WP_CLI_PATH}" plugin list --update=available --minor --field=name 2>/dev/null || echo "")
     fi
-    
-    if [[ -z "$available_updates" ]]; then
-        log_info "No plugin updates available"
+
+    # Apply only/exclude filters (exact name match, comma-bounded)
+    local filtered=()
+    for plugin in $available_updates; do
+        [[ -n "$only_plugins" && ",$only_plugins," != *",$plugin,"* ]] && continue
+        [[ -n "$exclude_plugins" && ",$exclude_plugins," == *",$plugin,"* ]] && continue
+        filtered+=("$plugin")
+    done
+
+    if [[ ${#filtered[@]} -eq 0 ]]; then
+        step "$Cyan" plugins "up to date"
         cd "$_pwd" &>/dev/null
         return 0
     fi
 
-    # Apply only/exclude filters first (exact name match, comma-bounded)
-    local filtered=()
-    for plugin in $available_updates; do
-        if [[ -n "$only_plugins" ]] && [[ ",$only_plugins," != *",$plugin,"* ]]; then
-            continue
-        fi
-        if [[ -n "$exclude_plugins" ]] && [[ ",$exclude_plugins," == *",$plugin,"* ]]; then
-            log_info "Skipping excluded plugin: $plugin"
-            continue
-        fi
-        filtered+=("$plugin")
-    done
-
     local _pl_total=${#filtered[@]} _pl_idx=0
-
     for plugin in "${filtered[@]}"; do
         (( ++_pl_idx ))
         prog "plugins → $plugin ${_pl_idx}/${_pl_total}"
 
-        old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
-        
-        [[ "$compact" != true && "$progress" != true ]] && out "Updating $plugin" 4
-        [[ "$compact" != true && "$progress" != true ]] && sleep 1
+        old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "?")
+        if ! "${WP_CLI_PATH}" plugin update "$plugin" &>/dev/null; then
+            fail "plugin $plugin: update failed"
+            continue
+        fi
+        new_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "?")
+        [[ "$old_version" == "$new_version" ]] && continue
 
-        if "${WP_CLI_PATH}" plugin update "$plugin" &>/dev/null; then
-            new_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "unknown")
+        updated_plugins[$plugin_count]="$plugin"$'\t'"$old_version"$'\t'"$new_version"
+        [[ "$compact" == true && "$progress" != true ]] && echo -e "  ${Green}↑${Color_Off} $plugin $old_version → $new_version"
 
-            if [[ "$old_version" != "$new_version" ]]; then
-                updated_plugins[$plugin_count]="$plugin: $old_version → $new_version"
-                [[ "$compact" == true && "$progress" != true ]] && echo -e "  ${Green}↑${Color_Off} $plugin $old_version → $new_version"
-
-                [[ "$compact" != true && "$progress" != true ]] && out "Staging changes..." 2
-                [[ "$compact" != true && "$progress" != true ]] && sleep 1
-
-                if git add -A "plugins/$plugin" &>/dev/null; then
-                    commit_message="plugin ${updated_plugins[$plugin_count]}"
-
-                    [[ "$compact" != true && "$progress" != true ]] && out "Writing commit:" 2
-                    [[ "$compact" != true && "$progress" != true ]] && out "chore: update $commit_message" 4
-                    
-                    if [[ -z "$summary_commit" ]]; then
-                        # Separate commit for each plugin
-                        if git commit -m "chore: update $commit_message" &>/dev/null; then
-                            log_info "Committed update for $plugin"
-                        else
-                            log_warning "Failed to commit update for $plugin"
-                        fi
-                    fi
-
-                    ((plugin_count++))
-                else
-                    log_warning "Failed to stage changes for $plugin"
-                fi
-            else
-                log_warning "Plugin $plugin version unchanged after update"
+        if git add -A "plugins/$plugin" &>/dev/null; then
+            # -S collects for one summary commit (finalize); otherwise commit now
+            if [[ -z "$summary_commit" ]]; then
+                git commit -m "chore: update plugin $plugin: $old_version → $new_version" &>/dev/null \
+                    || log_warning "Failed to commit update for $plugin"
             fi
+            ((plugin_count++))
         else
-            log_error "Failed to update plugin: $plugin"
+            log_warning "Failed to stage changes for $plugin"
         fi
     done
 
-    cd "$_pwd" &>/dev/null
+    step "$Cyan" plugins
+    render_rows "${updated_plugins[@]}"
 
+    cd "$_pwd" &>/dev/null
     return 0
 }
 
@@ -265,7 +261,8 @@ finalize_git_updates() {
         return 0
     fi
 
-    local total=$(( ${#updated_plugins[@]} + ${#updated_themes[@]} ))
+    local np=${#updated_plugins[@]} nt=${#updated_themes[@]}
+    local total=$(( np + nt ))
 
     # Nothing updated this run: no commit, summary or push to do
     if [[ $total -eq 0 ]]; then
@@ -273,140 +270,100 @@ finalize_git_updates() {
         return 0
     fi
 
-    # Handle summary commit
+    # "N plugins, M themes" (only the non-zero parts)
+    local what=""
+    (( np > 0 )) && what="$np plugin$([[ $np -ne 1 ]] && echo s)"
+    if (( nt > 0 )); then
+        [[ -n "$what" ]] && what+=", "
+        what+="$nt theme$([[ $nt -ne 1 ]] && echo s)"
+    fi
+
+    # -S: one summary commit listing plugins and themes together
     if [[ -n "$summary_commit" ]]; then
-        local what=""
-        (( ${#updated_plugins[@]} > 0 )) && what="${#updated_plugins[@]} plugins"
-        if (( ${#updated_themes[@]} > 0 )); then
-            [[ -n "$what" ]] && what+=", "
-            what+="${#updated_themes[@]} themes"
-        fi
-        log_info "Creating summary commit for $what"
+        local body="" e name old new
+        for e in "${updated_plugins[@]}"; do
+            IFS=$'\t' read -r name old new <<< "$e"; body+="  - $name: $old → $new"$'\n'
+        done
+        for e in "${updated_themes[@]}"; do
+            IFS=$'\t' read -r name old new <<< "$e"; body+="  - theme $name: $old → $new"$'\n'
+        done
+        if git commit -F- <<EOF &>/dev/null
+chore: update $what ($(date "+%d-%m-%y"))
 
-        if git commit -F- << EOF &>/dev/null
-chore: update $what $(date "+%d-%m-%y")
-
-$(printf "%s\n" "${updated_plugins[@]}" "${updated_themes[@]}")
+$body
 EOF
         then
-            log_success "Summary commit created successfully"
+            ok "committed  ${Dim}$(git rev-parse --short HEAD)${Color_Off}  update $what"
         else
-            log_error "Failed to create summary commit"
+            fail "summary commit failed"
         fi
+    elif [[ "$git_mode" -ge 1 ]]; then
+        ok "committed  ${Dim}$what (separate commits)${Color_Off}"
     fi
 
-    # Display summary
-    if [[ "$progress" != true ]]; then
-        sleep 1
-        out "Update Summary:" 1
-        out "$total updates" 2
-
-        if [[ -z "$summary_commit" ]]; then
-            local update_info
-            for update_info in "${updated_plugins[@]}" "${updated_themes[@]}"; do
-                echo "$update_info"
-                echo "------------------------------"
-            done
-        else
-            echo "Summary commit with $total updates"
-        fi
-    fi
-
-    # Handle git push: -p pushes without asking; otherwise prompt (or skip with -y)
+    # Push only with -p (git_mode 2). Never prompt.
     if [[ "$git_mode" -eq 2 ]]; then
+        local branch; branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
         if git push &>/dev/null; then
-            log_success "Auto-pushed changes to remote repository"
+            ok "pushed to ${branch}"
         else
-            log_error "Auto-push failed"
-        fi
-    elif [[ "$auto_yes" != "true" ]]; then
-        echo "Push to remote repository? [y/N]: "
-        read -r push_answer
-        if [[ "$push_answer" = "y" || "$push_answer" = "Y" ]]; then
-            if git push &>/dev/null; then
-                log_success "Changes pushed to remote repository"
-            else
-                log_error "Failed to push changes"
-            fi
-        else
-            log_info "Changes not pushed to remote repository"
+            fail "push failed"
         fi
     else
-        log_info "Auto-push disabled"
+        note "· not pushed (use -p)"
     fi
 
-    [[ "$progress" != true ]] && sleep 2
     cd "$_pwd" &>/dev/null
-
     return 0
 }
 
 # Update plugins without git
 update_plugins_simple() {
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Cyan}▸ Updating plugins${Color_Off}"
-    log_info "Checking for plugin updates"
+    # Snapshot name,current,target for the plugins that have an update
+    local csv_flag=""
+    [[ $minor -ne 0 ]] && csv_flag="--minor"
+    local csv
+    # shellcheck disable=SC2086
+    csv=$("${WP_CLI_PATH}" plugin list --update=available $csv_flag --fields=name,version,update_version --format=csv 2>/dev/null | tail -n +2)
 
-    local plugins_needing_update
-    if [[ $minor -eq 0 ]]; then
-        plugins_needing_update=$("${WP_CLI_PATH}" plugin list --fields=name,update 2>/dev/null | grep available || echo "")
-    else
-        plugins_needing_update=$("${WP_CLI_PATH}" plugin list --fields=name,update --minor 2>/dev/null | grep available || echo "")
-    fi
-    
-    if [[ -z "$plugins_needing_update" ]]; then
-        log_info "No plugin updates available"
+    # Build the display rows, honoring only/exclude filters
+    local rows=() name old new r
+    while IFS=, read -r name old new; do
+        [[ -z "$name" ]] && continue
+        [[ -n "$only_plugins" && ",$only_plugins," != *",$name,"* ]] && continue
+        [[ -n "$exclude_plugins" && ",$exclude_plugins," == *",$name,"* ]] && continue
+        rows+=("$name"$'\t'"$old"$'\t'"$new")
+    done <<< "$csv"
+
+    if [[ ${#rows[@]} -eq 0 ]]; then
+        step "$Cyan" plugins "up to date"
         return 0
     fi
 
-    local _pl_count=0
-    _pl_count=$(echo "$plugins_needing_update" | wc -l)
-    prog "plugins → ${_pl_count} pending"
+    prog "plugins → ${#rows[@]} pending"
 
-    if [[ "$auto_yes" != "true" ]]; then
-        "${WP_CLI_PATH}" plugin list --update=available
-        echo -e "\nAll plugins will be updated. Proceed? [y/N]: "
-        read -r answer
-        echo -e "\n--------------"
-
-        local plugin_args
-        if [[ -n "$only_plugins" ]]; then
-            plugin_args="${only_plugins//,/ }"
-        else
-            plugin_args="--all"
-            [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
-        fi
-
-        if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
-            # shellcheck disable=SC2086
-            if quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
-                log_success "Plugins updated successfully"
-            else
-                log_error "Some plugin updates failed"
-                return 1
-            fi
-        else
-            log_info "Plugin updates cancelled by user"
-        fi
+    local plugin_args
+    if [[ -n "$only_plugins" ]]; then
+        plugin_args="${only_plugins//,/ }"
     else
-        [[ "$progress" != true ]] && "${WP_CLI_PATH}" plugin list --update=available
-        [[ "$progress" != true ]] && out "Auto-updating plugins" 4
-
-        local plugin_args
-        if [[ -n "$only_plugins" ]]; then
-            plugin_args="${only_plugins//,/ }"
-        else
-            plugin_args="--all"
-            [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
-        fi
-
-        # shellcheck disable=SC2086
-        if quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
-            log_success "Plugins auto-updated successfully"
-        else
-            log_error "Auto-update failed for some plugins"
-            return 1
-        fi
+        plugin_args="--all"
+        [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
     fi
+
+    # shellcheck disable=SC2086
+    if ! quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
+        step "$Cyan" plugins
+        render_rows "${rows[@]}"
+        fail "some plugin updates failed"
+        return 1
+    fi
+
+    step "$Cyan" plugins
+    render_rows "${rows[@]}"
+    [[ "$compact" == true && "$progress" != true ]] && for r in "${rows[@]}"; do
+        IFS=$'\t' read -r name old new <<< "$r"; echo -e "  ${Green}↑${Color_Off} $name $old → $new"
+    done
+    return 0
 }
 
 # Update themes
@@ -418,68 +375,43 @@ update_themes_fn() {
         theme_args="--all"
     fi
 
-    log_info "Checking for theme updates"
+    # Snapshot name,current,target for themes that have an update
+    local csv rows=() name old new
+    csv=$("${WP_CLI_PATH}" theme list --update=available --fields=name,version,update_version --format=csv 2>/dev/null | tail -n +2)
+    while IFS=, read -r name old new; do
+        [[ -z "$name" ]] && continue
+        [[ -n "$only_theme" && "$name" != "$only_theme" ]] && continue
+        rows+=("$name"$'\t'"$old"$'\t'"$new")
+    done <<< "$csv"
 
-    local _th_list _th_csv _th_count=0 did_update=false
-    _th_list=$("${WP_CLI_PATH}" theme list --update=available --field=name 2>/dev/null)
-    _th_csv=$("${WP_CLI_PATH}" theme list --update=available --fields=name,version,update_version --format=csv 2>/dev/null | tail -n +2)
-    [[ -n "$_th_list" ]] && _th_count=$(echo "$_th_list" | wc -l)
-    prog "themes → ${_th_count} pending"
-
-    # Nothing to update: don't prompt, don't print an empty table
-    if [[ "$_th_count" -eq 0 ]]; then
-        log_info "No theme updates available"
+    if [[ ${#rows[@]} -eq 0 ]]; then
+        step "$Yellow" themes "up to date"
         return 0
     fi
 
-    if [[ "$auto_yes" != "true" ]]; then
-        "${WP_CLI_PATH}" theme list --update=available
-        echo -e "\nProceed with theme update? [y/N]: "
-        read -r answer
-        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-            # shellcheck disable=SC2086
-            if quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
-                log_success "Themes updated successfully"
-                did_update=true
-            else
-                log_error "Theme update failed"
-                return 1
-            fi
-        else
-            log_info "Theme update cancelled by user"
-        fi
-    else
-        # shellcheck disable=SC2086
-        if quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
-            log_success "Themes auto-updated successfully"
-            did_update=true
-        else
-            log_error "Auto-update failed for themes"
-            return 1
-        fi
+    prog "themes → ${#rows[@]} pending"
+
+    # shellcheck disable=SC2086
+    if ! quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
+        step "$Yellow" themes
+        render_rows "${rows[@]}"
+        fail "some theme updates failed"
+        return 1
     fi
 
-    # In git mode, stage the updated themes; with -S they join the summary
-    # commit (finalize_git_updates), otherwise commit them right away
-    if [[ "$did_update" == true && "$git_mode" -ge 1 && -n "$_th_csv" ]]; then
-        if git -C wp-content rev-parse --git-dir &>/dev/null; then
-            local name old new
-            while IFS=, read -r name old new; do
-                [[ -z "$name" ]] && continue
-                [[ -n "$only_theme" && "$name" != "$only_theme" ]] && continue
-                updated_themes+=("theme $name: $old → $new")
-            done <<< "$_th_csv"
-            if git -C wp-content add -A themes &>/dev/null; then
-                if [[ -z "$summary_commit" && ${#updated_themes[@]} -gt 0 ]]; then
-                    if git -C wp-content commit -m "chore: update ${#updated_themes[@]} themes $(date "+%d-%m-%y")" &>/dev/null; then
-                        log_info "Committed theme updates"
-                    else
-                        log_warning "Failed to commit theme updates"
-                    fi
-                fi
-            else
-                log_warning "Failed to stage theme updates"
+    step "$Yellow" themes
+    render_rows "${rows[@]}"
+
+    # Track for the git summary; stage now, commit here only in per-item (-g) mode
+    updated_themes+=("${rows[@]}")
+    if [[ "$git_mode" -ge 1 ]] && git -C wp-content rev-parse --git-dir &>/dev/null; then
+        if git -C wp-content add -A themes &>/dev/null; then
+            if [[ -z "$summary_commit" ]]; then
+                git -C wp-content commit -m "chore: update ${#rows[@]} theme(s) $(date "+%d-%m-%y")" &>/dev/null \
+                    || log_warning "Failed to commit theme updates"
             fi
+        else
+            log_warning "Failed to stage theme updates"
         fi
     fi
 }
@@ -518,24 +450,19 @@ process_single_site() {
     site_check=$("${WP_CLI_PATH}" core check-update 2>&1 || echo "error")
 
     if [[ "$site_check" == *"error"* ]]; then
-        echo -e "${Red}✗ $site: site check failed${Color_Off}"
+        fail "$site: site check failed"
         cd "$_base_pwd" &>/dev/null
         return 1
     fi
 
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}▸ Checking site${Color_Off}"
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Green}Site is functional${Color_Off}"
-
     # Update WordPress core
-    [[ "$compact" != true && "$progress" != true ]] && echo -e "${Blue}▸ Updating core${Color_Off}"
     prog "core"
-
     if [[ "$core_update" == true ]]; then
         if ! update_core; then
             log_warning "Core update failed for site: $site"
         fi
     else
-        log_info "Core update skipped (-c)"
+        step "$Blue" core "skipped (-c)"
     fi
     
     # Update plugins
@@ -555,7 +482,6 @@ process_single_site() {
 
     # Update themes (only when explicitly requested)
     if [[ "$update_themes" == true ]]; then
-        [[ "$compact" != true && "$progress" != true ]] && echo -e "${Yellow}▸ Updating themes${Color_Off}"
         if ! update_themes_fn; then
             log_warning "Theme update failed for site: $site"
         fi
@@ -566,9 +492,7 @@ process_single_site() {
         finalize_git_updates
     fi
 
-    log_success "Finished processing site: $site"
     cd "$_base_pwd" &>/dev/null
-
     return 0
 }
 
