@@ -127,7 +127,8 @@ _webwerk_update() {
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[Update all sites, no pause, no prompts (= -ay)]' \
         '(-l --list-select)'{-l,--list-select}'[List sites numbered; pick a subset (e.g. 1,2,4,11)]' \
         '(-B --batch)'{-B,--batch}'[Auto all sites, no pause, compact output]' \
-        '(-V --progress)'{-V,--progress}'[Progress-only output, normal output goes to log file]' \
+        '(-V --progress)'{-V,--progress}'[Progress bar output, normal output goes to log file]' \
+        '(-i --live)'{-i,--live}'[Stream wp'\''s own messages under each section]' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-y --yes-update)'{-y,--yes-update}'[Auto-confirm all updates]' \
         '(-c --skip-core)'{-c,--skip-core}'[Skip core update]' \

@@ -45,6 +45,7 @@ selection_made=false      # any of -s/-a/-A/-B/-l seen? if not, default to inter
 push_only=false
 compact=false
 progress=false
+live=false
 _prog_idx=0
 _prog_total=0
 _prog_site=""
@@ -82,15 +83,27 @@ log_warning() {
 
 prog() {
     [[ "$progress" != true ]] && return
-    local line width
-    line="$(printf '[%s/%s] %s [%s]' "$_prog_idx" "$_prog_total" "$_prog_site" "$1")"
+    local line width bar="" barw=20 filled=0 i
+    # Bar over sites; the site being worked on counts half so 1-site runs move too
+    (( _prog_total > 0 )) && filled=$(( (2 * _prog_idx - 1) * barw / (2 * _prog_total) ))
+    for ((i = 0; i < barw; i++)); do
+        (( i < filled )) && bar+="#" || bar+="-"
+    done
+    line="$(printf '[%s] %s/%s %s [%s]' "$bar" "$_prog_idx" "$_prog_total" "$_prog_site" "$1")"
     width=$(( ${COLUMNS:-119} - 1 ))
     printf '\r%b%.*s%b\033[K' "${Cyan}" "$width" "$line" "${Color_Off}"
 }
 
 # Run a command with its output routed to the log file, keeping the terminal
 # clean (we surface results ourselves via step/render_rows/the compact lines).
+# -i/--live additionally streams the output to the terminal, indented and dim.
 quiet_run() {
+    if [[ "$live" == true ]]; then
+        "$@" 2>&1 | tee -a "$LOG_FILE" | while IFS= read -r _line; do
+            printf "    ${Dim}%s${Color_Off}\n" "$_line"
+        done
+        return "${PIPESTATUS[0]}"
+    fi
     "$@" &>> "$LOG_FILE"
 }
 
@@ -164,11 +177,21 @@ update_core() {
         return 0
     fi
 
+    # Live mode streams under the label, so print it first and the result below
+    [[ "$live" == true ]] && step "$Blue" core
     if quiet_run "${WP_CLI_PATH}" core update --locale="${WP_LOCALE}" --skip-themes; then
         new_ver=$("${WP_CLI_PATH}" core version 2>/dev/null || echo "?")
-        step "$Blue" core "updated ${old_ver} → ${new_ver}"
+        if [[ "$live" == true ]]; then
+            ok "updated ${old_ver} → ${new_ver}"
+        else
+            step "$Blue" core "updated ${old_ver} → ${new_ver}"
+        fi
     else
-        step "$Blue" core "update failed"
+        if [[ "$live" == true ]]; then
+            fail "update failed"
+        else
+            step "$Blue" core "update failed"
+        fi
         return 1
     fi
 }
@@ -218,13 +241,15 @@ update_plugins_with_git() {
         return 0
     fi
 
+    [[ "$live" == true ]] && step "$Cyan" plugins
+
     local _pl_total=${#filtered[@]} _pl_idx=0
     for plugin in "${filtered[@]}"; do
         (( ++_pl_idx ))
         prog "plugins → $plugin ${_pl_idx}/${_pl_total}"
 
         old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "?")
-        if ! "${WP_CLI_PATH}" plugin update "$plugin" &>/dev/null; then
+        if ! quiet_run "${WP_CLI_PATH}" plugin update "$plugin"; then
             fail "plugin $plugin: update failed"
             continue
         fi
@@ -246,7 +271,7 @@ update_plugins_with_git() {
         fi
     done
 
-    step "$Cyan" plugins
+    [[ "$live" != true ]] && step "$Cyan" plugins
     render_rows "${updated_plugins[@]}"
 
     cd "$_pwd" &>/dev/null
@@ -350,15 +375,17 @@ update_plugins_simple() {
         [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
     fi
 
+    [[ "$live" == true ]] && step "$Cyan" plugins
+
     # shellcheck disable=SC2086
     if ! quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
-        step "$Cyan" plugins
+        [[ "$live" != true ]] && step "$Cyan" plugins
         render_rows "${rows[@]}"
         fail "some plugin updates failed"
         return 1
     fi
 
-    step "$Cyan" plugins
+    [[ "$live" != true ]] && step "$Cyan" plugins
     render_rows "${rows[@]}"
     [[ "$compact" == true && "$progress" != true ]] && for r in "${rows[@]}"; do
         IFS=$'\t' read -r name old new <<< "$r"; echo -e "  ${Green}↑${Color_Off} $name $old → $new"
@@ -391,15 +418,17 @@ update_themes_fn() {
 
     prog "themes → ${#rows[@]} pending"
 
+    [[ "$live" == true ]] && step "$Yellow" themes
+
     # shellcheck disable=SC2086
     if ! quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
-        step "$Yellow" themes
+        [[ "$live" != true ]] && step "$Yellow" themes
         render_rows "${rows[@]}"
         fail "some theme updates failed"
         return 1
     fi
 
-    step "$Yellow" themes
+    [[ "$live" != true ]] && step "$Yellow" themes
     render_rows "${rows[@]}"
 
     # Track for the git summary; stage now, commit here only in per-item (-g) mode
@@ -546,8 +575,10 @@ WP-CLI CONFIGURATION:
   -u USER                     Set database user (if needed)
 
 OUTPUT & DISPLAY:
-  -V, --progress               Progress-only output: [N/total] site + per-plugin/theme
-                               lines; normal output is written to the log file instead
+  -i, --live                   Show what is being done: stream wp's own messages
+                               (downloads, update steps) under each section
+  -V, --progress               Progress-only output: [####----] bar + [N/total] site;
+                               normal output is written to the log file instead
   --colors                    Initialize color scheme
   -h, --help                  Show this help message
 
@@ -735,6 +766,9 @@ parse_arguments() {
             -V|--progress)
                 progress=true
                 ;;
+            -i|--live)
+                live=true
+                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -772,6 +806,9 @@ main() {
 
     # Parse command line arguments
     parse_arguments "$@"
+
+    # -B/-V own the whole display; live streaming only makes sense in normal mode
+    [[ "$compact" == true || "$progress" == true ]] && live=false
 
     # No site selection given (bare `update`): discover every site in the base
     # dir and ask y/n/x before each one.

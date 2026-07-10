@@ -431,8 +431,12 @@ webwerk update -l
 # Batch: all sites, no pause, compact output
 webwerk update -B
 
-# Progress-only output: [N/total] site + per-plugin lines, rest goes to log file
+# Progress bar output: [####----] N/total site, rest goes to log file
 webwerk update -BV
+
+# Live output: stream wp's own messages (downloads, update steps) under
+# each section, so you see what is being done as it happens
+webwerk update -i
 
 # Update specific target only (-A already runs unattended, no need for -y)
 webwerk update core -A            # core only
@@ -470,7 +474,7 @@ webwerk update -h
 ```
 
 Output per site is a clean, aligned summary (wp-cli's own output goes to the
-log file):
+log file; add `-i`/`--live` to also stream it under each section):
 
 ```
 == [1/35] alpha ==

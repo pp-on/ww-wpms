@@ -181,7 +181,8 @@ complete -c webwerk -n __ww_update_ctx -s a -l all -l all-sites -d 'Update all s
 complete -c webwerk -n __ww_update_ctx -s A -l all-sites-auto -d 'Update all sites, no pause, no prompts (= -ay)'
 complete -c webwerk -n __ww_update_ctx -s l -l list-select -d 'List sites numbered; pick a subset (e.g. 1,2,4,11)'
 complete -c webwerk -n __ww_update_ctx -s B -l batch          -d 'Auto all sites, no pause, compact output'
-complete -c webwerk -n __ww_update_ctx -s V -l progress       -d 'Progress-only output, normal output goes to log file'
+complete -c webwerk -n __ww_update_ctx -s V -l progress       -d 'Progress bar output, normal output goes to log file'
+complete -c webwerk -n __ww_update_ctx -s i -l live           -d "Stream wp's own messages under each section"
 complete -c webwerk -n __ww_update_ctx -s s -l sites       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
 complete -c webwerk -n __ww_update_ctx -s y -l yes-update      -d 'Auto-confirm all updates'
 complete -c webwerk -n __ww_update_ctx -s c -l skip-core       -d 'Skip core update'

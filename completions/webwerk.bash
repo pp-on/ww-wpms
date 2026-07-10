@@ -140,6 +140,7 @@ _webwerk() {
                         -l --list-select
                         -B --batch
                         -V --progress
+                        -i --live
                         -s --sites
                         -y --yes-update
                         -c --skip-core
