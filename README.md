@@ -491,6 +491,26 @@ log file; add `-v`/`--verbose` to also stream it under each section, or `-q`/
   · not pushed (use -p)
 ```
 
+With `-q` the whole run collapses to one line per site, rewritten in place; the
+percent is how far through that site's steps (core → plugins → themes → commit):
+
+```
+[35/35] omega (100%)
+```
+
+With `-v` you get the summary above *plus* wp-cli's own output, streamed dim and
+indented under each section, with the progress bar pinned underneath:
+
+```
+[1/35] [##########----------] alpha · core (50%)
+    Downloading update from https://wordpress.org/wordpress-6.5.zip...
+    Unpacking the update...
+▸ core     updated 6.4.1 → 6.5
+```
+
+Display modes are mutually exclusive; when more than one is given the precedence
+is `-B` (compact) > `-q`/`-v` > the default detailed view.
+
 There are no per-item confirmation prompts: bare `update` asks once per site
 (y/n/x), `-a` pauses between sites so you can review, and `-A`/`-ay`/`-B` run
 unattended.
