@@ -44,11 +44,15 @@ interactive_select=false  # bare `update` (no selection): ask y/n/x before each 
 selection_made=false      # any of -s/-a/-A/-B/-l seen? if not, default to interactive-all
 push_only=false
 compact=false
-progress=false
-live=false
+progress=false      # any in-place progress mode (-q or -v); routes logs to file
+quiet=false         # -q: terse "[i/T] site (P%)" line only
+verbose=false       # -v: detailed output + streamed wp messages + pinned bar
 _prog_idx=0
 _prog_total=0
 _prog_site=""
+_prog_label=""
+_site_phase=0        # completed steps within the current site
+_site_phases_total=1 # steps this site will run (core/plugins/themes/commit)
 
 # Note: Helper functions are loaded by the webwerk dispatcher  
 # No need to source wphelpfunctions.sh again - functions are already available
@@ -81,26 +85,43 @@ log_warning() {
     echo -e "\033[33m[$(date +'%Y-%m-%d %H:%M:%S')] [WARNING] $*\033[0m" | tee -a "$LOG_FILE" >&2
 }
 
-prog() {
+# Progress line, redrawn in place. Percent = how far through THIS site's steps.
+#   -q: "[i/T] site (P%)"            (terse, no bar)
+#   -v: "[i/T] [###----] site · step (P%)"  (bar + current step label)
+render_prog() {
     [[ "$progress" != true ]] && return
-    local line width bar="" barw=20 filled=0 i
-    # Bar over sites; the site being worked on counts half so 1-site runs move too
-    (( _prog_total > 0 )) && filled=$(( (2 * _prog_idx - 1) * barw / (2 * _prog_total) ))
-    for ((i = 0; i < barw; i++)); do
-        (( i < filled )) && bar+="#" || bar+="-"
-    done
-    line="$(printf '[%s] %s/%s %s [%s]' "$bar" "$_prog_idx" "$_prog_total" "$_prog_site" "$1")"
+    local pct=0
+    (( _site_phases_total > 0 )) && pct=$(( _site_phase * 100 / _site_phases_total ))
+    (( pct > 100 )) && pct=100
+    local line width
+    if [[ "$verbose" == true ]]; then
+        local bar="" barw=20 i
+        local filled=$(( pct * barw / 100 ))
+        for ((i = 0; i < barw; i++)); do (( i < filled )) && bar+="#" || bar+="-"; done
+        line="$(printf '[%s/%s] [%s] %s · %s (%s%%)' \
+            "$_prog_idx" "$_prog_total" "$bar" "$_prog_site" "$_prog_label" "$pct")"
+    else
+        line="$(printf '[%s/%s] %s (%s%%)' "$_prog_idx" "$_prog_total" "$_prog_site" "$pct")"
+    fi
     width=$(( ${COLUMNS:-119} - 1 ))
     printf '\r%b%.*s%b\033[K' "${Cyan}" "$width" "$line" "${Color_Off}"
 }
 
+# Advance to the next step within the current site (bumps the percent).
+site_step() { _prog_label="$1"; (( _site_phase++ )); render_prog; }
+# Update just the sub-step label (same percent), e.g. the plugin in progress.
+prog_label() { _prog_label="$1"; render_prog; }
+
 # Run a command with its output routed to the log file, keeping the terminal
 # clean (we surface results ourselves via step/render_rows/the compact lines).
-# -i/--live additionally streams the output to the terminal, indented and dim.
+# -v/--verbose additionally streams the output to the terminal, indented and dim,
+# redrawing the progress bar underneath each line.
 quiet_run() {
-    if [[ "$live" == true ]]; then
+    if [[ "$verbose" == true ]]; then
         "$@" 2>&1 | tee -a "$LOG_FILE" | while IFS= read -r _line; do
+            printf '\r\033[K'
             printf "    ${Dim}%s${Color_Off}\n" "$_line"
+            render_prog
         done
         return "${PIPESTATUS[0]}"
     fi
@@ -123,44 +144,63 @@ have_tty() {
 }
 
 #===============================================================================
-# OUTPUT HELPERS (normal mode only; compact/-V handle their own output)
+# OUTPUT HELPERS (normal & -v modes; compact/-q handle their own output)
 #===============================================================================
 
 Dim="\033[2m"
 
-# Colored step line: "▸ label     status".  Status is optional and may itself
-# contain colors (printf pads the label; echo -e renders the status).
-step() { # color label [status]
-    [[ "$compact" == true || "$progress" == true ]] && return 0
-    if [[ -n "${3:-}" ]]; then
-        printf "${1}▸ %-8s${Color_Off} " "$2"
-        echo -e "$3"
+# Do the ▸/✓/rows lines print? Yes in normal and -v (verbose) mode; no in
+# compact (-B) or quiet (-q), which own their own single-line display.
+steps_visible() {
+    [[ "$compact" == true || "$quiet" == true ]] && return 1
+    return 0
+}
+
+# Print a line without disturbing the progress bar: erase the bar, print,
+# redraw the bar underneath (text may contain colors).
+say() {
+    if [[ "$progress" == true ]]; then
+        printf '\r\033[K'
+        echo -e "$1"
+        render_prog
     else
-        echo -e "${1}▸ ${2}${Color_Off}"
+        echo -e "$1"
+    fi
+    return 0
+}
+
+# Colored step line: "▸ label     status".  Status is optional and may itself
+# contain colors (printf pads the label; say renders the status).
+step() { # color label [status]
+    steps_visible || return 0
+    if [[ -n "${3:-}" ]]; then
+        say "$(printf "${1}▸ %-8s${Color_Off} " "$2")$3"
+    else
+        say "${1}▸ ${2}${Color_Off}"
     fi
 }
 
 # Indented, name-aligned "name  old → new" rows.
 # Args are tab-separated "name<TAB>old<TAB>new" (no color escapes in the fields).
 render_rows() {
-    [[ "$compact" == true || "$progress" == true ]] && return 0
+    steps_visible || return 0
     local maxw=0 e name old new
     for e in "$@"; do name="${e%%$'\t'*}"; (( ${#name} > maxw )) && maxw=${#name}; done
     for e in "$@"; do
         IFS=$'\t' read -r name old new <<< "$e"
-        printf "    ${Green}%-*s${Color_Off}  %s → %s\n" "$maxw" "$name" "$old" "$new"
+        say "$(printf "    ${Green}%-*s${Color_Off}  %s → %s" "$maxw" "$name" "$old" "$new")"
     done
 }
 
 # A quiet, de-emphasized note line ("  · not pushed …").
 note() {
-    [[ "$compact" == true || "$progress" == true ]] && return 0
-    echo -e "  ${Dim}$1${Color_Off}"
+    steps_visible || return 0
+    say "  ${Dim}$1${Color_Off}"
 }
 
 # A "  ✓ text" / "  ✗ text" result line (text may contain colors).
-ok()   { [[ "$compact" == true || "$progress" == true ]] && return 0; echo -e "  ${Green}✓${Color_Off} $1"; }
-fail() { [[ "$compact" == true || "$progress" == true ]] && return 0; echo -e "  ${Red}✗${Color_Off} $1"; }
+ok()   { steps_visible || return 0; say "  ${Green}✓${Color_Off} $1"; }
+fail() { steps_visible || return 0; say "  ${Red}✗${Color_Off} $1"; }
 
 #===============================================================================
 # CORE UPDATE FUNCTIONS
@@ -177,21 +217,11 @@ update_core() {
         return 0
     fi
 
-    # Live mode streams under the label, so print it first and the result below
-    [[ "$live" == true ]] && step "$Blue" core
     if quiet_run "${WP_CLI_PATH}" core update --locale="${WP_LOCALE}" --skip-themes; then
         new_ver=$("${WP_CLI_PATH}" core version 2>/dev/null || echo "?")
-        if [[ "$live" == true ]]; then
-            ok "updated ${old_ver} → ${new_ver}"
-        else
-            step "$Blue" core "updated ${old_ver} → ${new_ver}"
-        fi
+        step "$Blue" core "updated ${old_ver} → ${new_ver}"
     else
-        if [[ "$live" == true ]]; then
-            fail "update failed"
-        else
-            step "$Blue" core "update failed"
-        fi
+        step "$Blue" core "update failed"
         return 1
     fi
 }
@@ -241,12 +271,10 @@ update_plugins_with_git() {
         return 0
     fi
 
-    [[ "$live" == true ]] && step "$Cyan" plugins
-
     local _pl_total=${#filtered[@]} _pl_idx=0
     for plugin in "${filtered[@]}"; do
         (( ++_pl_idx ))
-        prog "plugins → $plugin ${_pl_idx}/${_pl_total}"
+        prog_label "plugins → $plugin (${_pl_idx}/${_pl_total})"
 
         old_version=$("${WP_CLI_PATH}" plugin get "$plugin" --field=version 2>/dev/null || echo "?")
         if ! quiet_run "${WP_CLI_PATH}" plugin update "$plugin"; then
@@ -271,7 +299,7 @@ update_plugins_with_git() {
         fi
     done
 
-    [[ "$live" != true ]] && step "$Cyan" plugins
+    step "$Cyan" plugins
     render_rows "${updated_plugins[@]}"
 
     cd "$_pwd" &>/dev/null
@@ -365,7 +393,7 @@ update_plugins_simple() {
         return 0
     fi
 
-    prog "plugins → ${#rows[@]} pending"
+    prog_label "plugins → ${#rows[@]} pending"
 
     local plugin_args
     if [[ -n "$only_plugins" ]]; then
@@ -375,17 +403,15 @@ update_plugins_simple() {
         [[ -n "$exclude_plugins" ]] && plugin_args="--all --exclude=${exclude_plugins}"
     fi
 
-    [[ "$live" == true ]] && step "$Cyan" plugins
-
     # shellcheck disable=SC2086
     if ! quiet_run "${WP_CLI_PATH}" plugin update $plugin_args; then
-        [[ "$live" != true ]] && step "$Cyan" plugins
+        step "$Cyan" plugins
         render_rows "${rows[@]}"
         fail "some plugin updates failed"
         return 1
     fi
 
-    [[ "$live" != true ]] && step "$Cyan" plugins
+    step "$Cyan" plugins
     render_rows "${rows[@]}"
     [[ "$compact" == true && "$progress" != true ]] && for r in "${rows[@]}"; do
         IFS=$'\t' read -r name old new <<< "$r"; echo -e "  ${Green}↑${Color_Off} $name $old → $new"
@@ -416,19 +442,17 @@ update_themes_fn() {
         return 0
     fi
 
-    prog "themes → ${#rows[@]} pending"
-
-    [[ "$live" == true ]] && step "$Yellow" themes
+    prog_label "themes → ${#rows[@]} pending"
 
     # shellcheck disable=SC2086
     if ! quiet_run "${WP_CLI_PATH}" theme update $theme_args; then
-        [[ "$live" != true ]] && step "$Yellow" themes
+        step "$Yellow" themes
         render_rows "${rows[@]}"
         fail "some theme updates failed"
         return 1
     fi
 
-    [[ "$live" != true ]] && step "$Yellow" themes
+    step "$Yellow" themes
     render_rows "${rows[@]}"
 
     # Track for the git summary; stage now, commit here only in per-item (-g) mode
@@ -454,12 +478,25 @@ process_single_site() {
     local site="$1"
     local site_dir="${WORDPRESS_BASE_DIR}/${site}"
     
-    if [[ "$progress" == true ]]; then
-        log_info "Processing site: $site"
-    elif [[ "$compact" == true ]]; then
+    # Count the steps this site will run so the percent reflects real progress.
+    _site_phase=0
+    _prog_label=""
+    _site_phases_total=0
+    [[ "$core_update" == true ]] && (( _site_phases_total++ ))
+    [[ "$skip_plugins" != true ]] && (( _site_phases_total++ ))
+    [[ "$update_themes" == true ]] && (( _site_phases_total++ ))
+    if [[ "$git_mode" -ge 1 ]] && [[ "$skip_plugins" != true || "$update_themes" == true ]]; then
+        (( _site_phases_total++ ))
+    fi
+    (( _site_phases_total < 1 )) && _site_phases_total=1
+
+    if [[ "$compact" == true ]]; then
         echo -e "${Cyan}→ [${_prog_idx}/${_prog_total}] $site${Color_Off}"
+    elif [[ "$progress" == true ]]; then
+        log_info "Processing site: $site"
+        render_prog   # show the site at 0% right away
     else
-        echo -e "${Cyan}== [${_prog_idx}/${_prog_total}] $site ==${Color_Off}"
+        say "${Cyan}== [${_prog_idx}/${_prog_total}] $site ==${Color_Off}"
         log_info "Processing site: $site"
     fi
 
@@ -485,19 +522,20 @@ process_single_site() {
     fi
 
     # Update WordPress core
-    prog "core"
     if [[ "$core_update" == true ]]; then
+        site_step "core"
         if ! update_core; then
             log_warning "Core update failed for site: $site"
         fi
     else
         step "$Blue" core "skipped (-c)"
     fi
-    
+
     # Update plugins
     if [[ "$skip_plugins" == true ]]; then
         log_info "Plugin updates skipped (core only)"
     else
+        site_step "plugins"
         if [[ "$git_mode" -ge 1 ]]; then
             if ! update_plugins_with_git; then
                 log_warning "Git-based plugin updates failed for site: $site"
@@ -511,6 +549,7 @@ process_single_site() {
 
     # Update themes (only when explicitly requested)
     if [[ "$update_themes" == true ]]; then
+        site_step "themes"
         if ! update_themes_fn; then
             log_warning "Theme update failed for site: $site"
         fi
@@ -518,6 +557,7 @@ process_single_site() {
 
     # Git mode: summary commit + push, now that plugins AND themes are done
     if [[ "$git_mode" -ge 1 ]] && [[ "$skip_plugins" != true || "$update_themes" == true ]]; then
+        site_step "commit"
         finalize_git_updates
     fi
 
@@ -575,10 +615,13 @@ WP-CLI CONFIGURATION:
   -u USER                     Set database user (if needed)
 
 OUTPUT & DISPLAY:
-  -i, --live                   Show what is being done: stream wp's own messages
-                               (downloads, update steps) under each section
-  -V, --progress               Progress-only output: [####----] bar + [N/total] site;
-                               normal output is written to the log file instead
+  -q, --quiet                  Quiet: one status line per site, updated in place —
+                               '[1/23] mysite (55%)' (percent = progress through
+                               this site's steps). Full output goes to the log file
+  -v, --verbose                Verbose: the detailed per-section output plus wp's
+                               own messages (downloads, update steps), streamed
+                               under a pinned '[1/23] [####----] mysite · core (55%)'
+                               progress bar
   --colors                    Initialize color scheme
   -h, --help                  Show this help message
 
@@ -653,6 +696,10 @@ select_sites_numbered() {
 
 # Parse command line arguments
 parse_arguments() {
+    # main()'s pre-detect set progress=true only to quiet the start log line;
+    # it is re-derived from -q/-v after parsing.
+    progress=false
+
     # Expand combined short flags (e.g. -Ay -> -A -y)
     local expanded=()
     for arg in "$@"; do
@@ -763,11 +810,11 @@ parse_arguments() {
                 shift
                 exclude_plugins="$1"
                 ;;
-            -V|--progress)
-                progress=true
+            -q|--quiet)
+                quiet=true
                 ;;
-            -i|--live)
-                live=true
+            -v|--verbose)
+                verbose=true
                 ;;
             -h|--help)
                 show_help
@@ -788,13 +835,13 @@ parse_arguments() {
 #===============================================================================
 
 main() {
-    # Handle help before anything else; pre-detect -V so the start log stays quiet
+    # Handle help before anything else; pre-detect -q/-v so the start log stays quiet
     for arg in "$@"; do
         if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
             show_help
             exit 0
         fi
-        if [[ "$arg" == "--progress" || "$arg" =~ ^-[a-zA-Z]*V ]]; then
+        if [[ "$arg" == "--quiet" || "$arg" == "--verbose" || "$arg" =~ ^-[a-zA-Z]*[qv] ]]; then
             progress=true
         fi
     done
@@ -807,8 +854,11 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
 
-    # -B/-V own the whole display; live streaming only makes sense in normal mode
-    [[ "$compact" == true || "$progress" == true ]] && live=false
+    # -B (compact) owns the whole display and wins over -q/-v. Otherwise either
+    # -q or -v turns on the in-place progress line.
+    [[ "$compact" == true ]] && { quiet=false; verbose=false; }
+    progress=false
+    [[ "$quiet" == true || "$verbose" == true ]] && progress=true
 
     # No site selection given (bare `update`): discover every site in the base
     # dir and ask y/n/x before each one.
@@ -881,7 +931,7 @@ main() {
     # Final summary
     log_success "Update process completed"
     log_info "Sites processed successfully: $processed_sites"
-    [[ "$progress" == true ]] && echo -e "\n${Green}Done: ${processed_sites} ok, ${failed_sites} failed${Color_Off}"
+    [[ "$progress" == true ]] && { printf '\r\033[K'; echo -e "${Green}Done: ${processed_sites} ok, ${failed_sites} failed${Color_Off}"; }
 
     if [[ $failed_sites -gt 0 ]]; then
         log_warning "Sites with failures: $failed_sites"

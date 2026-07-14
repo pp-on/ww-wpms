@@ -139,8 +139,8 @@ _webwerk() {
                         -A --all-sites-auto
                         -l --list-select
                         -B --batch
-                        -V --progress
-                        -i --live
+                        -q --quiet
+                        -v --verbose
                         -s --sites
                         -y --yes-update
                         -c --skip-core

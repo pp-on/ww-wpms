@@ -483,18 +483,22 @@ remove_local() {
 main() {
     local command="${1:-}"
 
-    # Quiet mode (-V/--progress): keep dispatcher INFO output out of the terminal
-    local arg
-    for arg in "$@"; do
-        if [[ "$arg" == "--progress" || "$arg" =~ ^-[a-zA-Z]*V ]]; then
-            export WEBWERK_QUIET=1
-        fi
-    done
-
     # Accept unambiguous abbreviations for the top-level command
     # (i->install, u->update, m->mod, r->remove, s->status, d->ddev)
     if [[ -n "$command" && "$command" != -* ]]; then
         command="$(resolve_word "$command" install update mod get remove status ddev)"
+    fi
+
+    # update -q/-v drive an in-place progress line; keep dispatcher INFO output
+    # out of the terminal so it doesn't scribble over the bar. (install -v means
+    # "full log" instead, so only do this for update.)
+    if [[ "$command" == "update" ]]; then
+        local arg
+        for arg in "$@"; do
+            if [[ "$arg" == "--quiet" || "$arg" == "--verbose" || "$arg" =~ ^-[a-zA-Z]*[qv] ]]; then
+                export WEBWERK_QUIET=1
+            fi
+        done
     fi
 
     # Handle special cases before loading configuration
