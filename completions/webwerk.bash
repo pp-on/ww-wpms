@@ -186,7 +186,6 @@ _webwerk() {
                 -s --sites
                 -d --original-dir
                 -p --print
-                -H --health-check
                 -T --themes
                 -W --theme-webwerk
                 -o --os-detection
@@ -241,6 +240,17 @@ _webwerk() {
                 COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto -y --yes' -- "$cur") )
             elif ! _webwerk_has_word ddev; then
                 COMPREPLY=( $(compgen -W 'local ddev' -- "$cur") )
+            fi
+            ;;
+
+        doctor)
+            case "$prev" in
+                -s|--sites) _webwerk_sites; return 0 ;;
+            esac
+            if _webwerk_has_word sites; then
+                COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto' -- "$cur") )
+            elif ! _webwerk_has_word config; then
+                COMPREPLY=( $(compgen -W 'config sites' -- "$cur") )
             fi
             ;;
     esac

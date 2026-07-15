@@ -151,7 +151,8 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   remove [local]   DESTRUCTIVE: drop the DB + delete files of a WP site (default)
                    (current dir; -s sites; -a/-A all sites; -y skip prompt)
   remove ddev      Remove DDEV containers and configuration
-  doctor           Show system configuration and script availability
+  doctor [config]  Check webwerk's own setup (.env, ~/.keys, WP-CLI, scripts)
+  doctor sites     Per-site health verdict (WordPress installed / DB reachable)
 
   Verbs and modes accept any unambiguous abbreviation:
   i->install  u->update  m->mod  g->get  r->remove  doc->doctor
@@ -231,6 +232,52 @@ show_status() {
             echo "  ✗ $script (missing)"
         fi
     done
+}
+
+# `doctor sites` — per-site health verdict: is each WordPress install actually
+# working (wp-content present, WordPress installed, DB reachable)?
+# Scope: -s site1,site2 (else every install under the base dir); -a/-A = all.
+doctor_sites() {
+    local base="${WORDPRESS_BASE_DIR:-.}" sites_csv="" wp="${WP_CLI_PATH:-wp}"
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s|--sites)          sites_csv="${2:-}"; shift 2 ;;
+            -a|--all-sites|-A|--all-sites-auto) shift ;;   # all sites = default
+            -d|--original-dir)   base="${2:-.}"; shift 2 ;;
+            *)                   shift ;;
+        esac
+    done
+
+    local -a dirs=()
+    if [[ -n "$sites_csv" ]]; then
+        local s; local -a _sel=()
+        IFS=',' read -ra _sel <<< "$sites_csv"
+        for s in "${_sel[@]}"; do dirs+=("$base/$s"); done
+    else
+        local cfg
+        while IFS= read -r cfg; do dirs+=("$(dirname "$cfg")"); done \
+            < <(find "$base" -maxdepth 2 -name "wp-config.php" 2>/dev/null | sort)
+    fi
+
+    if [[ ${#dirs[@]} -eq 0 ]]; then
+        log_warning "No WordPress sites found under $base"
+        return 0
+    fi
+
+    log_info "Site health check ($base)"
+    local ok=0 err=0 site_dir name
+    for site_dir in "${dirs[@]}"; do
+        name="$(basename "$site_dir")"
+        if [[ ! -d "$site_dir/wp-content" ]]; then
+            echo -e "\033[31mERR\033[0m $name — no wp-content"; (( ++err )); continue
+        fi
+        if $wp --path="$site_dir" core is-installed 2>/dev/null; then
+            echo -e "\033[32mOK \033[0m $name"; (( ++ok ))
+        else
+            echo -e "\033[31mERR\033[0m $name — WordPress not installed / DB unreachable"; (( ++err ))
+        fi
+    done
+    log_info "Site health — $ok OK, $err ERR"
 }
 
 # Render install log lines as a single-line phase progress bar + current activity.
@@ -519,10 +566,22 @@ main() {
             esac
             ;;
         "doctor")
-            # Load config for the system health display
+            # Diagnostics: 'config' (the tool/env — default) or 'sites' (per-site health)
             load_environment
             load_license_keys
-            show_status
+            case "$(resolve_word "${2:-config}" config sites)" in
+                config) show_status ;;
+                sites)  doctor_sites "${@:3}" ;;
+                *)
+                    if [[ "${2:-}" == "-h" || "${2:-}" == "--help" || "${2:-}" == "help" ]]; then
+                        echo "Usage: webwerk doctor [config|sites]"
+                        echo "  config  (default)   check webwerk's own setup (.env, ~/.keys, WP-CLI, scripts)"
+                        echo "  sites   [-s NAMES]  per-site health verdict (WordPress installed / DB reachable)"
+                    else
+                        log_error "doctor: unknown target '${2:-}'. Use: config, sites."
+                        exit 1
+                    fi ;;
+            esac
             exit 0
             ;;
     esac

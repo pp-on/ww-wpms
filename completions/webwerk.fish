@@ -106,7 +106,7 @@ complete -c webwerk -f -n __ww_no_cmd -a update  -d 'Update WordPress (core+plug
 complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing WordPress sites'
 complete -c webwerk -f -n __ww_no_cmd -a get     -d 'Read-only: list plugins/themes/core, URLs, db query'
 complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a WordPress/DDEV site'
-complete -c webwerk -f -n __ww_no_cmd -a doctor  -d 'Show system configuration and script availability'
+complete -c webwerk -f -n __ww_no_cmd -a doctor  -d 'Diagnostics: config (tool setup) or sites (per-site health)'
 complete -c webwerk    -n __ww_no_cmd -s h -l help  -d 'Show help'
 complete -c webwerk    -n __ww_no_cmd -l debug       -d 'Enable debug mode'
 
@@ -205,6 +205,26 @@ complete -c webwerk -f -n __ww_remove_local -s a -l all-sites          -d 'All s
 complete -c webwerk -f -n __ww_remove_local -s A -l all-sites-auto     -d 'All sites under base dir (no prompt)'
 complete -c webwerk -f -n __ww_remove_local -s y -l yes                -d 'Skip the confirmation prompt'
 
+# ── doctor: config (tool) / sites (per-site health) ───────────────────────────
+
+function __ww_doctor_ctx
+    __ww_is_verb doctor
+end
+function __ww_doctor_no_sub
+    __ww_doctor_ctx
+    and not __fish_seen_subcommand_from config sites
+end
+function __ww_doctor_sites
+    __ww_doctor_ctx
+    and __fish_seen_subcommand_from sites
+end
+
+complete -c webwerk -f -n __ww_doctor_no_sub -a config -d "Check webwerk's own setup (.env, ~/.keys, WP-CLI, scripts)"
+complete -c webwerk -f -n __ww_doctor_no_sub -a sites  -d 'Per-site health verdict (WordPress installed / DB reachable)'
+complete -c webwerk    -n __ww_doctor_sites -s s -l sites -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
+complete -c webwerk -f -n __ww_doctor_sites -s a -l all-sites      -d 'All sites under the base dir'
+complete -c webwerk -f -n __ww_doctor_sites -s A -l all-sites-auto -d 'All sites under the base dir'
+
 # ── mod: environment target (local default / ddev) ────────────────────────────
 
 complete -c webwerk -f -n __ww_mod_env -a local -d 'Modify local WordPress sites (default)'
@@ -217,7 +237,6 @@ complete -c webwerk -n __ww_mod_ctx -s A -l all-sites-auto                 -d 'P
 complete -c webwerk -n __ww_mod_ctx -s s -l sites                       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
 complete -c webwerk -n __ww_mod_ctx -s d -l original-dir                -r  -d 'Set base directory'
 complete -c webwerk -n __ww_mod_ctx -s p -l print                          -d 'Print selected sites'
-complete -c webwerk -n __ww_mod_ctx -s H -l health-check                   -d 'Check sites with wp core is-installed'
 complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_mod_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a site -d 'Site config: site <license|remote|url> [show|set|add]'

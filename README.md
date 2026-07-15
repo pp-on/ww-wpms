@@ -587,10 +587,10 @@ unattended.
 
 # Select all sites without interactive prompts
 ./webwerk mod -A --update all
-
-# Health check — verify wp core is-installed for every site
-./webwerk mod -H
 ```
+
+> **Site health check** (`wp core is-installed` per site) moved to
+> `webwerk doctor sites` — see the Doctor section below.
 
 > **Read vs. write:** `mod` is for *changing* sites. Read-only inspection
 > (status, lists, URLs, db queries) lives in `webwerk get` — see below. The old
@@ -1151,11 +1151,20 @@ Enable debug output:
 ./webwerk debug --mode=local --wp-title="Debug Site"
 ```
 
-### System Status
-Check system configuration:
+### Doctor (diagnostics)
+`webwerk doctor` runs health checks. Two scopes:
 ```bash
-./webwerk doctor
+# Check webwerk's own setup (.env, ~/.keys, DB, WP-CLI, scripts). Default scope.
+./webwerk doctor          # same as: ./webwerk doctor config
+
+# Per-site health verdict: is each WordPress install actually working?
+# (wp-content present, WordPress installed, DB reachable) -> OK / ERR per site
+./webwerk doctor sites
+./webwerk doctor sites -s site1,site2   # scope to specific sites
 ```
+`doctor config` checks the **tool**; `doctor sites` checks the **sites** — distinct
+from `get status`/`get brief`, which report site *inventory* rather than a pass/fail
+health verdict.
 
 ## 🤝 Contributing
 

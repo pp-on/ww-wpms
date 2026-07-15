@@ -35,7 +35,8 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 - **MODE** = `local (default) | bare | ddev` — where it runs. `bare` is install-only;
   `local` is the default for every verb (including `remove`); `ddev` runs against the
   DDEV container. `ddev` is a **mode word only** (`install ddev`, `update ddev`, …) —
-  there is no standalone `ddev <verb>` form. `doctor` takes no mode.
+  there is no standalone `ddev <verb>` form. `doctor` takes no mode; its WHATs are
+  `config` (default — the tool/env) and `sites` (per-site health).
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
   `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
   `mod plugin <install|copy|update|activate|deactivate|remove> [NAME]`,

@@ -24,6 +24,7 @@ _webwerk() {
                 mod)            _webwerk_mod ;;
                 get)            _webwerk_get ;;
                 remove)         _webwerk_remove ;;
+                doctor)         _webwerk_doctor ;;
             esac
             ;;
     esac
@@ -69,7 +70,7 @@ _webwerk_commands() {
         'mod:Modify/manage existing WordPress sites'
         'get:Read-only: list plugins/themes/core, URLs, db query'
         'remove:Remove a WordPress/DDEV site'
-        'doctor:Show system configuration and script availability'
+        'doctor:Diagnostics: config (tool setup) or sites (per-site health)'
     )
     _describe 'command' commands
 }
@@ -201,7 +202,6 @@ _webwerk_mod() {
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-d --original-dir)'{-d,--original-dir}'=[Set base directory]:dir:_files -/' \
         '(-p --print)'{-p,--print}'[Print selected sites]' \
-        '(-H --health-check)'{-H,--health-check}'[Check sites with wp core is-installed]' \
         '(-T --themes)'{-T,--themes}'[List/activate themes]' \
         '(-W --theme-webwerk)'{-W,--theme-webwerk}"[Activate 'webwerk' theme (skip if active; else pick one)]" \
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \
@@ -242,6 +242,21 @@ _webwerk_remove() {
             'ddev:Remove DDEV containers'
         )
         _describe 'mode' modes
+    fi
+}
+
+_webwerk_doctor() {
+    if (( ${words[(I)sites]} )); then
+        _arguments \
+            '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
+            '(-a --all-sites)'{-a,--all-sites}'[All sites under the base dir]' \
+            '(-A --all-sites-auto)'{-A,--all-sites-auto}'[All sites under the base dir]'
+    elif (( ! ${words[(I)config]} )); then
+        local targets=(
+            'config:Check webwerk'\''s own setup (.env, ~/.keys, WP-CLI, scripts)'
+            'sites:Per-site health verdict (WordPress installed / DB reachable)'
+        )
+        _describe 'target' targets
     fi
 }
 

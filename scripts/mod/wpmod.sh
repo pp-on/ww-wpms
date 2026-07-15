@@ -111,24 +111,6 @@ do_search_replace() {
     log_success "Done — $count site(s) updated"
 }
 
-# Health check — wp core is-installed across all WP installs in WORDPRESS_BASE_DIR
-do_health_check() {
-    local ok=0 err=0
-    while IFS= read -r config; do
-        local site_dir name
-        site_dir="$(dirname "$config")"
-        name="$(basename "$site_dir")"
-        if $WP_CLI_PATH --path="$site_dir" core is-installed 2>/dev/null; then
-            echo -e "\033[32mOK\033[0m  $name"
-            ((ok++)) || true
-        else
-            echo -e "\033[31mERR\033[0m $name"
-            ((err++)) || true
-        fi
-    done < <(find "$WORDPRESS_BASE_DIR" -maxdepth 2 -name "wp-config.php" | sort)
-    log_info "Health check — $ok OK, $err ERR"
-}
-
 # Setup all license keys for current site
 setup_all_licenses() {
     log_info "Setting up all license keys for current site"
@@ -293,9 +275,9 @@ SITE SELECTION:
 
 INFORMATION & DISPLAY:
   -p, --print                  Print selected sites
-  -H, --health-check           Check all sites with wp core is-installed
   -o, --os-detection           Show operating system information
   -c, --colors                 Initialize color scheme
+  (site health check moved to 'webwerk doctor sites')
 
   Read-only views live under 'webwerk get' (status, brief, plugins, themes,
   core, git, url, db) — see 'webwerk get help'.
@@ -449,9 +431,6 @@ parse_arguments() {
             -A|--all-sites-auto)
                 all_sites_auto=1
                 process_sites_all
-                ;;
-            -H|--health-check)
-                do_health_check
                 ;;
             -p|--print)
                 print_sites
