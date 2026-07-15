@@ -77,7 +77,7 @@ sudo ./install.sh
 
 # Verify installation
 webwerk --version
-webwerk status
+webwerk doctor
 ```
 
 The installation script will:
@@ -100,7 +100,7 @@ chmod +x webwerk
 chmod +x scripts/**/*.sh
 
 # Use the local webwerk script
-./webwerk status
+./webwerk doctor
 ```
 
 ### Shell Completions
@@ -184,7 +184,7 @@ webwerk update -A
 webwerk mod -s mysite -x on
 
 # Check system status
-webwerk status
+webwerk doctor
 
 # Get help for any subcommand
 webwerk update -h
@@ -387,7 +387,7 @@ When run in a terminal, `webwerk install` shows a single-line progress bar
 (`[bar] xx% (n/11) | current activity`); errors and warnings break out on their
 own line. Use `-v`/`--verbose` (or `--debug`) for the full log. When the output is
 piped or redirected, the full log is used automatically. The cloned `wp-content`
-keeps its `.git`, so it stays a working git clone (use `webwerk mod -g` to inspect).
+keeps its `.git`, so it stays a working git clone (use `webwerk get git` to inspect).
 
 `-A`/`-a` run a **batch install** over the immediate subdirectories of the current
 directory: each empty subdir is installed (its name becomes the site/repo name),
@@ -594,8 +594,8 @@ unattended.
 
 > **Read vs. write:** `mod` is for *changing* sites. Read-only inspection
 > (status, lists, URLs, db queries) lives in `webwerk get` — see below. The old
-> `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`, and `-T` listing) still work but
-> **forward to `webwerk get` with a deprecation notice** and will be removed.
+> `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) have been **removed**; use the
+> `webwerk get` equivalents. (`mod -T [NUM|NAME]` still lists/activates themes.)
 
 ### Get Commands (read-only)
 
@@ -854,10 +854,10 @@ webwerk mod ddev -f                       # setup ACF Pro license
 webwerk mod ddev -h                       # show all mod options
 
 # Update DDEV site plugins
-webwerk ddev update                        # update all plugins (core by default)
-webwerk ddev update -c                     # skip core, plugins only
-webwerk ddev update -A                     # auto all, no prompts
-webwerk ddev update -h                    # show all update options
+webwerk update ddev                        # update all plugins (core by default)
+webwerk update ddev -c                     # skip core, plugins only
+webwerk update ddev -A                     # auto all, no prompts
+webwerk update ddev -h                    # show all update options
 
 # WP-CLI in container
 ddev wp --info
@@ -971,7 +971,7 @@ ddev wp theme list
 ddev import-db --src=backup.sql.gz
 
 # 5. Update site
-webwerk ddev update -A
+webwerk update ddev -A
 ```
 
 ### Example 4: Repository Management
@@ -1152,7 +1152,7 @@ Enable debug output:
 ### System Status
 Check system configuration:
 ```bash
-./webwerk status
+./webwerk doctor
 ```
 
 ## 🤝 Contributing
@@ -1180,7 +1180,7 @@ webwerk -h
 webwerk install -h
 webwerk update -h
 webwerk mod -h
-webwerk ddev update -h
+webwerk update ddev -h
 webwerk mod ddev -h
 
 # Test all installation modes

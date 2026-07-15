@@ -3,7 +3,7 @@
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 # Resolve TOKEN against WORDS like the dispatcher's resolve_word:
-# exact match wins, else a unique prefix (u -> update, dd -> ddev).
+# exact match wins, else a unique prefix (u -> update, doc -> doctor).
 function __ww_resolve
     set -l tok $argv[1]
     set -l words $argv[2..-1]
@@ -16,20 +16,15 @@ function __ww_resolve
 end
 
 # Print the verb on the command line, with abbreviations resolved.
-# Legacy 'ddev VERB' resolves to VERB. Fails if no verb has been given yet.
+# Fails if no verb has been given yet.
 function __ww_verb
-    set -l verbs install update mod get remove ddev status
+    set -l verbs install update mod get remove doctor
     set -l toks
     for tok in (commandline -opc)[2..-1]
         string match -q -- '-*' $tok; or set -a toks $tok
     end
     set -q toks[1]; or return 1
-    set -l v (__ww_resolve $toks[1] $verbs); or return 1
-    if test "$v" = ddev; and set -q toks[2]
-        set -l sub (__ww_resolve $toks[2] install mod update remove)
-        and set v $sub
-    end
-    echo $v
+    __ww_resolve $toks[1] $verbs
 end
 
 function __ww_is_verb
@@ -95,10 +90,6 @@ function __ww_update_no_target
     and not __fish_seen_subcommand_from core plugins plugin themes theme
 end
 
-function __ww_ddev_no_sub
-    __ww_is_verb ddev
-end
-
 function __ww_mod_ctx
     __ww_is_verb mod
 end
@@ -114,9 +105,8 @@ complete -c webwerk -f -n __ww_no_cmd -a install -d 'Install WordPress site'
 complete -c webwerk -f -n __ww_no_cmd -a update  -d 'Update WordPress (core+plugins+themes)'
 complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing WordPress sites'
 complete -c webwerk -f -n __ww_no_cmd -a get     -d 'Read-only: list plugins/themes/core, URLs, db query'
-complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a DDEV site'
-complete -c webwerk -f -n __ww_no_cmd -a ddev    -d 'DDEV operations'
-complete -c webwerk -f -n __ww_no_cmd -a status  -d 'Show configuration status'
+complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a WordPress/DDEV site'
+complete -c webwerk -f -n __ww_no_cmd -a doctor  -d 'Show system configuration and script availability'
 complete -c webwerk    -n __ww_no_cmd -s h -l help  -d 'Show help'
 complete -c webwerk    -n __ww_no_cmd -l debug       -d 'Enable debug mode'
 
@@ -194,13 +184,6 @@ complete -c webwerk -n __ww_update_ctx -s P -l push-only       -d 'Push only (no
 complete -c webwerk -n __ww_update_ctx -s x -l exclude-plugins -r -d 'Exclude plugins (comma-separated)'
 complete -c webwerk -n __ww_update_ctx -s h -l help            -d 'Show help'
 
-# ── ddev: subcommands ─────────────────────────────────────────────────────────
-
-complete -c webwerk -f -n __ww_ddev_no_sub -a install -d 'DDEV WordPress install'
-complete -c webwerk -f -n __ww_ddev_no_sub -a mod     -d 'Modify DDEV site'
-complete -c webwerk -f -n __ww_ddev_no_sub -a update  -d 'Update DDEV site'
-complete -c webwerk -f -n __ww_ddev_no_sub -a remove  -d 'Remove DDEV containers'
-
 # ── remove: mode + options ────────────────────────────────────────────────────
 
 function __ww_remove_ctx
@@ -235,11 +218,6 @@ complete -c webwerk -n __ww_mod_ctx -s s -l sites                       -x -a '(
 complete -c webwerk -n __ww_mod_ctx -s d -l original-dir                -r  -d 'Set base directory'
 complete -c webwerk -n __ww_mod_ctx -s p -l print                          -d 'Print selected sites'
 complete -c webwerk -n __ww_mod_ctx -s H -l health-check                   -d 'Check sites with wp core is-installed'
-complete -c webwerk -n __ww_mod_ctx -s C -l status                         -d 'Per-site status: core version, plugins, themes'
-complete -c webwerk -n __ww_mod_ctx -s B -l brief                          -d 'Brief status: core + plugin/theme update counts (all sites)'
-complete -c webwerk -n __ww_mod_ctx -s e -l errors                         -d 'Brief status, only sites with errors (broken/missing)'
-complete -c webwerk -n __ww_mod_ctx -s O -l outdated                       -d 'Brief status, only sites with available updates'
-complete -c webwerk -n __ww_mod_ctx -s l -l list                           -d 'List plugins for selected sites'
 complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_mod_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a site -d 'Site config: site <license|remote|url> [show|set|add]'
@@ -269,7 +247,6 @@ complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from user ad
 complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'
 complete -c webwerk -n __ww_mod_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
 complete -c webwerk -n __ww_mod_ctx -s G -l git-pull                       -d 'Update repos via git pull'
-complete -c webwerk -n __ww_mod_ctx -s g -l git-status                     -d 'Overview of each wp-content git repo (remote, branch, status)'
 complete -c webwerk -n __ww_mod_ctx -s u -l update                      -r  -d 'Update plugin (or all)'
 complete -c webwerk -n __ww_mod_ctx -s i -l install-plugin              -r  -d 'Install plugin on selected sites'
 complete -c webwerk -n __ww_mod_ctx -s y -l copy-plugins                -r  -d 'Copy plugin from path to selected sites'

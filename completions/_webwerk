@@ -18,20 +18,19 @@ _webwerk() {
 
     case $state in
         args)
-            case $(_webwerk_resolve "$line[1]" install update mod get remove ddev status) in
+            case $(_webwerk_resolve "$line[1]" install update mod get remove doctor) in
                 install)        _webwerk_install ;;
                 update)         _webwerk_update ;;
                 mod)            _webwerk_mod ;;
                 get)            _webwerk_get ;;
                 remove)         _webwerk_remove ;;
-                ddev)           _webwerk_ddev ;;
             esac
             ;;
     esac
 }
 
 # Resolve TOK against WORDS like the dispatcher's resolve_word
-# (exact match wins, else unique prefix: u -> update, dd -> ddev)
+# (exact match wins, else unique prefix: u -> update, doc -> doctor)
 _webwerk_resolve() {
     local tok=$1 w; shift
     local -a m
@@ -69,9 +68,8 @@ _webwerk_commands() {
         'update:Update WordPress (core+plugins+themes)'
         'mod:Modify/manage existing WordPress sites'
         'get:Read-only: list plugins/themes/core, URLs, db query'
-        'remove:Remove a DDEV site'
-        'ddev:DDEV operations'
-        'status:Show configuration status'
+        'remove:Remove a WordPress/DDEV site'
+        'doctor:Show system configuration and script availability'
     )
     _describe 'command' commands
 }
@@ -203,17 +201,11 @@ _webwerk_mod() {
         '(-d --original-dir)'{-d,--original-dir}'=[Set base directory]:dir:_files -/' \
         '(-p --print)'{-p,--print}'[Print selected sites]' \
         '(-H --health-check)'{-H,--health-check}'[Check sites with wp core is-installed]' \
-        '(-C --status)'{-C,--status}'[Per-site status: core version, plugins, themes]' \
-        '(-B --brief)'{-B,--brief}'[Brief status: core + plugin/theme update counts (all sites)]' \
-        '(-e --errors)'{-e,--errors}'[Brief status, only sites with errors (broken/missing)]' \
-        '(-O --outdated)'{-O,--outdated}'[Brief status, only sites with available updates]' \
-        '(-l --list)'{-l,--list}'[List plugins for selected sites]' \
         '(-T --themes)'{-T,--themes}'[List/activate themes]' \
         '(-W --theme-webwerk)'{-W,--theme-webwerk}"[Activate 'webwerk' theme (skip if active; else pick one)]" \
         '(-o --os-detection)'{-o,--os-detection}'[Show OS information]' \
         '--git=[Run git subcommand]:subcmd:(pull log)' \
         '(-G --git-pull)'{-G,--git-pull}'[Update repos via git pull]' \
-        '(-g --git-status)'{-g,--git-status}'[Overview of each wp-content git repo: remote, branch, status]' \
         '(-u --update)'{-u,--update}'=[Update plugin (or all)]:plugin' \
         '(-i --install-plugin)'{-i,--install-plugin}'=[Install plugin on selected sites]:plugin' \
         '(-y --copy-plugins)'{-y,--copy-plugins}'=[Copy plugin from path]:path:_files' \
@@ -250,30 +242,6 @@ _webwerk_remove() {
         )
         _describe 'mode' modes
     fi
-}
-
-_webwerk_ddev() {
-    # Legacy 'ddev VERB': hand off to the verb's completion (abbreviations ok)
-    # (words[1] is 'ddev' here, so the sub lives in words[2])
-    local sub
-    if (( CURRENT > 2 )) && sub=$(_webwerk_resolve "$words[2]" install mod update remove); then
-        words=( "${(@)words[2,-1]}" )
-        (( CURRENT-- ))
-        case $sub in
-            install) _webwerk_install ;;
-            mod)     _webwerk_mod ;;
-            update)  _webwerk_update ;;
-            remove)  _webwerk_remove ;;
-        esac
-        return
-    fi
-    local subs=(
-        'install:DDEV WordPress install'
-        'mod:Modify DDEV site'
-        'update:Update DDEV site'
-        'remove:Remove DDEV containers'
-    )
-    _describe 'subcommand' subs
 }
 
 _webwerk "$@"

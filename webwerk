@@ -151,10 +151,10 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   remove [local]   DESTRUCTIVE: drop the DB + delete files of a WP site (default)
                    (current dir; -s sites; -a/-A all sites; -y skip prompt)
   remove ddev      Remove DDEV containers and configuration
-  status           Show system configuration and script availability
+  doctor           Show system configuration and script availability
 
   Verbs and modes accept any unambiguous abbreviation:
-  i->install  u->update  m->mod  g->get  r->remove  s->status
+  i->install  u->update  m->mod  g->get  r->remove  doc->doctor
   l->local    b->bare    d->ddev
   (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
 
@@ -172,7 +172,7 @@ EXAMPLES:
   $0 u ddev -g --sum                      # Update DDEV site with git commits
   $0 mod --sites=mysite --wp-debug on
   $0 mod ddev -S                          # Modify DDEV site
-  $0 remove ddev                          # (same as: webwerk ddev remove)
+  $0 remove ddev                          # remove the DDEV container here
   $0 remove local                         # drop DB + wipe files of the WP site here
   $0 remove local -s acme                 # remove the 'acme' site under the base dir
   $0 remove local -A                      # remove every WP site under the base dir
@@ -484,9 +484,9 @@ main() {
     local command="${1:-}"
 
     # Accept unambiguous abbreviations for the top-level command
-    # (i->install, u->update, m->mod, r->remove, s->status, d->ddev)
+    # (i->install, u->update, m->mod, g->get, r->remove, doc->doctor)
     if [[ -n "$command" && "$command" != -* ]]; then
-        command="$(resolve_word "$command" install update mod get remove status ddev)"
+        command="$(resolve_word "$command" install update mod get remove doctor)"
     fi
 
     # update -q/-v drive an in-place progress line; keep dispatcher INFO output
@@ -509,17 +509,17 @@ main() {
             ;;
         "help")
             # `webwerk help` -> top-level help; `webwerk help <cmd>` -> that cmd's help
-            case "$(resolve_word "${2:-}" install update mod get remove status ddev)" in
-                install|update|mod|get|ddev)
-                    command="$(resolve_word "$2" install update mod get remove status ddev)"
+            case "$(resolve_word "${2:-}" install update mod get remove doctor)" in
+                install|update|mod|get)
+                    command="$(resolve_word "$2" install update mod get remove doctor)"
                     set -- "$command" --help ;;
                 *)
                     show_help
                     exit 0 ;;
             esac
             ;;
-        "status")
-            # Load config for status display
+        "doctor")
+            # Load config for the system health display
             load_environment
             load_license_keys
             show_status
@@ -561,13 +561,6 @@ main() {
             "remove")
                 # remove is handled in-dispatcher; its usage lives in top-level help
                 show_help; exit 0 ;;
-            "ddev")
-                case "$(resolve_word "${2:-}" install remove mod update)" in
-                    "update") exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
-                    "mod")    exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" --help ;;
-                    *)        exec bash "${SCRIPT_DIR}/scripts/install/wplocalinstall.sh" --help ;;
-                esac
-                ;;
         esac
     fi
 
@@ -601,52 +594,6 @@ main() {
             esac
             log_info "Executing WordPress installation (mode: $mode)"
             run_install "$mode" "$@"
-            ;;
-        "ddev")
-            # DDEV mode - expect "install", "remove", "mod", or "update" next
-            local subcommand
-            subcommand="$(resolve_word "${1:-}" install remove mod update)"
-            case "$subcommand" in
-                "install")
-                    shift  # Remove "install" from arguments
-                    log_info "Executing WordPress installation (mode: ddev)"
-                    run_install "ddev" "$@"
-                    ;;
-                "remove")
-                    shift  # Remove "remove" from arguments
-                    ddev_remove
-                    ;;
-                "mod")
-                    shift  # Remove "mod" from arguments
-                    log_info "Running WordPress modification (mode: ddev)"
-
-                    # Check if DDEV is running
-                    if ! ddev status >/dev/null 2>&1; then
-                        log_error "DDEV is not running. Please start DDEV first with 'ddev start'"
-                        exit 1
-                    fi
-
-                    # Set DDEV-specific environment variables
-                    export WP_CLI_PATH="ddev wp"
-                    export WORDPRESS_BASE_DIR="."
-
-                    if [[ -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
-                        bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
-                    else
-                        log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
-                        exit 1
-                    fi
-                    ;;
-                "update")
-                    shift  # Remove "update" from arguments
-                    ddev_update "$@"
-                    ;;
-                *)
-                    log_error "Expected 'install', 'remove', 'mod', or 'update' after 'ddev', got: ${subcommand:-nothing}"
-                    log_error "Usage: $0 ddev [install|remove|mod|update] [OPTIONS]"
-                    exit 1
-                    ;;
-            esac
             ;;
         "update")
             if [[ ! -f "${SCRIPT_DIR}/scripts/update/wpupdate.sh" ]]; then

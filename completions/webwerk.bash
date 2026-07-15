@@ -11,11 +11,10 @@ _webwerk() {
         cword=$COMP_CWORD
     }
 
-    local commands='install update mod get remove ddev status'
+    local commands='install update mod get remove doctor'
     local update_targets='core plugins plugin themes theme'
     local get_targets='plugins themes core status brief git url db'
     local install_modes='local bare ddev'
-    local ddev_subs='install mod update remove'
 
     # Helper: check if a word exists in the command line
     _webwerk_has_word() {
@@ -25,7 +24,7 @@ _webwerk() {
     }
 
     # Helper: resolve TOK against WORDS like the dispatcher's resolve_word
-    # (exact match wins, else unique prefix: u -> update, dd -> ddev)
+    # (exact match wins, else unique prefix: u -> update, doc -> doctor)
     _webwerk_resolve() {
         local tok="$1" w; shift
         local -a m=()
@@ -70,20 +69,12 @@ _webwerk() {
         COMPREPLY=( $(compgen -W "$(printf '%s\n' "${names[@]}" | sort -u)" -- "$cur") )
     }
 
-    # Determine primary subcommand (abbreviations resolve like the dispatcher;
-    # legacy 'ddev VERB' resolves to VERB)
+    # Determine primary subcommand (abbreviations resolve like the dispatcher)
     local cmd=''
-    local i j sub
+    local i
     for (( i=1; i<cword; i++ )); do
         [[ "${words[i]}" == -* ]] && continue
-        cmd="$(_webwerk_resolve "${words[i]}" install update mod get remove ddev status)" || cmd=''
-        if [[ "$cmd" == ddev ]]; then
-            for (( j=i+1; j<cword; j++ )); do
-                [[ "${words[j]}" == -* ]] && continue
-                sub="$(_webwerk_resolve "${words[j]}" install mod update remove)" && cmd="$sub"
-                break
-            done
-        fi
+        cmd="$(_webwerk_resolve "${words[i]}" install update mod get remove doctor)" || cmd=''
         break
     done
 
@@ -196,15 +187,10 @@ _webwerk() {
                 -d --original-dir
                 -p --print
                 -H --health-check
-                -C --status
-                -B --brief
-                -e --errors
-                -O --outdated
-                -l --list
                 -T --themes
                 -W --theme-webwerk
                 -o --os-detection
-                --git -G --git-pull -g --git-status -u --update
+                --git -G --git-pull -u --update
                 -i --install-plugin
                 -y --copy-plugins
                 -f --acf-pro-lk
@@ -245,19 +231,6 @@ _webwerk() {
                     fi
                     ;;
             esac
-            ;;
-
-        ddev)
-            # Check for ddev subcommand
-            local ddev_sub=''
-            for (( i=2; i<cword; i++ )); do
-                case "${words[i]}" in
-                    install|mod|update|remove) ddev_sub="${words[i]}"; break ;;
-                esac
-            done
-            if [[ -z "$ddev_sub" ]]; then
-                COMPREPLY=( $(compgen -W "$ddev_subs" -- "$cur") )
-            fi
             ;;
 
         remove)

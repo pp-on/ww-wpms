@@ -25,16 +25,17 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/mod/wpmod.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. The `mod` read flags (-C/-B/-e/-O/-l/-g, -T list) now forward here (deprecated).
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. Reads live here only; the old `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) were removed. (`mod -T [NUM|NAME]` still lists/activates themes.)
 
 ## Command Grammar
 
 The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 
-- **VERB** = `install | update | mod | get | remove | status` — the action/intent.
+- **VERB** = `install | update | mod | get | remove | doctor` — the action/intent.
 - **MODE** = `local (default) | bare | ddev` — where it runs. `bare` is install-only;
   `local` is the default for every verb (including `remove`); `ddev` runs against the
-  DDEV container. `status` takes no mode.
+  DDEV container. `ddev` is a **mode word only** (`install ddev`, `update ddev`, …) —
+  there is no standalone `ddev <verb>` form. `doctor` takes no mode.
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
   `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
   `mod plugin <install|copy|update|activate|deactivate|remove|list> [NAME]`,
@@ -59,7 +60,7 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 wp-cli is `wp NOUN VERB` (`wp plugin list`) because it does **resource CRUD on one
 site** — the noun is the stable thing you act on. webwerk is **intent/orchestration
 across many sites**: its top level is genuinely verbs (install a site, update
-everything, remove a site, get an overview), and `install`/`mod`/`remove`/`status`
+everything, remove a site, get an overview), and `install`/`mod`/`remove`/`doctor`
 have no natural noun. Going noun-first would force noun-first onto `get`/`update`
 while the rest stayed verb-first — a fractured grammar. So keep verb-first for every
 command. The `WHAT` words (`plugins`, `themes`, `core`, `db`) intentionally reuse
@@ -83,7 +84,7 @@ Configuration is loaded hierarchically: environment variables → `.env` → `~/
 ./install.sh
 
 # Verify installation
-webwerk status
+webwerk doctor
 ```
 
 ## Common Commands
@@ -98,7 +99,7 @@ webwerk status
 ./webwerk install bare --wp-title="Simple Site"
 
 # DDEV containerized development
-./webwerk ddev install --wp-title="DDEV Site"
+./webwerk install ddev --wp-title="DDEV Site"
 
 # Install shows a single-line phase progress bar by default on a TTY;
 # use -v/--verbose (or pipe the output) for the full log
@@ -129,10 +130,10 @@ cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 # Setup license keys
 ./webwerk mod --sites=mysite --setup-acf-license
 
-# Status overviews (add -s site1,site2 to scope to specific sites)
-./webwerk mod -C    # full per-site status (core, plugins, themes)
-./webwerk mod -B    # brief status; -e = only errors, -O = only outdated
-./webwerk mod -g    # wp-content git overview (remote, branch, status)
+# Status overviews (read-only; live under `get`, add -s site1,site2 to scope)
+./webwerk get status   # full per-site status (core, plugins, themes)
+./webwerk get brief    # brief status; --errors = only errors, --outdated = only outdated
+./webwerk get git      # wp-content git overview (remote, branch, status)
 
 # Modify a DDEV site (local is default): webwerk mod [local|ddev]
 ./webwerk mod ddev -x on
@@ -142,7 +143,7 @@ cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 
 ```bash
 # Check system configuration and script availability
-./webwerk status
+./webwerk doctor
 
 # View help and available commands
 ./webwerk --help
@@ -165,7 +166,7 @@ The suite automatically detects:
 - **Debug Control**: `wp_debug()`, `wp_hide_errors()`, `wp_force_https()` - Development mode and HTTPS
 - **SEO Management**: `wp_block_se()`, `wp_enable_se()` - Search engine indexing control
 - **Git Integration**: `update_repo()`, `git_wp()` - Repository synchronization
-- **Status Overviews (wpmod.sh)**: `do_status()` (`-C`), `do_status_brief()` (`-B`/`-e`/`-O`), `do_git_status()` (`-g`) - per-site core/plugin/theme and wp-content git overviews; all use `collect_site_dirs()` to honor `-s`/`-a` or scan the base dir
+- **Status Overviews (wpget.sh)**: `get_status()` (`get status`), `get_brief()` (`get brief` + `--errors`/`--outdated`), `get_git()` (`get git`) - per-site core/plugin/theme and wp-content git overviews; honor `-s`/`-a` or scan the base dir
 - **Install Progress (webwerk)**: `render_install_progress()` + `run_install()` - single-line phase progress bar shown by default on a TTY; `-v`/`--verbose` (or piped output) falls back to the full log
 - **Batch Install (webwerk)**: `run_install_batch()` - `install -A`/`-a` install into each empty immediate subdirectory of the current dir (dir name = site/repo name); non-empty dirs skipped, never overwritten. Most long install options also have short aliases (`-H`/`-U`/`-P`/`-N`, `-u`/`-t`/`-e`, `-r`/`-g`/`-p`, `-w`/`-d`, `-X`/`-m`/`-s`)
 
@@ -193,7 +194,7 @@ Test all installation modes before making changes:
 # Test each mode
 ./webwerk install local --wp-title="Test Full"
 ./webwerk install bare --wp-title="Test Minimal"
-./webwerk ddev install --wp-title="Test DDEV"
+./webwerk install ddev --wp-title="Test DDEV"
 
 # Test update functionality
 ./webwerk update --sites=testsite

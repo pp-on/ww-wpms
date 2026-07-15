@@ -314,14 +314,8 @@ INFORMATION & DISPLAY:
   -o, --os-detection           Show operating system information
   -c, --colors                 Initialize color scheme
 
-  Read-only views below have MOVED to 'webwerk get' (these aliases forward there
-  and will be removed in a future release):
-  -C, --status                 -> webwerk get status
-  -B, --brief                  -> webwerk get brief
-  -e, --errors                 -> webwerk get brief --errors
-  -O, --outdated               -> webwerk get brief --outdated
-  -l, --list                   -> webwerk get plugins
-  -T, --themes [NUM|NAME]      list -> webwerk get themes; with NUM|NAME activates
+  Read-only views live under 'webwerk get' (status, brief, plugins, themes,
+  core, git, url, db) — see 'webwerk get help'.
 
 SITE CONFIG (webwerk mod site help for details):
   site license [show|set ...]  Show if ACF/WP-Migrate/Akeeba licenses are applied
@@ -334,7 +328,8 @@ THEMES:
                                = activate the webwerk theme (skip if already active;
                                pick one if not installed). NAME|NUM = activate it.
   -W                           Abbreviates the word 'webwerk' ('theme -W')
-  (-T NUM|NAME also activates — see the forwarding note above)
+  -T, --themes [NUM|NAME]      NUM|NAME activates that theme; bare -T lists
+                               (same view as 'webwerk get themes')
 
 OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
@@ -347,7 +342,6 @@ GIT OPERATIONS (webwerk mod branch help for details):
                               no push, switch back afterwards
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
-  -g, --git-status            MOVED -> webwerk get git (this alias forwards)
 
 PLUGIN MANAGEMENT:
   plugin install NAME          Install (+activate) a plugin on selected sites
@@ -458,9 +452,6 @@ parse_arguments() {
             -G|-gl|--git-pull)
                 update_repo
                 ;;
-            -g|--git-status)
-                forward_to_get git
-                ;;
             -d|--original-dir)
                 require_arg "$1" "${2:-}"
                 shift
@@ -480,26 +471,11 @@ parse_arguments() {
             -H|--health-check)
                 do_health_check
                 ;;
-            -C|--status)
-                forward_to_get status
-                ;;
-            -B|--brief)
-                forward_to_get brief
-                ;;
-            -e|--errors)
-                forward_to_get brief --errors
-                ;;
-            -O|--outdated)
-                forward_to_get brief --outdated
-                ;;
             -p|--print)
                 print_sites
                 ;;
             -c|--colors)
                 colors
-                ;;
-            -l|--list)
-                forward_to_get plugins
                 ;;
             -T|--themes)
                 if [[ $# -gt 1 && "${2}" != -* ]]; then
