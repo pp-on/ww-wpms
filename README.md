@@ -321,7 +321,7 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
            get    plugins | themes | core | status | brief | git | url | db
            update plugins | plugin <name> | themes | theme <name> | core
            mod    theme [webwerk|NAME|NUM]
-                  plugin <install|copy|update|activate|deactivate|remove|list> [NAME]
+                  plugin <install|copy|update|activate|deactivate|remove> [NAME]
                   site   <license|remote|url> [show|set|add …]
                   config <debug|errors|indexing|https|htaccess> [on|off|…]
                   branch [merge [NAME]]        # overview / merge current → NAME (live)
@@ -545,7 +545,7 @@ unattended.
 ./webwerk mod --sites=mysite theme -W
 
 # Plugin actions (WHAT form): install/copy/update wrap -i/-y/-u;
-# activate/deactivate/remove are new; list forwards to 'get plugins'
+# activate/deactivate/remove are new (to list, use 'webwerk get plugins')
 ./webwerk mod --sites=mysite plugin install wordpress-seo
 ./webwerk mod --sites=mysite plugin update all
 ./webwerk mod --sites=mysite plugin activate akismet

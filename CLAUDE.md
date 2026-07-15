@@ -25,7 +25,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/mod/wpmod.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. Reads live here only; the old `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) were removed. (`mod -T [NUM|NAME]` still lists/activates themes.)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. Reads live here only; the old `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `mod plugin list` were removed. (`mod -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 
@@ -38,7 +38,7 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   there is no standalone `ddev <verb>` form. `doctor` takes no mode.
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
   `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
-  `mod plugin <install|copy|update|activate|deactivate|remove|list> [NAME]`,
+  `mod plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
   `mod site <license|remote|url> [show|set|add …]`,
   `mod branch [merge [NAME]]` (overview / merge current branch into NAME,
   default `live`, no push),

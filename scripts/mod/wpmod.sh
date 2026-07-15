@@ -62,23 +62,6 @@ require_arg() {
     fi
 }
 
-# DEPRECATED: the read-only views (status/brief/list/themes/git) moved to
-# `webwerk get`. These flags now forward there (carrying the -s/-a selection) and
-# print a one-line notice; the aliases will be removed in a future release.
-run_get() {
-    local target="$1"; shift   # rest = extra get args (e.g. --outdated)
-    local sel=()
-    if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
-        sel=(-s "$(IFS=','; echo "${sites[*]}")")
-    fi
-    WORDPRESS_BASE_DIR="$WORDPRESS_BASE_DIR" WP_CLI_PATH="$WP_CLI_PATH" \
-        bash "${SCRIPT_DIR}/../get/wpget.sh" "$target" "${sel[@]}" "$@"
-}
-
-forward_to_get() {
-    echo -e "\033[33m[deprecated] this view moved to 'webwerk get $1' — forwarding (alias will be removed)\033[0m" >&2
-    run_get "$@"
-}
 
 #===============================================================================
 # HELPER FUNCTIONS
@@ -203,7 +186,7 @@ Actions:
   activate NAME     activate a plugin
   deactivate NAME   deactivate a plugin
   remove NAME       delete a plugin
-  list              list plugins (-> webwerk get plugins)
+  (to list plugins, use 'webwerk get plugins')
 
 Site selection (may appear anywhere on the line):
   -s NAMES   comma-separated site names under the base dir
@@ -328,8 +311,7 @@ THEMES:
                                = activate the webwerk theme (skip if already active;
                                pick one if not installed). NAME|NUM = activate it.
   -W                           Abbreviates the word 'webwerk' ('theme -W')
-  -T, --themes [NUM|NAME]      NUM|NAME activates that theme; bare -T lists
-                               (same view as 'webwerk get themes')
+  -T, --themes NUM|NAME        Activate that theme (to list, use 'webwerk get themes')
 
 OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
@@ -350,7 +332,7 @@ PLUGIN MANAGEMENT:
   plugin activate NAME         Activate a plugin
   plugin deactivate NAME       Deactivate a plugin
   plugin remove NAME           Delete a plugin
-  plugin list                  List plugins (-> webwerk get plugins)
+  (to list plugins, use 'webwerk get plugins')
   Flag aliases for the first three:
   -i, --install-plugin PLUGIN  = plugin install
   -y, --copy-plugins FROM      = plugin copy
@@ -483,8 +465,8 @@ parse_arguments() {
                     shift
                     list_wp_themes "$1"
                 else
-                    # list-only -> moved to `webwerk get themes`
-                    forward_to_get themes
+                    log_error "mod -T needs a theme NUM|NAME to activate; 'webwerk get themes' lists them."
+                    exit 1
                 fi
                 ;;
             theme)
@@ -500,9 +482,9 @@ parse_arguments() {
                         list_wp_themes "$1"
                     fi
                 elif [[ ${all_sites_auto:-0} -eq 1 ]]; then
-                    # -A is no-prompt; print the per-site overview instead of
-                    # the interactive picker (same view as 'get themes')
-                    run_get themes
+                    # -A is no-prompt and there is no theme to activate; the
+                    # read-only overview lives in 'webwerk get themes'.
+                    log_warning "mod theme (-A) needs a theme NAME|NUM to activate; 'webwerk get themes' lists them."
                 else
                     list_wp_themes ""
                 fi
@@ -511,7 +493,7 @@ parse_arguments() {
                 # WHAT form: webwerk mod plugin <action> [NAME|FROM]
                 #   install NAME | copy FROM | update NAME|all  (= -i / -y / -u)
                 #   activate NAME | deactivate NAME | remove NAME
-                #   list  (-> webwerk get plugins)
+                #   (listing plugins is read-only -> 'webwerk get plugins')
                 require_arg "plugin" "${2:-}"
                 shift
                 case "$1" in
@@ -521,8 +503,8 @@ parse_arguments() {
                     activate)   require_arg "plugin activate" "${2:-}";   shift; wp_plugin_action activate "$1" ;;
                     deactivate) require_arg "plugin deactivate" "${2:-}"; shift; wp_plugin_action deactivate "$1" ;;
                     remove)     require_arg "plugin remove" "${2:-}";     shift; wp_plugin_action delete "$1" ;;
-                    list)       forward_to_get plugins ;;
-                    *) log_error "plugin: unknown action '$1'. Use: install, copy, update, activate, deactivate, remove, list"; exit 1 ;;
+                    list)       log_error "plugin listing moved to 'webwerk get plugins'."; exit 1 ;;
+                    *) log_error "plugin: unknown action '$1'. Use: install, copy, update, activate, deactivate, remove"; exit 1 ;;
                 esac
                 ;;
             site)

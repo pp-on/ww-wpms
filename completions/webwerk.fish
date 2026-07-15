@@ -231,7 +231,7 @@ complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme p
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a plugin -d 'Plugin actions: plugin <install|copy|update|activate|deactivate|remove|list>'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from plugin; and not __fish_seen_subcommand_from install copy update activate deactivate remove list' -a 'install copy update activate deactivate remove list' -d 'plugin action'
+complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from plugin; and not __fish_seen_subcommand_from install copy update activate deactivate remove' -a 'install copy update activate deactivate remove' -d 'plugin action'
 complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a config -d 'WP toggles: config <debug|errors|indexing|https|htaccess>'
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from config; and not __fish_seen_subcommand_from debug errors indexing https htaccess' -a 'debug errors indexing https htaccess' -d 'config toggle'
 complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from debug indexing; and not __fish_seen_subcommand_from on off' -a 'on off' -d 'state'

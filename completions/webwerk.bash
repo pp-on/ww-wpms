@@ -165,7 +165,7 @@ _webwerk() {
                 --git) COMPREPLY=( $(compgen -W 'pull log' -- "$cur") ); return 0 ;;
                 -x|--wp-debug) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 theme) COMPREPLY=( $(compgen -W 'webwerk help' -- "$cur") ); return 0 ;;
-                plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove list help' -- "$cur") ); return 0 ;;
+                plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove help' -- "$cur") ); return 0 ;;
                 site) COMPREPLY=( $(compgen -W 'license remote url help' -- "$cur") ); return 0 ;;
                 license) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
                 remote) COMPREPLY=( $(compgen -W 'show add set' -- "$cur") ); return 0 ;;
