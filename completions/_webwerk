@@ -166,7 +166,8 @@ _webwerk_get() {
         '1: :_webwerk_get_targets' \
         '2::action:(help)' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
-        '(-a --all-sites)'{-a,--all-sites}'[All sites under the base dir]' \
+        '(-a --all-sites)'{-a,--all-sites}'[All sites, pausing between each so you can read it]' \
+        '(-A --all-sites-auto)'{-A,--all-sites-auto}'[All sites, no pause (also the default)]' \
         '--format=[Output format for plugins/themes]:format:(table csv json count yaml)' \
         '--errors[brief: only broken sites]' \
         '--outdated[brief: only sites with updates]' \

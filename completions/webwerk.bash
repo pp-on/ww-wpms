@@ -217,7 +217,7 @@ _webwerk() {
             esac
             case "$cur" in
                 -*)
-                    COMPREPLY=( $(compgen -W '-s --sites -a --all-sites --format --errors --outdated -h --help' -- "$cur") )
+                    COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto --format --errors --outdated -h --help' -- "$cur") )
                     ;;
                 *)
                     local has_target=false w

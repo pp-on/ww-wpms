@@ -29,6 +29,7 @@ sites=()
 WORDPRESS_BASE_DIR="${WORDPRESS_BASE_DIR:-$PWD}"
 WP_CLI_PATH="${WP_CLI_PATH:-wp}"
 FORMAT=""   # optional --format passthrough for `wp ... list`
+pause_between=0   # -a pauses between sites so each can be read; -A / default stream
 
 # Helper functions are loaded and exported by the webwerk dispatcher.
 
@@ -68,6 +69,21 @@ collect_site_dirs() {
     fi
 }
 
+# With -a, wait for a keypress between sites so each block can be read; -A and
+# the default stream straight through. Only pauses on an interactive terminal.
+# Arg: how many sites have already been shown (0 = first, never pauses).
+maybe_pause() {
+    (( pause_between )) || return 0
+    (( ${1:-0} > 0 )) || return 0
+    [[ -t 1 ]] || return 0
+    local key
+    printf '\033[2m  — any key: next site · x: quit —\033[0m ' >/dev/tty 2>/dev/null || return 0
+    read -rsn1 key </dev/tty 2>/dev/null || return 0
+    printf '\n' >/dev/tty
+    [[ "${key,,}" == "x" ]] && exit 0
+    return 0
+}
+
 # Run a wp subcommand for every selected site, with a per-site header.
 # Usage: for_each_site <wp arg>...
 for_each_site() {
@@ -79,6 +95,7 @@ for_each_site() {
     fi
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
+        maybe_pause $(( idx - 1 ))
         name="$(basename "$site_dir")"
         echo -e "\033[36m== [$idx/$total] $name ==\033[0m"
         $WP_CLI_PATH --path="$site_dir" "$@" 2>/dev/null || echo "  (failed)"
@@ -106,6 +123,7 @@ get_core() {
     local total=${#SITE_DIRS[@]} idx=0 site_dir name version update
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
+        maybe_pause $(( idx - 1 ))
         name="$(basename "$site_dir")"
         echo -e "\033[36m== [$idx/$total] $name ==\033[0m"
         if ! $WP_CLI_PATH --path="$site_dir" core is-installed &>/dev/null; then
@@ -127,6 +145,7 @@ get_url() {
     local total=${#SITE_DIRS[@]} idx=0 site_dir name siteurl home
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
+        maybe_pause $(( idx - 1 ))
         name="$(basename "$site_dir")"
         siteurl=$($WP_CLI_PATH --path="$site_dir" option get siteurl 2>/dev/null || echo "?")
         home=$($WP_CLI_PATH --path="$site_dir" option get home 2>/dev/null || echo "?")
@@ -139,6 +158,7 @@ get_status() {
     local total=${#SITE_DIRS[@]} idx=0 site_dir name version update
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
+        maybe_pause $(( idx - 1 ))
         name="$(basename "$site_dir")"
         echo -e "\033[36m================================\n  [$idx/$total] $name\n================================\033[0m"
         if ! $WP_CLI_PATH --path="$site_dir" core is-installed &>/dev/null; then
@@ -190,6 +210,7 @@ get_brief() {
         fi
         if [[ -n "$err_msg" ]]; then
             if [[ "$filter" != "outdated" ]]; then
+                maybe_pause "$shown"
                 echo -e "\033[31m$name   $err_msg\033[0m"; shown=1
             fi
             continue
@@ -204,6 +225,7 @@ get_brief() {
         if [[ "$filter" == "outdated" && -z "$update" && "$p_upd" -eq 0 && "$t_upd" -eq 0 ]]; then
             continue
         fi
+        maybe_pause "$shown"
         if [[ -n "$update" ]]; then
             echo -e "\033[36m$name\033[0m   WP $version \033[33m(update: $update)\033[0m"
         else
@@ -238,6 +260,7 @@ get_git() {
     local site_dir name repo remote branch upstream ahead behind dirty
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
+        maybe_pause $(( idx - 1 ))
         name="$(basename "$site_dir")"
         repo="$site_dir/wp-content"
         if ! git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
@@ -296,7 +319,8 @@ Usage:
 
 Options:
   -s, --sites SITES    Comma-separated site names under the base dir
-  -a, --all-sites      All sites under the base dir (default when -s omitted)
+  -a, --all-sites      All sites, pausing between each so you can read it
+  -A, --all-sites-auto All sites, no pause (also the default when -s omitted)
   --format FORMAT      table (default) | csv | json | count | yaml
 
 Examples:
@@ -400,7 +424,8 @@ WHAT:
 
 OPTIONS:
   -s, --sites SITES    Comma-separated site names (under the base dir)
-  -a, --all-sites      All sites under the base dir (explicit)
+  -a, --all-sites      All sites, pausing between each so you can read it
+  -A, --all-sites-auto All sites, no pause (also the default when -s omitted)
   --format FORMAT      Output format for plugins/themes (table|csv|json|count|yaml)
   --errors             brief: only sites that are broken
   --outdated           brief: only sites with available updates
@@ -439,7 +464,9 @@ main() {
                 IFS=',' read -ra sites <<< "$2"
                 shift 2 ;;
             -a|--all-sites)
-                sites=(); shift ;;
+                sites=(); pause_between=1; shift ;;
+            -A|--all-sites-auto)
+                sites=(); pause_between=0; shift ;;
             --format)
                 require_arg "$1" "${2:-}"
                 FORMAT="$2"; shift 2 ;;

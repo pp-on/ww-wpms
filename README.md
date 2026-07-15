@@ -600,8 +600,10 @@ unattended.
 ### Get Commands (read-only)
 
 `webwerk get <what>` retrieves information from sites without changing anything.
-All targets accept `-s site1,site2` / `-a` selection (default: every site under
-the base dir).
+All targets accept `-s site1,site2` selection (default: every site under the base
+dir). Add `-a` to page through the sites one at a time (pauses between each so you
+can read it; any key = next, `x` = quit); `-A` is all sites with no pause (same as
+the default). The pause is skipped automatically when the output is piped.
 
 ```bash
 # List plugins / themes per site (--format table|csv|json|count|yaml)

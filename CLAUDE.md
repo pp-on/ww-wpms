@@ -166,7 +166,7 @@ The suite automatically detects:
 - **Debug Control**: `wp_debug()`, `wp_hide_errors()`, `wp_force_https()` - Development mode and HTTPS
 - **SEO Management**: `wp_block_se()`, `wp_enable_se()` - Search engine indexing control
 - **Git Integration**: `update_repo()`, `git_wp()` - Repository synchronization
-- **Status Overviews (wpget.sh)**: `get_status()` (`get status`), `get_brief()` (`get brief` + `--errors`/`--outdated`), `get_git()` (`get git`) - per-site core/plugin/theme and wp-content git overviews; honor `-s`/`-a` or scan the base dir
+- **Status Overviews (wpget.sh)**: `get_status()` (`get status`), `get_brief()` (`get brief` + `--errors`/`--outdated`), `get_git()` (`get git`) - per-site core/plugin/theme and wp-content git overviews; honor `-s` or scan the base dir. `-a` pauses between sites (`maybe_pause()`, TTY only, `x` quits); `-A`/default stream
 - **Install Progress (webwerk)**: `render_install_progress()` + `run_install()` - single-line phase progress bar shown by default on a TTY; `-v`/`--verbose` (or piped output) falls back to the full log
 - **Batch Install (webwerk)**: `run_install_batch()` - `install -A`/`-a` install into each empty immediate subdirectory of the current dir (dir name = site/repo name); non-empty dirs skipped, never overwritten. Most long install options also have short aliases (`-H`/`-U`/`-P`/`-N`, `-u`/`-t`/`-e`, `-r`/`-g`/`-p`, `-w`/`-d`, `-X`/`-m`/`-s`)
 
