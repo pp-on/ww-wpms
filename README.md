@@ -17,7 +17,7 @@ Web-Agenturen und Entwickler:innen.
 - **Sammel-Updates**: Core, Plugins und Themes über viele Seiten hinweg
 - **Git-Integration**: Klonen und Synchronisieren von `wp-content`-Repos, Commit/Push
 - **Lizenzverwaltung**: ACF Pro, WP Migrate DB Pro, Akeeba
-- **Nur-Lesen-Abfragen** (`get`) und **Diagnose** (`doctor`) getrennt von Änderungen (`mod`)
+- **Nur-Lesen-Abfragen** (`get`) und **Diagnose** (`doctor`) getrennt von Änderungen (`set`)
 - **Barrierefreiheit**: das Leitthema der gesamten Suite
 
 ## Voraussetzungen
@@ -48,11 +48,11 @@ Zwei Dateien:
 
 Verb-zuerst: `webwerk VERB [MODUS] [WAS] [OPTIONEN]`
 
-- **VERB** = `install | update | mod | get | remove | doctor`
+- **VERB** = `install | update | set | get | remove | doctor`
 - **MODUS** = `local (Standard) | bare | ddev` — `ddev` ist ein reines Modus-Wort
   (`install ddev`, `update ddev`, …), kein eigenes Verb
 - Verben und Modi akzeptieren eindeutige Abkürzungen:
-  `i`→install, `u`→update, `m`→mod, `g`→get, `r`→remove, `doc`→doctor;
+  `i`→install, `u`→update, `s`→set, `g`→get, `r`→remove, `doc`→doctor;
   `l`→local, `b`→bare, `d`→ddev
 - `webwerk help`, `webwerk <verb> help` und z. B. `webwerk get themes help` gehen überall
 
@@ -63,7 +63,7 @@ Verb-zuerst: `webwerk VERB [MODUS] [WAS] [OPTIONEN]`
 | **install** | neue Seite anlegen (local/bare/ddev) |
 | **update** | Core/Plugins/Themes aktualisieren |
 | **get** | **nur lesen**: Bestand/Status abfragen |
-| **mod** | Seiten **ändern** (Plugin, Theme, Config, Git, Benutzer …) |
+| **set** | Seiten **ändern** (Plugin, Theme, Config, Git, Benutzer …) |
 | **doctor** | **Diagnose**: `config` (das Tool) oder `sites` (Seiten-Gesundheit) |
 | **remove** | Seite löschen (destruktiv) |
 
@@ -88,8 +88,8 @@ webwerk get plugins                       # Plugin-Liste je Seite
 webwerk get status -a                     # ausführlich, Seite für Seite (Pause dazwischen)
 
 # Ändern
-webwerk mod -s meineseite -x on           # Debug-Modus einschalten
-webwerk mod plugin update all             # Plugins aktualisieren
+webwerk set -s meineseite -x on           # Debug-Modus einschalten
+webwerk set plugin update all             # Plugins aktualisieren
 
 # Diagnose
 webwerk doctor                            # = doctor config: Tool-Einrichtung prüfen
@@ -103,7 +103,7 @@ webwerk remove -s meineseite
 
 - `-s name1,name2` — direkt bestimmte Seiten wählen
 - **`-s` ohne Wert** — listet die Seiten **nummeriert** auf; Auswahl per **Name oder
-  Nummer** (`GMU,SBZ` oder `1,5`). Funktioniert bei `update`/`mod`/`get`/`doctor sites`/`remove`
+  Nummer** (`GMU,SBZ` oder `1,5`). Funktioniert bei `update`/`set`/`get`/`doctor sites`/`remove`
 - `-a` alle Seiten (mit Pause dazwischen), `-A` alle ohne Pause
 
 Die volle Optionsliste je Befehl: `webwerk <verb> -h` — oder die

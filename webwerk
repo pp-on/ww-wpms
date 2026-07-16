@@ -146,7 +146,7 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   install bare     Bare WordPress installation without git repository
   install ddev     DDEV-based WordPress installation
   update [ddev]    Update WordPress core, plugins and themes (local default)
-  mod [ddev]       Modify/manage existing WordPress sites (local default)
+  set [ddev]       Modify/manage existing WordPress sites (local default)
   get [ddev]       Read-only: list plugins/themes/core, status, URLs, db query
   remove [local]   DESTRUCTIVE: drop the DB + delete files of a WP site (default)
                    (current dir; -s sites; -a/-A all sites; -y skip prompt)
@@ -155,7 +155,7 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   doctor sites     Per-site health verdict (WordPress installed / DB reachable)
 
   Verbs and modes accept any unambiguous abbreviation:
-  i->install  u->update  m->mod  g->get  r->remove  doc->doctor
+  i->install  u->update  s->set  g->get  r->remove  doc->doctor
   l->local    b->bare    d->ddev
   (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
 
@@ -171,8 +171,8 @@ EXAMPLES:
   $0 update --all-sites --yes-update
   $0 update ddev                          # Update the DDEV site here
   $0 u ddev -g --sum                      # Update DDEV site with git commits
-  $0 mod --sites=mysite --wp-debug on
-  $0 mod ddev -S                          # Modify DDEV site
+  $0 set --sites=mysite --wp-debug on
+  $0 set ddev -S                          # Modify DDEV site
   $0 remove ddev                          # remove the DDEV container here
   $0 remove local                         # drop DB + wipe files of the WP site here
   $0 remove local -s acme                 # remove the 'acme' site under the base dir
@@ -194,7 +194,7 @@ FILES:
   ~/.keys                               License keys (ACF_PRO_LICENSE, etc.)
   ${SCRIPT_DIR}/scripts/install/        Installation scripts
   ${SCRIPT_DIR}/scripts/update/         Update scripts
-  ${SCRIPT_DIR}/scripts/mod/            Modification scripts
+  ${SCRIPT_DIR}/scripts/set/            Modification scripts
 
 For command-specific help, use: $0 COMMAND --help
 
@@ -221,7 +221,7 @@ show_status() {
         "scripts/install/wplocalinstall.sh"
         "scripts/install/wpfunctionsinstall.sh"
         "scripts/update/wpupdate.sh"
-        "scripts/mod/wpmod.sh"
+        "scripts/set/wpset.sh"
         "scripts/utils/wphelpfunctions.sh"
     )
     
@@ -541,9 +541,9 @@ main() {
     local command="${1:-}"
 
     # Accept unambiguous abbreviations for the top-level command
-    # (i->install, u->update, m->mod, g->get, r->remove, doc->doctor)
+    # (i->install, u->update, s->set, g->get, r->remove, doc->doctor)
     if [[ -n "$command" && "$command" != -* ]]; then
-        command="$(resolve_word "$command" install update mod get remove doctor)"
+        command="$(resolve_word "$command" install update set get remove doctor)"
     fi
 
     # update -q/-v drive an in-place progress line; keep dispatcher INFO output
@@ -566,9 +566,9 @@ main() {
             ;;
         "help")
             # `webwerk help` -> top-level help; `webwerk help <cmd>` -> that cmd's help
-            case "$(resolve_word "${2:-}" install update mod get remove doctor)" in
-                install|update|mod|get)
-                    command="$(resolve_word "$2" install update mod get remove doctor)"
+            case "$(resolve_word "${2:-}" install update set get remove doctor)" in
+                install|update|set|get)
+                    command="$(resolve_word "$2" install update set get remove doctor)"
                     set -- "$command" --help ;;
                 *)
                     show_help
@@ -609,14 +609,14 @@ main() {
         case "$command" in
             "update")
                 exec bash "${SCRIPT_DIR}/scripts/update/wpupdate.sh" --help ;;
-            "mod")
-                # forward the real args so wpmod can show per-WHAT help (theme/plugin);
+            "set")
+                # forward the real args so wpset can show per-WHAT help (theme/plugin);
                 # drop a leading mode word (local/ddev)
                 local modargs=("${@:2}")
                 if [[ "${modargs[0]:-}" == "local" || "${modargs[0]:-}" == "ddev" ]]; then
                     modargs=("${modargs[@]:1}")
                 fi
-                exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "${modargs[@]}" ;;
+                exec bash "${SCRIPT_DIR}/scripts/set/wpset.sh" "${modargs[@]}" ;;
             "get")
                 # forward the real args so wpget can show per-target help;
                 # drop a leading mode word (local/ddev) — help needs no container
@@ -723,9 +723,9 @@ main() {
                     ;;
             esac
             ;;
-        "mod")
-            if [[ ! -f "${SCRIPT_DIR}/scripts/mod/wpmod.sh" ]]; then
-                log_error "Modification script not found: ${SCRIPT_DIR}/scripts/mod/wpmod.sh"
+        "set")
+            if [[ ! -f "${SCRIPT_DIR}/scripts/set/wpset.sh" ]]; then
+                log_error "Modification script not found: ${SCRIPT_DIR}/scripts/set/wpset.sh"
                 exit 1
             fi
             # Optional environment target: local (default) or ddev
@@ -748,7 +748,7 @@ main() {
                     log_info "Executing WordPress modification (mode: local)"
                     ;;
             esac
-            exec bash "${SCRIPT_DIR}/scripts/mod/wpmod.sh" "$@"
+            exec bash "${SCRIPT_DIR}/scripts/set/wpset.sh" "$@"
             ;;
         "get")
             if [[ ! -f "${SCRIPT_DIR}/scripts/get/wpget.sh" ]]; then

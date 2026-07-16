@@ -35,8 +35,8 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 - **Environment Detection**: Automatic detection of WSL2, DDEV, Docker, and Git Bash environments
 - **Debug Management**: Easy toggle of WordPress debug modes
 - **User Management**: Create and manage WordPress admin users
-- **Plugin Management**: Install, copy, update, (de)activate, and remove plugins across sites (`mod plugin …`)
-- **Site Config**: View/change per-site license status, git remote, and home/siteurl (`mod site …`)
+- **Plugin Management**: Install, copy, update, (de)activate, and remove plugins across sites (`set plugin …`)
+- **Site Config**: View/change per-site license status, git remote, and home/siteurl (`set site …`)
 - **Read-only Queries**: Inspect plugins/themes/core/status/URLs and run DB reads without changes (`webwerk get …`)
 - **Security Hardening**: Automated file permissions and database security
 - **Comprehensive Logging**: Detailed operation logs with timestamps
@@ -174,7 +174,7 @@ webwerk install --wp-title="My Accessible Site"
 webwerk install ddev
 
 # Modify DDEV site
-webwerk mod ddev -S
+webwerk set ddev -S
 
 # Update every WordPress site in the dir (pause between each)
 webwerk update -a
@@ -183,14 +183,14 @@ webwerk update -a
 webwerk update -A
 
 # Manage existing sites
-webwerk mod -s mysite -x on
+webwerk set -s mysite -x on
 
 # Check system status
 webwerk doctor
 
 # Get help for any subcommand
 webwerk update -h
-webwerk mod -h
+webwerk set -h
 webwerk install -h
 ```
 
@@ -214,8 +214,8 @@ webwerk/
     │   └── wpfunctionsinstall.sh  # Installation functions
     ├── update/
     │   └── wpupdate.sh           # Update management
-    ├── mod/
-    │   └── wpmod.sh              # Site modification (writes)
+    ├── set/
+    │   └── wpset.sh              # Site modification (writes)
     ├── get/
     │   └── wpget.sh              # Read-only retrieval/query
     └── utils/
@@ -318,12 +318,12 @@ Features:
 
 ```
 webwerk VERB [MODE] [WHAT] [OPTIONS]
-  VERB = install | update | mod | get | remove | status
+  VERB = install | update | set | get | remove | status
   MODE = local (default) | bare | ddev
   WHAT = the verb's object/scope, where it has one:
            get    plugins | themes | core | status | brief | git | url | db
            update plugins | plugin <name> | themes | theme <name> | core
-           mod    theme [webwerk|NAME|NUM]
+           set    theme [webwerk|NAME|NUM]
                   plugin <install|copy|update|activate|deactivate|remove> [NAME]
                   site   <license|remote|url> [show|set|add …]
                   config <debug|errors|indexing|https|htaccess> [on|off|…]
@@ -331,12 +331,12 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
                   user   [add NAME [--role R] [--pass P] [--email E]]
 
 # Verbs and modes accept any unambiguous abbreviation:
-#   i->install  u->update  m->mod  g->get  r->remove  doc->doctor
+#   i->install  u->update  s->set  g->get  r->remove  doc->doctor
 #   l->local    b->bare     d->ddev
 # (the old 'full'/'minimal'/'wp' names are gone; use local/bare)
 
 # Any command also takes 'help': webwerk help, webwerk <verb> help,
-# and per-target/-WHAT: webwerk get themes help, webwerk mod site help
+# and per-target/-WHAT: webwerk get themes help, webwerk set site help
 ```
 
 ### Installation Commands
@@ -522,83 +522,83 @@ unattended.
 
 ```bash
 # Enable debug mode
-./webwerk mod --sites=mysite --enable-debug
+./webwerk set --sites=mysite --enable-debug
 
 # Add ACF Pro license
-./webwerk mod --sites=mysite --setup-acf-license
+./webwerk set --sites=mysite --setup-acf-license
 
 # Create new admin user
-./webwerk mod --sites=mysite --new-user --wp-user=newadmin --wp-password=securepass
+./webwerk set --sites=mysite --new-user --wp-user=newadmin --wp-password=securepass
 
 # Copy plugins between sites
-./webwerk mod --copy-plugins=/path/to/plugin --sites=site1,site2
+./webwerk set --copy-plugins=/path/to/plugin --sites=site1,site2
 
 # Update repository
-./webwerk mod --sites=mysite --git-pull
+./webwerk set --sites=mysite --git-pull
 
 # Force HTTPS on site
-./webwerk mod --sites=mysite --force-https
+./webwerk set --sites=mysite --force-https
 
 # Activate a theme (WHAT form). No arg lists & prompts; 'webwerk' activates the
 # webwerk theme (skips if active, picks one if missing); NAME|NUM activates it.
-./webwerk mod --sites=mysite theme webwerk
-./webwerk mod --sites=mysite theme            # list & pick interactively
-./webwerk mod --sites=mysite theme astra      # activate a named theme
+./webwerk set --sites=mysite theme webwerk
+./webwerk set --sites=mysite theme            # list & pick interactively
+./webwerk set --sites=mysite theme astra      # activate a named theme
 # -W abbreviates the word 'webwerk'; -T NUM|NAME also activates
-./webwerk mod --sites=mysite theme -W
+./webwerk set --sites=mysite theme -W
 
 # Plugin actions (WHAT form): install/copy/update wrap -i/-y/-u;
 # activate/deactivate/remove are new (to list, use 'webwerk get plugins')
-./webwerk mod --sites=mysite plugin install wordpress-seo
-./webwerk mod --sites=mysite plugin update all
-./webwerk mod --sites=mysite plugin activate akismet
-./webwerk mod --sites=mysite plugin deactivate hello-dolly
-./webwerk mod --sites=mysite plugin remove hello-dolly
-./webwerk mod --sites=mysite plugin copy /path/to/plugin
+./webwerk set --sites=mysite plugin install wordpress-seo
+./webwerk set --sites=mysite plugin update all
+./webwerk set --sites=mysite plugin activate akismet
+./webwerk set --sites=mysite plugin deactivate hello-dolly
+./webwerk set --sites=mysite plugin remove hello-dolly
+./webwerk set --sites=mysite plugin copy /path/to/plugin
 
 # Site config (WHAT form): view with no sub-action, change with set/add.
 # (-s/-a/-A may appear anywhere; they're applied before the action)
-./webwerk mod -s mysite site license               # is ACF/WP-Migrate/Akeeba applied?
-./webwerk mod -s mysite site license --values      # also reveal the configured keys
-./webwerk mod -s mysite site license set acf       # apply a license (acf|wpmdb|akeeba|all)
-./webwerk mod -s mysite site remote                # show the wp-content git remote
-./webwerk mod -s mysite site remote set URL        # set origin (omit URL to edit inline)
-./webwerk mod -s mysite site remote add backup URL # add a named remote
-./webwerk mod -s mysite site url                   # show home + siteurl
-./webwerk mod -s mysite site url set home URL      # set home (or: siteurl | both)
+./webwerk set -s mysite site license               # is ACF/WP-Migrate/Akeeba applied?
+./webwerk set -s mysite site license --values      # also reveal the configured keys
+./webwerk set -s mysite site license set acf       # apply a license (acf|wpmdb|akeeba|all)
+./webwerk set -s mysite site remote                # show the wp-content git remote
+./webwerk set -s mysite site remote set URL        # set origin (omit URL to edit inline)
+./webwerk set -s mysite site remote add backup URL # add a named remote
+./webwerk set -s mysite site url                   # show home + siteurl
+./webwerk set -s mysite site url set home URL      # set home (or: siteurl | both)
 
 # WordPress config toggles (WHAT form): view with no sub-action, change with a value
-./webwerk mod -s mysite config                     # show debug/indexing/https state
-./webwerk mod -s mysite config debug on            # WP_DEBUG on|off   (= -x)
-./webwerk mod -s mysite config errors show         # show|hide PHP errors (hide = -z)
-./webwerk mod -s mysite config indexing off        # search-engine indexing (off = -r)
-./webwerk mod -s mysite config https               # force HTTPS       (= -S)
+./webwerk set -s mysite config                     # show debug/indexing/https state
+./webwerk set -s mysite config debug on            # WP_DEBUG on|off   (= -x)
+./webwerk set -s mysite config errors show         # show|hide PHP errors (hide = -z)
+./webwerk set -s mysite config indexing off        # search-engine indexing (off = -r)
+./webwerk set -s mysite config https               # force HTTPS       (= -S)
 
 # Git branches (WHAT form): overview + merge into the live branch.
 # 'branch' fetches, then shows current branch, tracking, ahead/behind, status.
 # 'branch merge [NAME]' merges the current branch into NAME (default: live),
 # switches back afterwards and never pushes; dirty trees, detached HEADs and
 # missing target branches are skipped, conflicting merges are aborted.
-./webwerk mod -A branch                            # overview of every site
-./webwerk mod -s mysite branch merge               # merge current -> live
-./webwerk mod -A branch merge staging              # merge current -> staging
+./webwerk set -A branch                            # overview of every site
+./webwerk set -s mysite branch merge               # merge current -> live
+./webwerk set -A branch merge staging              # merge current -> staging
 
 # Users (WHAT form)
-./webwerk mod -s mysite user                       # list users per site
-./webwerk mod -s mysite user add jane --role editor --email jane@x.test
-./webwerk mod -s mysite user add bob               # role defaults to admin, random pass
+./webwerk set -s mysite user                       # list users per site
+./webwerk set -s mysite user add jane --role editor --email jane@x.test
+./webwerk set -s mysite user add bob               # role defaults to admin, random pass
 
 # Select all sites without interactive prompts
-./webwerk mod -A --update all
+./webwerk set -A --update all
 ```
 
 > **Site health check** (`wp core is-installed` per site) moved to
 > `webwerk doctor sites` — see the Doctor section below.
 
-> **Read vs. write:** `mod` is for *changing* sites. Read-only inspection
+> **Read vs. write:** `set` is for *changing* sites. Read-only inspection
 > (status, lists, URLs, db queries) lives in `webwerk get` — see below. The old
-> `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) have been **removed**; use the
-> `webwerk get` equivalents. (`mod -T [NUM|NAME]` still lists/activates themes.)
+> `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) have been **removed**; use the
+> `webwerk get` equivalents. (`set -T [NUM|NAME]` still lists/activates themes.)
 
 ### Get Commands (read-only)
 
@@ -606,7 +606,7 @@ unattended.
 All targets accept `-s site1,site2` selection (default: every site under the base
 dir). **Bare `-s`** (no value) lists the sites numbered and lets you pick by name
 *or* number (`GMU,SBZ` or `1,5`) — this works for every verb that takes `-s`
-(`update`/`mod`/`get`/`doctor sites`/`remove`). Add `-a` to page through the sites
+(`update`/`set`/`get`/`doctor sites`/`remove`). Add `-a` to page through the sites
 one at a time (pauses between each so you can read it; any key = next, `x` = quit);
 `-A` is all sites with no pause (same as the default). The pause is skipped
 automatically when the output is piped.
@@ -685,8 +685,8 @@ The Webwerk WordPress Management Suite follows a modular architecture with clear
 - Backup creation before updates
 - Rollback functionality
 
-**Modification Module** (`scripts/mod/`)
-- `wpmod.sh`: Site modification and management tools
+**Modification Module** (`scripts/set/`)
+- `wpset.sh`: Site modification and management tools
 - Debug mode toggling
 - User creation and management
 - License key setup
@@ -856,10 +856,10 @@ webwerk install ddev -W                    # also add entry to Windows hosts fil
 open https://mysite.ddev.site
 
 # Modify DDEV site (runs wp commands inside container)
-webwerk mod ddev -S                        # force HTTPS
-webwerk mod ddev -x on                    # enable debug mode
-webwerk mod ddev -f                       # setup ACF Pro license
-webwerk mod ddev -h                       # show all mod options
+webwerk set ddev -S                        # force HTTPS
+webwerk set ddev -x on                    # enable debug mode
+webwerk set ddev -f                       # setup ACF Pro license
+webwerk set ddev -h                       # show all set options
 
 # Update DDEV site plugins
 webwerk update ddev                        # update all plugins (core by default)
@@ -927,13 +927,13 @@ Log levels: `INFO`, `WARNING`, `ERROR`, `SUCCESS`
 webwerk install --wp-title="Accessible Company Website"
 
 # 2. Enable debug mode for development
-webwerk mod -s accessible-company -x on
+webwerk set -s accessible-company -x on
 
 # 3. Setup license keys for premium plugins
-webwerk mod -s accessible-company -f
+webwerk set -s accessible-company -f
 
 # 4. Create additional admin user
-webwerk mod -s accessible-company -n -U webmaster -P SecurePass123
+webwerk set -s accessible-company -n -U webmaster -P SecurePass123
 ```
 
 ### Example 2: Batch Update Multiple Sites
@@ -989,7 +989,7 @@ webwerk update ddev -A
 webwerk install -G arbeit --wp-title="Corporate Site"
 
 # Update repository on existing site
-webwerk mod -s corporate-site -gl
+webwerk set -s corporate-site -gl
 
 # DDEV install with SSH host
 webwerk install ddev -G arbeit
@@ -999,10 +999,10 @@ webwerk install ddev -G arbeit
 
 ```bash
 # Copy plugin to multiple sites
-webwerk mod -y /path/to/custom-plugin -s site1,site2,site3
+webwerk set -y /path/to/custom-plugin -s site1,site2,site3
 
 # Install and activate specific plugin
-webwerk mod -s mysite -i acf-pro
+webwerk set -s mysite -i acf-pro
 ```
 
 ## 💡 Best Practices
@@ -1196,9 +1196,9 @@ Test all modes before submitting:
 webwerk -h
 webwerk install -h
 webwerk update -h
-webwerk mod -h
+webwerk set -h
 webwerk update ddev -h
-webwerk mod ddev -h
+webwerk set ddev -h
 
 # Test all installation modes
 webwerk install local --wp-title="Test Full"
@@ -1209,7 +1209,7 @@ webwerk install ddev --wp-title="Test DDEV"
 webwerk update -s testsite
 
 # Test management features
-webwerk mod -s testsite -x on
+webwerk set -s testsite -x on
 ```
 
 ## 📄 License

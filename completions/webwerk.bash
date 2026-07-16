@@ -11,7 +11,7 @@ _webwerk() {
         cword=$COMP_CWORD
     }
 
-    local commands='install update mod get remove doctor help'
+    local commands='install update set get remove doctor help'
     local update_targets='core plugins plugin themes theme'
     local get_targets='plugins themes core status brief git url db'
     local install_modes='local bare ddev'
@@ -74,7 +74,7 @@ _webwerk() {
     local i
     for (( i=1; i<cword; i++ )); do
         [[ "${words[i]}" == -* ]] && continue
-        cmd="$(_webwerk_resolve "${words[i]}" install update mod get remove doctor)" || cmd=''
+        cmd="$(_webwerk_resolve "${words[i]}" install update set get remove doctor)" || cmd=''
         break
     done
 
@@ -156,7 +156,7 @@ _webwerk() {
             esac
             ;;
 
-        mod)
+        set)
             case "$prev" in
                 -s|--sites) _webwerk_sites; return 0 ;;
                 -d|--original-dir|-i|--install-plugin|-y|--copy-plugins) return 0 ;;

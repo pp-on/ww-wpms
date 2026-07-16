@@ -18,7 +18,7 @@ end
 # Print the verb on the command line, with abbreviations resolved.
 # Fails if no verb has been given yet.
 function __ww_verb
-    set -l verbs install update mod get remove doctor
+    set -l verbs install update set get remove doctor
     set -l toks
     for tok in (commandline -opc)[2..-1]
         string match -q -- '-*' $tok; or set -a toks $tok
@@ -90,12 +90,12 @@ function __ww_update_no_target
     and not __fish_seen_subcommand_from core plugins plugin themes theme
 end
 
-function __ww_mod_ctx
-    __ww_is_verb mod
+function __ww_set_ctx
+    __ww_is_verb set
 end
 
-function __ww_mod_env
-    __ww_mod_ctx
+function __ww_set_env
+    __ww_set_ctx
     and not __fish_seen_subcommand_from local ddev
 end
 
@@ -103,7 +103,7 @@ end
 
 complete -c webwerk -f -n __ww_no_cmd -a install -d 'Install WordPress site'
 complete -c webwerk -f -n __ww_no_cmd -a update  -d 'Update WordPress (core+plugins+themes)'
-complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing WordPress sites'
+complete -c webwerk -f -n __ww_no_cmd -a set     -d 'Modify/manage existing WordPress sites'
 complete -c webwerk -f -n __ww_no_cmd -a get     -d 'Read-only: list plugins/themes/core, URLs, db query'
 complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a WordPress/DDEV site'
 complete -c webwerk -f -n __ww_no_cmd -a doctor  -d 'Diagnostics: config (tool setup) or sites (per-site health)'
@@ -226,67 +226,67 @@ complete -c webwerk    -n __ww_doctor_sites -s s -l sites -x -a '(__ww_site_name
 complete -c webwerk -f -n __ww_doctor_sites -s a -l all-sites      -d 'All sites under the base dir'
 complete -c webwerk -f -n __ww_doctor_sites -s A -l all-sites-auto -d 'All sites under the base dir'
 
-# ── mod: environment target (local default / ddev) ────────────────────────────
+# ── set: environment target (local default / ddev) ────────────────────────────
 
-complete -c webwerk -f -n __ww_mod_env -a local -d 'Modify local WordPress sites (default)'
-complete -c webwerk -f -n __ww_mod_env -a ddev  -d 'Modify DDEV WordPress site'
+complete -c webwerk -f -n __ww_set_env -a local -d 'Modify local WordPress sites (default)'
+complete -c webwerk -f -n __ww_set_env -a ddev  -d 'Modify DDEV WordPress site'
 
-# ── mod: options ──────────────────────────────────────────────────────────────
+# ── set: options ──────────────────────────────────────────────────────────────
 
-complete -c webwerk -n __ww_mod_ctx -s a -l all-sites                      -d 'Process all sites (interactive)'
-complete -c webwerk -n __ww_mod_ctx -s A -l all-sites-auto                 -d 'Process all sites (non-interactive)'
-complete -c webwerk -n __ww_mod_ctx -s s -l sites                       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
-complete -c webwerk -n __ww_mod_ctx -s d -l original-dir                -r  -d 'Set base directory'
-complete -c webwerk -n __ww_mod_ctx -s p -l print                          -d 'Print selected sites'
-complete -c webwerk -n __ww_mod_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
-complete -c webwerk -n __ww_mod_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
-complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a site -d 'Site config: site <license|remote|url> [show|set|add]'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from site; and not __fish_seen_subcommand_from license remote url' -a 'license remote url' -d 'site config target'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from license; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'license action'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from license; and __fish_seen_subcommand_from set' -a 'acf wpmdb akeeba all' -d 'license to apply'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add set' -a 'show add set' -d 'remote action'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'url action'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from url; and __fish_seen_subcommand_from set' -a 'home siteurl both' -d 'which url'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme plugin site config user branch' -a help -d 'Show help for this WHAT'
-complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
-complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a plugin -d 'Plugin actions: plugin <install|copy|update|activate|deactivate|remove|list>'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from plugin; and not __fish_seen_subcommand_from install copy update activate deactivate remove' -a 'install copy update activate deactivate remove' -d 'plugin action'
-complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a config -d 'WP toggles: config <debug|errors|indexing|https|htaccess>'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from config; and not __fish_seen_subcommand_from debug errors indexing https htaccess' -a 'debug errors indexing https htaccess' -d 'config toggle'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from debug indexing; and not __fish_seen_subcommand_from on off' -a 'on off' -d 'state'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from errors; and not __fish_seen_subcommand_from hide show' -a 'hide show' -d 'errors display'
-complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a branch -d 'Git branches: branch [merge [NAME]]'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from merge' -a merge -d 'Merge current branch into NAME (default live), no push'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from merge' -a '(__ww_branch_names)' -d 'Target branch'
-complete -c webwerk -f -n '__ww_mod_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a user -d 'Users: user [add NAME --role ... --pass ... --email ...]'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from user; and not __fish_seen_subcommand_from add' -a add -d 'add a user'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from user add' -l role -r -a 'admin editor author contributor subscriber' -d 'role (admin default)'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from user add' -l pass -r -d 'password'
-complete -c webwerk -f -n '__ww_mod_ctx; and __fish_seen_subcommand_from user add' -l email -r -d 'email'
-complete -c webwerk -n __ww_mod_ctx -s o -l os-detection                   -d 'Show OS information'
-complete -c webwerk -n __ww_mod_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
-complete -c webwerk -n __ww_mod_ctx -s G -l git-pull                       -d 'Update repos via git pull'
-complete -c webwerk -n __ww_mod_ctx -s u -l update                      -r  -d 'Update plugin (or all)'
-complete -c webwerk -n __ww_mod_ctx -s i -l install-plugin              -r  -d 'Install plugin on selected sites'
-complete -c webwerk -n __ww_mod_ctx -s y -l copy-plugins                -r  -d 'Copy plugin from path to selected sites'
-complete -c webwerk -n __ww_mod_ctx -s f -l acf-pro-lk                     -d 'Setup ACF Pro license key'
-complete -c webwerk -n __ww_mod_ctx -s m -l wp-migrate-db-pro              -d 'Setup WP Migrate DB Pro license key'
-complete -c webwerk -n __ww_mod_ctx -s k -l akeeba-license                  -d 'Setup Akeeba Download ID'
-complete -c webwerk -n __ww_mod_ctx -l setup-all-licenses                  -d 'Setup all available license keys'
-complete -c webwerk -n __ww_mod_ctx -s n -l new-user                       -d 'Create new admin user'
-complete -c webwerk -n __ww_mod_ctx -s U -l wp-user                    -r  -d 'Username for new user'
-complete -c webwerk -n __ww_mod_ctx -s P -l wp-password                -r  -d 'Password for new user'
-complete -c webwerk -n __ww_mod_ctx -s E -l wp-email                   -r  -d 'Email for new user'
-complete -c webwerk -n __ww_mod_ctx -s R -l search-replace             -r  -d 'Run wp search-replace (OLD NEW)'
-complete -c webwerk -n __ww_mod_ctx -s x -l wp-debug                   -r  -d 'Enable/disable debug mode' -a 'on\tEnable off\tDisable'
-complete -c webwerk -n __ww_mod_ctx -s z -l hide-errors                    -d 'Hide WordPress errors'
-complete -c webwerk -n __ww_mod_ctx -s r -l disable-search-engine-indexing -d 'Disable search engine indexing'
-complete -c webwerk -n __ww_mod_ctx -l enable-search-engine-indexing        -d 'Enable search engine indexing'
-complete -c webwerk -n __ww_mod_ctx -l htaccess                            -d 'Create/update .htaccess file'
-complete -c webwerk -n __ww_mod_ctx -s S -l force-https                    -d 'Force HTTPS'
-complete -c webwerk -n __ww_mod_ctx -s w -l location-wp                -r  -d 'Set WP-CLI path'
-complete -c webwerk -n __ww_mod_ctx -s h -l help                           -d 'Show help'
+complete -c webwerk -n __ww_set_ctx -s a -l all-sites                      -d 'Process all sites (interactive)'
+complete -c webwerk -n __ww_set_ctx -s A -l all-sites-auto                 -d 'Process all sites (non-interactive)'
+complete -c webwerk -n __ww_set_ctx -s s -l sites                       -x -a '(__ww_site_names)' -d 'Specific sites (comma-separated)'
+complete -c webwerk -n __ww_set_ctx -s d -l original-dir                -r  -d 'Set base directory'
+complete -c webwerk -n __ww_set_ctx -s p -l print                          -d 'Print selected sites'
+complete -c webwerk -n __ww_set_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
+complete -c webwerk -n __ww_set_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a site -d 'Site config: site <license|remote|url> [show|set|add]'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from site; and not __fish_seen_subcommand_from license remote url' -a 'license remote url' -d 'site config target'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'license action'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and __fish_seen_subcommand_from set' -a 'acf wpmdb akeeba all' -d 'license to apply'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add set' -a 'show add set' -d 'remote action'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'url action'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and __fish_seen_subcommand_from set' -a 'home siteurl both' -d 'which url'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme plugin site config user branch' -a help -d 'Show help for this WHAT'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a plugin -d 'Plugin actions: plugin <install|copy|update|activate|deactivate|remove>'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from plugin; and not __fish_seen_subcommand_from install copy update activate deactivate remove' -a 'install copy update activate deactivate remove' -d 'plugin action'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a config -d 'WP toggles: config <debug|errors|indexing|https|htaccess>'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from config; and not __fish_seen_subcommand_from debug errors indexing https htaccess' -a 'debug errors indexing https htaccess' -d 'config toggle'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from debug indexing; and not __fish_seen_subcommand_from on off' -a 'on off' -d 'state'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from errors; and not __fish_seen_subcommand_from hide show' -a 'hide show' -d 'errors display'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a branch -d 'Git branches: branch [merge [NAME]]'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from merge' -a merge -d 'Merge current branch into NAME (default live), no push'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from merge' -a '(__ww_branch_names)' -d 'Target branch'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a user -d 'Users: user [add NAME --role ... --pass ... --email ...]'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user; and not __fish_seen_subcommand_from add' -a add -d 'add a user'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l role -r -a 'admin editor author contributor subscriber' -d 'role (admin default)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l pass -r -d 'password'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l email -r -d 'email'
+complete -c webwerk -n __ww_set_ctx -s o -l os-detection                   -d 'Show OS information'
+complete -c webwerk -n __ww_set_ctx -l git                              -r  -d 'Run git subcommand' -a 'pull\tpull log\tlog'
+complete -c webwerk -n __ww_set_ctx -s G -l git-pull                       -d 'Update repos via git pull'
+complete -c webwerk -n __ww_set_ctx -s u -l update                      -r  -d 'Update plugin (or all)'
+complete -c webwerk -n __ww_set_ctx -s i -l install-plugin              -r  -d 'Install plugin on selected sites'
+complete -c webwerk -n __ww_set_ctx -s y -l copy-plugins                -r  -d 'Copy plugin from path to selected sites'
+complete -c webwerk -n __ww_set_ctx -s f -l acf-pro-lk                     -d 'Setup ACF Pro license key'
+complete -c webwerk -n __ww_set_ctx -s m -l wp-migrate-db-pro              -d 'Setup WP Migrate DB Pro license key'
+complete -c webwerk -n __ww_set_ctx -s k -l akeeba-license                  -d 'Setup Akeeba Download ID'
+complete -c webwerk -n __ww_set_ctx -l setup-all-licenses                  -d 'Setup all available license keys'
+complete -c webwerk -n __ww_set_ctx -s n -l new-user                       -d 'Create new admin user'
+complete -c webwerk -n __ww_set_ctx -s U -l wp-user                    -r  -d 'Username for new user'
+complete -c webwerk -n __ww_set_ctx -s P -l wp-password                -r  -d 'Password for new user'
+complete -c webwerk -n __ww_set_ctx -s E -l wp-email                   -r  -d 'Email for new user'
+complete -c webwerk -n __ww_set_ctx -s R -l search-replace             -r  -d 'Run wp search-replace (OLD NEW)'
+complete -c webwerk -n __ww_set_ctx -s x -l wp-debug                   -r  -d 'Enable/disable debug mode' -a 'on\tEnable off\tDisable'
+complete -c webwerk -n __ww_set_ctx -s z -l hide-errors                    -d 'Hide WordPress errors'
+complete -c webwerk -n __ww_set_ctx -s r -l disable-search-engine-indexing -d 'Disable search engine indexing'
+complete -c webwerk -n __ww_set_ctx -l enable-search-engine-indexing        -d 'Enable search engine indexing'
+complete -c webwerk -n __ww_set_ctx -l htaccess                            -d 'Create/update .htaccess file'
+complete -c webwerk -n __ww_set_ctx -s S -l force-https                    -d 'Force HTTPS'
+complete -c webwerk -n __ww_set_ctx -s w -l location-wp                -r  -d 'Set WP-CLI path'
+complete -c webwerk -n __ww_set_ctx -s h -l help                           -d 'Show help'
 
 # ── get: read-only retrieval ──────────────────────────────────────────────────
 complete -c webwerk -f -n __ww_get_no_target -a plugins -d 'List plugins per site'

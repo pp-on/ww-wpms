@@ -18,7 +18,7 @@ set -euo pipefail
 readonly SCRIPT_VERSION="2.0"
 readonly SCRIPT_NAME="WordPress Site Modification Script"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly LOG_FILE="${PWD}/webwerk-mod.log"
+readonly LOG_FILE="${PWD}/webwerk-set.log"
 
 #===============================================================================
 # CONFIGURATION
@@ -127,13 +127,13 @@ setup_all_licenses() {
 # COMMAND LINE INTERFACE
 #===============================================================================
 
-# Per-WHAT help: webwerk mod theme help
+# Per-WHAT help: webwerk set theme help
 show_theme_help() {
     cat << EOF
-webwerk mod theme — activate a theme on selected sites
+webwerk set theme — activate a theme on selected sites
 
 Usage:
-  webwerk mod theme [webwerk|NAME|NUM] [-s sites | -a | -A]
+  webwerk set theme [webwerk|NAME|NUM] [-s sites | -a | -A]
 
   (no arg)   list installed themes and pick one to activate; with -A
              (no prompts) print the per-site overview like 'get themes'
@@ -153,13 +153,13 @@ Aliases: -W abbreviates the word 'webwerk' (theme -W = theme webwerk);
 EOF
 }
 
-# Per-WHAT help: webwerk mod plugin help
+# Per-WHAT help: webwerk set plugin help
 show_plugin_help() {
     cat << EOF
-webwerk mod plugin — manage plugins on selected sites
+webwerk set plugin — manage plugins on selected sites
 
 Usage:
-  webwerk mod plugin <action> [NAME|FROM] [-s sites | -a | -A]
+  webwerk set plugin <action> [NAME|FROM] [-s sites | -a | -A]
 
 Actions:
   install NAME      install (and activate) a plugin   (alias: -i NAME)
@@ -178,15 +178,15 @@ Site selection (may appear anywhere on the line):
 EOF
 }
 
-# Per-WHAT help: webwerk mod site help
+# Per-WHAT help: webwerk set site help
 show_site_help() {
     cat << EOF
-webwerk mod site — view/change site config on selected sites
+webwerk set site — view/change site config on selected sites
 
 Usage:
-  webwerk mod site license [show [--values] | set <acf|wpmdb|akeeba|all>]
-  webwerk mod site remote  [show | add NAME URL | set [URL]]
-  webwerk mod site url     [show | set <home|siteurl|both> [URL]]
+  webwerk set site license [show [--values] | set <acf|wpmdb|akeeba|all>]
+  webwerk set site remote  [show | add NAME URL | set [URL]]
+  webwerk set site url     [show | set <home|siteurl|both> [URL]]
 
 No sub-action (or 'show') displays current values; 'set'/'add' change them.
   license show   per-site: is each license applied? (--values also prints the
@@ -202,33 +202,33 @@ Site selection (may appear anywhere on the line; default: current directory):
 EOF
 }
 
-# Per-WHAT help: webwerk mod config help
+# Per-WHAT help: webwerk set config help
 show_config_help() {
     cat << EOF
-webwerk mod config — view/change WordPress config toggles on selected sites
+webwerk set config — view/change WordPress config toggles on selected sites
 
 Usage:
-  webwerk mod config                 show debug / indexing / https state per site
-  webwerk mod config debug on|off    toggle WP_DEBUG        (= -x on|off)
-  webwerk mod config errors hide|show   hide/show PHP errors   (hide = -z)
-  webwerk mod config indexing on|off search-engine indexing (off = -r)
-  webwerk mod config https           force HTTPS in wp-config + URLs (= -S)
-  webwerk mod config htaccess        create/update .htaccess (= --htaccess)
+  webwerk set config                 show debug / indexing / https state per site
+  webwerk set config debug on|off    toggle WP_DEBUG        (= -x on|off)
+  webwerk set config errors hide|show   hide/show PHP errors   (hide = -z)
+  webwerk set config indexing on|off search-engine indexing (off = -r)
+  webwerk set config https           force HTTPS in wp-config + URLs (= -S)
+  webwerk set config htaccess        create/update .htaccess (= --htaccess)
 
 Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
 EOF
 }
 
-# Per-WHAT help: webwerk mod branch help
+# Per-WHAT help: webwerk set branch help
 show_branch_help() {
     cat << EOF
-webwerk mod branch — wp-content git branch overview and merges per site
+webwerk set branch — wp-content git branch overview and merges per site
 
 Usage:
-  webwerk mod branch                 per site: fetch, then show current branch,
+  webwerk set branch                 per site: fetch, then show current branch,
                                      tracking branch, ahead/behind, local
                                      branches and working-tree status
-  webwerk mod branch merge [NAME]    merge the current branch into NAME
+  webwerk set branch merge [NAME]    merge the current branch into NAME
                                      (default: live), then switch back
 
 merge never pushes (push with 'webwerk update -P' or manually) and never
@@ -239,14 +239,14 @@ Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
 EOF
 }
 
-# Per-WHAT help: webwerk mod user help
+# Per-WHAT help: webwerk set user help
 show_user_help() {
     cat << EOF
-webwerk mod user — manage users on selected sites
+webwerk set user — manage users on selected sites
 
 Usage:
-  webwerk mod user                   list users per site
-  webwerk mod user add NAME [--role R] [--pass P] [--email E]
+  webwerk set user                   list users per site
+  webwerk set user add NAME [--role R] [--pass P] [--email E]
 
   --role   administrator (default; 'admin' accepted) | editor | author |
            contributor | subscriber. If omitted and interactive, you're prompted
@@ -282,7 +282,7 @@ INFORMATION & DISPLAY:
   Read-only views live under 'webwerk get' (status, brief, plugins, themes,
   core, git, url, db) — see 'webwerk get help'.
 
-SITE CONFIG (webwerk mod site help for details):
+SITE CONFIG (webwerk set site help for details):
   site license [show|set ...]  Show if ACF/WP-Migrate/Akeeba licenses are applied
                                (--values reveals keys); set applies them
   site remote  [show|add|set]  Show/add/set the wp-content git remote
@@ -299,7 +299,7 @@ OUTPUT & FORMATTING:
   --out TEXT TYPE             Output formatted text with border
   -t, --text-color TEXT COLOR  Output colored text
 
-GIT OPERATIONS (webwerk mod branch help for details):
+GIT OPERATIONS (webwerk set branch help for details):
   branch                      Per-site branch overview (fetch, branch, tracking,
                               ahead/behind, status)
   branch merge [NAME]         Merge current branch into NAME (default live),
@@ -326,7 +326,7 @@ LICENSE KEYS:
   -k, --akeeba-license        Setup Akeeba Download ID
   --setup-all-licenses        Setup all available license keys
 
-USER MANAGEMENT (webwerk mod user help for details):
+USER MANAGEMENT (webwerk set user help for details):
   user [add …]                List users, or add one (role defaults to admin)
   -n, --new-user              Create new admin user (with -U/-P/-E)
   -U, --wp-user USER          Set username for new user (default: ${wp_user})
@@ -336,7 +336,7 @@ USER MANAGEMENT (webwerk mod user help for details):
 DATABASE:
   -R, --search-replace OLD NEW  Run wp search-replace across selected sites
 
-WORDPRESS CONFIGURATION (webwerk mod config help for details):
+WORDPRESS CONFIGURATION (webwerk set config help for details):
   config [debug|errors|indexing|https|htaccess …]  View/toggle the settings below
   -x, --wp-debug MODE         Enable/disable debug mode (on/off)
   -z, --hide-errors           Hide WordPress errors
@@ -440,16 +440,16 @@ parse_arguments() {
                 ;;
             -T|--themes)
                 if [[ $# -gt 1 && "${2}" != -* ]]; then
-                    # number/name given -> activate (a write, stays in mod)
+                    # number/name given -> activate (a write, stays in set)
                     shift
                     list_wp_themes "$1"
                 else
-                    log_error "mod -T needs a theme NUM|NAME to activate; 'webwerk get themes' lists them."
+                    log_error "set -T needs a theme NUM|NAME to activate; 'webwerk get themes' lists them."
                     exit 1
                 fi
                 ;;
             theme)
-                # WHAT form: webwerk mod theme [webwerk|NAME|NUM]
+                # WHAT form: webwerk set theme [webwerk|NAME|NUM]
                 #   no arg   -> list + interactive pick
                 #   webwerk  -> skip if active, pick if missing (-W = 'webwerk')
                 #   NAME|NUM -> same as -T NAME|NUM (activate it)
@@ -463,13 +463,13 @@ parse_arguments() {
                 elif [[ ${all_sites_auto:-0} -eq 1 ]]; then
                     # -A is no-prompt and there is no theme to activate; the
                     # read-only overview lives in 'webwerk get themes'.
-                    log_warning "mod theme (-A) needs a theme NAME|NUM to activate; 'webwerk get themes' lists them."
+                    log_warning "set theme (-A) needs a theme NAME|NUM to activate; 'webwerk get themes' lists them."
                 else
                     list_wp_themes ""
                 fi
                 ;;
             plugin)
-                # WHAT form: webwerk mod plugin <action> [NAME|FROM]
+                # WHAT form: webwerk set plugin <action> [NAME|FROM]
                 #   install NAME | copy FROM | update NAME|all  (= -i / -y / -u)
                 #   activate NAME | deactivate NAME | remove NAME
                 #   (listing plugins is read-only -> 'webwerk get plugins')
@@ -487,7 +487,7 @@ parse_arguments() {
                 esac
                 ;;
             site)
-                # WHAT form: webwerk mod site <license|remote|url> [show|set|add ...]
+                # WHAT form: webwerk set site <license|remote|url> [show|set|add ...]
                 # Terminal: reads positionals directly and returns. Selection/config
                 # flags are hoisted to the front in main(), so they may appear anywhere.
                 local _sub="${2:-}" a3="${3:-}" a4="${4:-}" a5="${5:-}"
@@ -531,7 +531,7 @@ parse_arguments() {
                 return 0
                 ;;
             branch)
-                # WHAT form: webwerk mod branch [merge [NAME]]
+                # WHAT form: webwerk set branch [merge [NAME]]
                 #   no action -> per-site wp-content branch overview (fetches first)
                 #   merge     -> merge current branch into NAME (default live), no push
                 local b_sub="${2:-}" b_target="${3:-}"
@@ -543,7 +543,7 @@ parse_arguments() {
                 return 0
                 ;;
             config)
-                # WHAT form: webwerk mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]
+                # WHAT form: webwerk set config <debug|errors|indexing|https|htaccess> [on|off|hide|show]
                 local c_what="${2:-}" c_val="${3:-}"
                 case "$c_what" in
                     ""|show)  site_config_show ;;
@@ -557,7 +557,7 @@ parse_arguments() {
                 return 0
                 ;;
             user)
-                # WHAT form: webwerk mod user [add NAME [--role R] [--pass P] [--email E]]
+                # WHAT form: webwerk set user [add NAME [--role R] [--pass P] [--email E]]
                 shift  # consume 'user'
                 case "${1:-show}" in
                     ""|show) site_user_show ;;

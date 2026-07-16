@@ -14,7 +14,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/`** - Modular script collection organized by function:
   - `install/` - WordPress installation scripts
   - `update/` - Update management scripts  
-  - `mod/` - Site modification and management (writes/changes)
+  - `set/` - Site modification and management (writes/changes)
   - `get/` - Read-only retrieval/query (plugins/themes/core/status/url/db)
   - `utils/` - Shared helper functions and utilities
 
@@ -24,33 +24,33 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/utils/wphelpfunctions.sh:1`** - Core utility library with 850+ lines of shared functions
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
-- **`scripts/mod/wpmod.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. Reads live here only; the old `mod` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `mod plugin list` were removed. (`mod -T NUM|NAME` still activates a theme.)
+- **`scripts/set/wpset.sh`** - Site modification tools (writes)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 
 The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 
-- **VERB** = `install | update | mod | get | remove | doctor` — the action/intent.
+- **VERB** = `install | update | set | get | remove | doctor` — the action/intent.
 - **MODE** = `local (default) | bare | ddev` — where it runs. `bare` is install-only;
   `local` is the default for every verb (including `remove`); `ddev` runs against the
   DDEV container. `ddev` is a **mode word only** (`install ddev`, `update ddev`, …) —
   there is no standalone `ddev <verb>` form. `doctor` takes no mode; its WHATs are
   `config` (default — the tool/env) and `sites` (per-site health).
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
-  `update plugins`, `update plugin <name>`, `mod theme [webwerk|NAME|NUM]`,
-  `mod plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
-  `mod site <license|remote|url> [show|set|add …]`,
-  `mod branch [merge [NAME]]` (overview / merge current branch into NAME,
+  `update plugins`, `update plugin <name>`, `set theme [webwerk|NAME|NUM]`,
+  `set plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
+  `set site <license|remote|url> [show|set|add …]`,
+  `set branch [merge [NAME]]` (overview / merge current branch into NAME,
   default `live`, no push),
-  `mod config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
-  `mod user [add NAME [--role R] [--pass P] [--email E]]`.
-  (`mod` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
-  `-f`/`-m`/`-k`, `-x`/`-z`/`-S`/`-r`/`--htaccess`, `-n`+`-U`/`-P`/`-E`. `mod site`
+  `set config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
+  `set user [add NAME [--role R] [--pass P] [--email E]]`.
+  (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
+  `-f`/`-m`/`-k`, `-x`/`-z`/`-S`/`-r`/`--htaccess`, `-n`+`-U`/`-P`/`-E`. `set site`
   groups site-level config views/writes: license applied-status (+`--values`),
-  git remote, home/siteurl. `mod config` shows/toggles the WP settings; `mod user`
+  git remote, home/siteurl. `set config` shows/toggles the WP settings; `set user`
   lists/adds users (role defaults to administrator).
-  `mod` hoists config/selection flags (`-d`/`-w`/`-s`/`-a`/`-A`) to the front in
+  `set` hoists config/selection flags (`-d`/`-w`/`-s`/`-a`/`-A`) to the front in
   `main()`, so they may appear anywhere on the line — even after a WHAT action.)
 - Verbs and modes accept any unambiguous prefix abbreviation (`i/u/m/g/r/s`,
   `l/b/d`). A bare `help` word works at any level: `webwerk help`, `webwerk <verb> help`,
@@ -61,7 +61,7 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 wp-cli is `wp NOUN VERB` (`wp plugin list`) because it does **resource CRUD on one
 site** — the noun is the stable thing you act on. webwerk is **intent/orchestration
 across many sites**: its top level is genuinely verbs (install a site, update
-everything, remove a site, get an overview), and `install`/`mod`/`remove`/`doctor`
+everything, remove a site, get an overview), and `install`/`set`/`remove`/`doctor`
 have no natural noun. Going noun-first would force noun-first onto `get`/`update`
 while the rest stayed verb-first — a fractured grammar. So keep verb-first for every
 command. The `WHAT` words (`plugins`, `themes`, `core`, `db`) intentionally reuse
@@ -126,18 +126,18 @@ cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 ./webwerk update --sites=site1,site2 --git --summary
 
 # Enable debug mode
-./webwerk mod --sites=mysite --enable-debug
+./webwerk set --sites=mysite --enable-debug
 
 # Setup license keys
-./webwerk mod --sites=mysite --setup-acf-license
+./webwerk set --sites=mysite --setup-acf-license
 
 # Status overviews (read-only; live under `get`, add -s site1,site2 to scope)
 ./webwerk get status   # full per-site status (core, plugins, themes)
 ./webwerk get brief    # brief status; --errors = only errors, --outdated = only outdated
 ./webwerk get git      # wp-content git overview (remote, branch, status)
 
-# Modify a DDEV site (local is default): webwerk mod [local|ddev]
-./webwerk mod ddev -x on
+# Modify a DDEV site (local is default): webwerk set [local|ddev]
+./webwerk set ddev -x on
 ```
 
 ### System Status
@@ -161,7 +161,7 @@ The suite automatically detects:
 
 ### Key Functions (wphelpfunctions.sh)
 - **Site Discovery**: `searchwp()`, `process_sites()` - WordPress installation detection
-- **Interactive `-s` picker**: `select_sites_interactive()` (wphelpfunctions.sh, exported) - bare `-s` (no value) lists sites numbered and reads a name/number selection; prints the chosen names as CSV on stdout (list+prompt to /dev/tty). Wired into every `-s` handler: `update`/`mod`/`get`/`doctor sites`/`remove`. `-s name,name` stays direct (no prompt)
+- **Interactive `-s` picker**: `select_sites_interactive()` (wphelpfunctions.sh, exported) - bare `-s` (no value) lists sites numbered and reads a name/number selection; prints the chosen names as CSV on stdout (list+prompt to /dev/tty). Wired into every `-s` handler: `update`/`set`/`get`/`doctor sites`/`remove`. `-s name,name` stays direct (no prompt)
 - **Plugin Management**: `wp_update()`, `copy_plugins()`, `install_plugins()`
 - **License Management**: `wp_setup_all_licenses()`, `wp_key_acf_pro()`, `wp_key_migrate()`
 - **User Management**: `wp_new_user()` - Administrator account creation
@@ -202,5 +202,5 @@ Test all installation modes before making changes:
 ./webwerk update --sites=testsite
 
 # Test management features
-./webwerk mod --sites=testsite --enable-debug
+./webwerk set --sites=testsite --enable-debug
 ```

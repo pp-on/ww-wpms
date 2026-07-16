@@ -658,7 +658,7 @@ wp_setup_all_licenses() {
 }
 
 #===============================================================================
-# SITE CONFIG (mod site license|remote|url)
+# SITE CONFIG (set site license|remote|url)
 #===============================================================================
 
 # Resolve a site name to its filesystem path (absolute stays; else BASE/site).
@@ -672,7 +672,7 @@ _site_header() {
     echo -e "----------------${Color_Off}"
 }
 
-# mod site license [show_values] — per site: is each license applied?
+# set site license [show_values] — per site: is each license applied?
 site_license_status() {
     local show_values="${1:-0}" site sp cfg mark
     for site in "${sites[@]}"; do
@@ -695,7 +695,7 @@ site_license_status() {
     fi
 }
 
-# mod site license set <acf|wpmdb|akeeba|all>
+# set site license set <acf|wpmdb|akeeba|all>
 site_license_set() {
     local which="$1" site sp
     for site in "${sites[@]}"; do
@@ -712,7 +712,7 @@ site_license_set() {
     done
 }
 
-# mod site remote — show remotes per site
+# set site remote — show remotes per site
 site_remote_show() {
     local site sp repo
     for site in "${sites[@]}"; do
@@ -726,7 +726,7 @@ site_remote_show() {
     done
 }
 
-# mod site remote add <name> <url>
+# set site remote add <name> <url>
 site_remote_add() {
     local name="$1" url="$2" site sp repo
     for site in "${sites[@]}"; do
@@ -741,7 +741,7 @@ site_remote_add() {
     done
 }
 
-# mod site remote set [url] — set origin url; omit url to edit the current value
+# set site remote set [url] — set origin url; omit url to edit the current value
 site_remote_set() {
     local url="${1:-}" site sp repo cur new
     for site in "${sites[@]}"; do
@@ -761,7 +761,7 @@ site_remote_set() {
     done
 }
 
-# mod site url — show home/siteurl per site
+# set site url — show home/siteurl per site
 site_url_show() {
     local site sp
     for site in "${sites[@]}"; do
@@ -772,7 +772,7 @@ site_url_show() {
     done
 }
 
-# mod site url set <home|siteurl|both> [url] — omit url to edit the current value
+# set site url set <home|siteurl|both> [url] — omit url to edit the current value
 site_url_set() {
     local which="$1" url="${2:-}" site sp opt c n
     local opts=()
@@ -805,7 +805,7 @@ define('WP_DEBUG_DISPLAY', true);
 EOF
 }
 
-# mod config <debug|errors|indexing|htaccess> <value> — per selected site.
+# set config <debug|errors|indexing|htaccess> <value> — per selected site.
 # Wraps the cwd-based primitives (wp_debug/wp_hide_errors/wp_show_errors/
 # wp_block_se/wp_enable_se/htaccess) with the site loop they lack.
 site_config() {
@@ -823,7 +823,7 @@ site_config() {
     done
 }
 
-# mod config (no arg) — show debug / indexing / https state per site.
+# set config (no arg) — show debug / indexing / https state per site.
 site_config_show() {
     local site sp cfg dbg bp
     for site in "${sites[@]}"; do
@@ -860,7 +860,7 @@ pick_user_role() {
     esac
 }
 
-# mod user add — create a user (role defaults to administrator) on each site.
+# set user add — create a user (role defaults to administrator) on each site.
 site_user_add() {
     local username="$1" role="${2:-administrator}" password="$3" email="$4" site sp
     for site in "${sites[@]}"; do
@@ -871,7 +871,7 @@ site_user_add() {
     done
 }
 
-# mod user (no arg) — list users per site.
+# set user (no arg) — list users per site.
 site_user_show() {
     local site sp
     for site in "${sites[@]}"; do
@@ -882,7 +882,7 @@ site_user_show() {
     done
 }
 
-# mod branch [show] — per site: wp-content repo branch overview (fetches first)
+# set branch [show] — per site: wp-content repo branch overview (fetches first)
 site_branch_show() {
     local site sp repo cur up ahead behind dirty
     for site in "${sites[@]}"; do
@@ -913,7 +913,7 @@ site_branch_show() {
     done
 }
 
-# mod branch merge [NAME] — per site: merge the wp-content repo's current
+# set branch merge [NAME] — per site: merge the wp-content repo's current
 # branch into NAME (default live), then switch back. No push. Skips sites
 # with dirty trees or a missing target branch; aborts cleanly on conflicts.
 site_branch_merge() {
@@ -1086,7 +1086,7 @@ wp_force_https() {
             fi
 
             # Remove existing HTTPS-related block and orphaned lines in one pass
-            sed -i -e '/Force HTTPS - Added by webwerk mod script/,/FORCE_SSL_ADMIN/d' \
+            sed -i -e '/Force HTTPS - Added by webwerk set script/,/FORCE_SSL_ADMIN/d' \
                    -e '/FORCE_SSL_ADMIN/d' \
                    -e '/WP_HOME/d' \
                    -e '/WP_SITEURL/d' \
@@ -1105,7 +1105,7 @@ wp_force_https() {
 
             cat <<'EOF' >> wp-config.php
 
-// Force HTTPS - Added by webwerk mod script
+// Force HTTPS - Added by webwerk set script
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
     $_SERVER['HTTPS'] = 'on';
 }

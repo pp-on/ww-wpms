@@ -18,10 +18,10 @@ _webwerk() {
 
     case $state in
         args)
-            case $(_webwerk_resolve "$line[1]" install update mod get remove doctor) in
+            case $(_webwerk_resolve "$line[1]" install update set get remove doctor) in
                 install)        _webwerk_install ;;
                 update)         _webwerk_update ;;
-                mod)            _webwerk_mod ;;
+                set)            _webwerk_set ;;
                 get)            _webwerk_get ;;
                 remove)         _webwerk_remove ;;
                 doctor)         _webwerk_doctor ;;
@@ -67,7 +67,7 @@ _webwerk_commands() {
     local commands=(
         'install:Install WordPress site'
         'update:Update WordPress (core+plugins+themes)'
-        'mod:Modify/manage existing WordPress sites'
+        'set:Modify/manage existing WordPress sites'
         'get:Read-only: list plugins/themes/core, URLs, db query'
         'remove:Remove a WordPress/DDEV site'
         'doctor:Diagnostics: config (tool setup) or sites (per-site health)'
@@ -191,7 +191,7 @@ _webwerk_get_targets() {
     _describe 'target' targets
 }
 
-_webwerk_mod() {
+_webwerk_set() {
     _arguments \
         '1:target:(local ddev theme plugin site config user branch)' \
         '2::value:(webwerk install copy update activate deactivate remove license remote url debug errors indexing https htaccess add merge help)' \

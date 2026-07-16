@@ -6,7 +6,7 @@
 # Description: Read-only retrieval/query for existing WordPress sites.
 #   This is the "get" half of the read/write split: it only reads from sites
 #   (list plugins/themes/core, site URLs, db queries). Anything that *changes*
-#   a site lives in `webwerk mod`.
+#   a site lives in `webwerk set`.
 # License: MIT
 #
 
@@ -53,7 +53,7 @@ require_arg() {
 #===============================================================================
 
 # Populate global SITE_DIRS with the -s/-a selected sites, or every install
-# under WORDPRESS_BASE_DIR when nothing is selected. (Mirrors wpmod.sh.)
+# under WORDPRESS_BASE_DIR when nothing is selected. (Mirrors wpset.sh.)
 collect_site_dirs() {
     SITE_DIRS=()
     if [[ ${#sites[@]} -gt 0 && "${sites[*]}" != "." ]]; then
@@ -406,7 +406,7 @@ EOF
 $SCRIPT_NAME v$SCRIPT_VERSION
 
 Read-only retrieval/query for existing WordPress sites. (For changes, use
-\`webwerk mod\`.)
+\`webwerk set\`.)
 
 Usage:
   webwerk get <what> [OPTIONS]
