@@ -161,6 +161,7 @@ The suite automatically detects:
 
 ### Key Functions (wphelpfunctions.sh)
 - **Site Discovery**: `searchwp()`, `process_sites()` - WordPress installation detection
+- **Interactive `-s` picker**: `select_sites_interactive()` (wphelpfunctions.sh, exported) - bare `-s` (no value) lists sites numbered and reads a name/number selection; prints the chosen names as CSV on stdout (list+prompt to /dev/tty). Wired into every `-s` handler: `update`/`mod`/`get`/`doctor sites`/`remove`. `-s name,name` stays direct (no prompt)
 - **Plugin Management**: `wp_update()`, `copy_plugins()`, `install_plugins()`
 - **License Management**: `wp_setup_all_licenses()`, `wp_key_acf_pro()`, `wp_key_migrate()`
 - **User Management**: `wp_new_user()` - Administrator account creation

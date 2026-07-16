@@ -745,9 +745,14 @@ parse_arguments() {
                 export DB_USER
                 ;;
             -s|--sites)
-                require_arg "$1" "${2:-}"
-                shift
-                process_dirs "$1"
+                if [[ -z "${2:-}" || "${2:-}" == -* ]]; then
+                    # bare -s: interactive numbered picker (names or numbers)
+                    local _csv; _csv="$(select_sites_interactive "$WORDPRESS_BASE_DIR")" || exit 1
+                    process_dirs "$_csv"
+                else
+                    shift
+                    process_dirs "$1"
+                fi
                 selection_made=true
                 ;;
             -m|--minor)

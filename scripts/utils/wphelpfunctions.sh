@@ -1241,12 +1241,66 @@ assign_env() {
     out "$var" 1    # new value
 }
 
+# Interactive numbered site picker, shared by every verb's bare `-s`.
+# Lists the WP installs under $1 (base dir, default '.'), numbered, then reads a
+# comma/space-separated selection of NAMES and/or NUMBERS from the terminal and
+# prints the chosen site names comma-separated on stdout. The list and prompt go
+# to /dev/tty, so only the final CSV lands on stdout (safe to capture with $()).
+# Returns non-zero (no stdout) when there's no TTY, no sites, or nothing valid.
+select_sites_interactive() {
+    local base="${1:-.}"
+    local -a all=()
+    local cfg
+    while IFS= read -r cfg; do
+        all+=("$(basename "$(dirname "$cfg")")")
+    done < <(find "$base" -maxdepth 2 -name "wp-config.php" 2>/dev/null | sort)
+
+    if (( ${#all[@]} == 0 )); then
+        echo "No WordPress sites found under $base" >&2
+        return 1
+    fi
+    if ! { true </dev/tty; } 2>/dev/null; then
+        echo "'-s' with no value needs a terminal to pick sites (use -s name,name instead)." >&2
+        return 1
+    fi
+
+    local i
+    for i in "${!all[@]}"; do
+        printf '  [%d] %s\n' "$(( i + 1 ))" "${all[i]}" >/dev/tty
+    done
+    printf 'Select sites (names or numbers, e.g. %s or 1,2): ' "${all[0]}" >/dev/tty
+    local reply=""
+    read -r reply </dev/tty || reply=""
+
+    local -a picks=() out=()
+    IFS=', ' read -ra picks <<< "$reply"
+    local p a found
+    for p in "${picks[@]}"; do
+        [[ -z "$p" ]] && continue
+        if [[ "$p" =~ ^[0-9]+$ ]]; then
+            if (( p >= 1 && p <= ${#all[@]} )); then out+=("${all[$(( p - 1 ))]}")
+            else echo "  (skipping out-of-range: $p)" >&2; fi
+        else
+            found=0
+            for a in "${all[@]}"; do [[ "$a" == "$p" ]] && { out+=("$p"); found=1; break; }; done
+            (( found )) || echo "  (skipping unknown site: $p)" >&2
+        fi
+    done
+
+    if (( ${#out[@]} == 0 )); then
+        echo "No valid sites selected." >&2
+        return 1
+    fi
+    ( IFS=','; printf '%s\n' "${out[*]}" )
+    return 0
+}
+
 #===============================================================================
 # FUNCTION EXPORTS
 #===============================================================================
 
 # Export all functions for use by other scripts
-export -f colors out txt generate_random_string
+export -f colors out txt generate_random_string select_sites_interactive
 export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
 export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update wp_plugin_action

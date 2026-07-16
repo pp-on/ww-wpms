@@ -590,9 +590,14 @@ parse_arguments() {
                 return 0
                 ;;
             -s|--sites)
-                require_arg "$1" "${2:-}"
-                shift
-                process_dirs "$1"
+                if [[ -z "${2:-}" || "${2:-}" == -* ]]; then
+                    # bare -s: interactive numbered picker (names or numbers)
+                    local _csv; _csv="$(select_sites_interactive "$WORDPRESS_BASE_DIR")" || exit 1
+                    process_dirs "$_csv"
+                else
+                    shift
+                    process_dirs "$1"
+                fi
                 ;;
             -u|-up|--update)
                 require_arg "$1" "${2:-}"
@@ -765,7 +770,9 @@ main() {
                 [[ $# -gt 0 ]] && { _cfg+=("$1"); shift; } ;;
             -s|--sites)
                 _sel+=("$1"); shift
-                [[ $# -gt 0 ]] && { _sel+=("$1"); shift; } ;;
+                # only grab the next token as -s's value if it's not a flag
+                # (bare -s -> interactive picker at parse time)
+                [[ $# -gt 0 && "$1" != -* ]] && { _sel+=("$1"); shift; } ;;
             -a|--all-sites|-A|--all-sites-auto)
                 _sel+=("$1"); shift ;;
             *)

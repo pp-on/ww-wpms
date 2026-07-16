@@ -601,9 +601,12 @@ unattended.
 
 `webwerk get <what>` retrieves information from sites without changing anything.
 All targets accept `-s site1,site2` selection (default: every site under the base
-dir). Add `-a` to page through the sites one at a time (pauses between each so you
-can read it; any key = next, `x` = quit); `-A` is all sites with no pause (same as
-the default). The pause is skipped automatically when the output is piped.
+dir). **Bare `-s`** (no value) lists the sites numbered and lets you pick by name
+*or* number (`GMU,SBZ` or `1,5`) — this works for every verb that takes `-s`
+(`update`/`mod`/`get`/`doctor sites`/`remove`). Add `-a` to page through the sites
+one at a time (pauses between each so you can read it; any key = next, `x` = quit);
+`-A` is all sites with no pause (same as the default). The pause is skipped
+automatically when the output is piped.
 
 ```bash
 # List plugins / themes per site (--format table|csv|json|count|yaml)

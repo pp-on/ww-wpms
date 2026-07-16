@@ -460,9 +460,13 @@ main() {
                 # defer: remember the target parsed so far -> per-target help
                 want_help=1; shift ;;
             -s|--sites)
-                require_arg "$1" "${2:-}"
-                IFS=',' read -ra sites <<< "$2"
-                shift 2 ;;
+                if [[ -z "${2:-}" || "${2:-}" == -* ]]; then
+                    # bare -s: interactive numbered picker (names or numbers)
+                    local _csv; _csv="$(select_sites_interactive "$WORDPRESS_BASE_DIR")" || exit 1
+                    IFS=',' read -ra sites <<< "$_csv"; shift
+                else
+                    IFS=',' read -ra sites <<< "$2"; shift 2
+                fi ;;
             -a|--all-sites)
                 sites=(); pause_between=1; shift ;;
             -A|--all-sites-auto)

@@ -241,7 +241,12 @@ doctor_sites() {
     local base="${WORDPRESS_BASE_DIR:-.}" sites_csv="" wp="${WP_CLI_PATH:-wp}"
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -s|--sites)          sites_csv="${2:-}"; shift 2 ;;
+            -s|--sites)
+                if [[ -z "${2:-}" || "${2:-}" == -* ]]; then
+                    sites_csv="$(select_sites_interactive "$base")" || exit 1; shift
+                else
+                    sites_csv="${2:-}"; shift 2
+                fi ;;
             -a|--all-sites|-A|--all-sites-auto) shift ;;   # all sites = default
             -d|--original-dir)   base="${2:-.}"; shift 2 ;;
             *)                   shift ;;
@@ -461,7 +466,12 @@ remove_local() {
     local target="cwd" assume_yes=0 sites_csv=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -s|--sites)          sites_csv="${2:-}"; shift 2 ;;
+            -s|--sites)
+                if [[ -z "${2:-}" || "${2:-}" == -* ]]; then
+                    sites_csv="$(select_sites_interactive "$base")" || exit 1; shift
+                else
+                    sites_csv="${2:-}"; shift 2
+                fi ;;
             -s=*|--sites=*)      sites_csv="${1#*=}"; shift ;;
             -a|--all-sites)      target="all"; shift ;;
             -A|--all-sites-auto) target="all"; assume_yes=1; shift ;;
@@ -571,7 +581,7 @@ main() {
             load_license_keys
             case "$(resolve_word "${2:-config}" config sites)" in
                 config) show_status ;;
-                sites)  doctor_sites "${@:3}" ;;
+                sites)  load_helper_functions; doctor_sites "${@:3}" ;;
                 *)
                     if [[ "${2:-}" == "-h" || "${2:-}" == "--help" || "${2:-}" == "help" ]]; then
                         echo "Usage: webwerk doctor [config|sites]"
