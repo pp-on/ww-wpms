@@ -11,7 +11,7 @@ _webwerk() {
         cword=$COMP_CWORD
     }
 
-    local commands='install update mod get remove doctor'
+    local commands='install update mod get remove doctor help'
     local update_targets='core plugins plugin themes theme'
     local get_targets='plugins themes core status brief git url db'
     local install_modes='local bare ddev'

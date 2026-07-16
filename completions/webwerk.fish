@@ -107,6 +107,7 @@ complete -c webwerk -f -n __ww_no_cmd -a mod     -d 'Modify/manage existing Word
 complete -c webwerk -f -n __ww_no_cmd -a get     -d 'Read-only: list plugins/themes/core, URLs, db query'
 complete -c webwerk -f -n __ww_no_cmd -a remove  -d 'Remove a WordPress/DDEV site'
 complete -c webwerk -f -n __ww_no_cmd -a doctor  -d 'Diagnostics: config (tool setup) or sites (per-site health)'
+complete -c webwerk -f -n __ww_no_cmd -a help    -d 'Show help (optionally: help <verb>)'
 complete -c webwerk    -n __ww_no_cmd -s h -l help  -d 'Show help'
 complete -c webwerk    -n __ww_no_cmd -l debug       -d 'Enable debug mode'
 

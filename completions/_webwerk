@@ -71,6 +71,7 @@ _webwerk_commands() {
         'get:Read-only: list plugins/themes/core, URLs, db query'
         'remove:Remove a WordPress/DDEV site'
         'doctor:Diagnostics: config (tool setup) or sites (per-site health)'
+        'help:Show help (optionally: help <verb>)'
     )
     _describe 'command' commands
 }
