@@ -318,8 +318,8 @@ Features:
 
 ```
 webwerk VERB [MODE] [WHAT] [OPTIONS]
-  VERB = install | update | set | get | remove | status
-  MODE = local (default) | bare | ddev
+  VERB = install | update | get | set | remove | doctor
+  MODE = local (default) | bare | ddev   (ddev is a mode word, not a verb)
   WHAT = the verb's object/scope, where it has one:
            get    plugins | themes | core | status | brief | git | url | db
            update plugins | plugin <name> | themes | theme <name> | core
@@ -329,6 +329,7 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
                   config <debug|errors|indexing|https|htaccess> [on|off|…]
                   branch [merge [NAME]]        # overview / merge current → NAME (live)
                   user   [add NAME [--role R] [--pass P] [--email E]]
+           doctor config (tool setup) | sites (per-site health)
 
 # Verbs and modes accept any unambiguous abbreviation:
 #   i->install  u->update  s->set  g->get  r->remove  doc->doctor
@@ -518,7 +519,11 @@ There are no per-item confirmation prompts: bare `update` asks once per site
 (y/n/x), `-a` pauses between sites so you can review, and `-A`/`-ay`/`-B` run
 unattended.
 
-### Management Commands
+### Set Commands (writes)
+
+`webwerk set …` is the write half of the read/write split — everything that
+*changes* a site (config, plugins, themes, users, git). Read-only inspection lives
+in `webwerk get`; health checks in `webwerk doctor`.
 
 ```bash
 # Enable debug mode
