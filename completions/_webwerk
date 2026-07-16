@@ -170,6 +170,8 @@ _webwerk_get() {
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-a --all-sites)'{-a,--all-sites}'[All sites, pausing between each so you can read it]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[All sites, no pause (also the default)]' \
+        '(-l --local)'{-l,--local}'[branch: local branches only]' \
+        '(-r --remote)'{-r,--remote}'[branch: remote branches only]' \
         '--format=[Output format for plugins/themes]:format:(table csv json count yaml)' \
         '--errors[brief: only broken sites]' \
         '--outdated[brief: only sites with updates]' \
@@ -184,6 +186,7 @@ _webwerk_get_targets() {
         'status:Full per-site status'
         'brief:Brief: core + plugin/theme update counts'
         'git:Git overview of each wp-content repo'
+        'branch:List branches in each wp-content repo (-l/-r)'
         'url:siteurl / home per site'
         'db:Run a query per site (warns on non-SELECT)'
         'help:Show help (generic, or per-target)'

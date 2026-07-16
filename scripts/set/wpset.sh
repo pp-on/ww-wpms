@@ -222,14 +222,14 @@ EOF
 # Per-WHAT help: webwerk set branch help
 show_branch_help() {
     cat << EOF
-webwerk set branch — wp-content git branch overview and merges per site
+webwerk set branch — merge wp-content branches per site
 
 Usage:
-  webwerk set branch                 per site: fetch, then show current branch,
-                                     tracking branch, ahead/behind, local
-                                     branches and working-tree status
   webwerk set branch merge [NAME]    merge the current branch into NAME
                                      (default: live), then switch back
+
+To LIST branches use 'webwerk get branch' (-l local / -r remote); for a repo
+overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
 
 merge never pushes (push with 'webwerk update -P' or manually) and never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
@@ -300,10 +300,9 @@ OUTPUT & FORMATTING:
   -t, --text-color TEXT COLOR  Output colored text
 
 GIT OPERATIONS (webwerk set branch help for details):
-  branch                      Per-site branch overview (fetch, branch, tracking,
-                              ahead/behind, status)
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
+                              (to LIST branches: webwerk get branch -l/-r)
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
 
@@ -531,14 +530,15 @@ parse_arguments() {
                 return 0
                 ;;
             branch)
-                # WHAT form: webwerk set branch [merge [NAME]]
-                #   no action -> per-site wp-content branch overview (fetches first)
-                #   merge     -> merge current branch into NAME (default live), no push
+                # WHAT form: webwerk set branch merge [NAME]
+                #   merge -> merge current branch into NAME (default live), no push
+                #   (listing branches is read-only -> 'webwerk get branch')
                 local b_sub="${2:-}" b_target="${3:-}"
                 case "$b_sub" in
-                    ""|show) site_branch_show ;;
-                    merge)   site_branch_merge "${b_target:-live}" ;;
-                    *) log_error "branch: use [show] | merge [NAME]  (NAME defaults to 'live')"; exit 1 ;;
+                    merge)      site_branch_merge "${b_target:-live}" ;;
+                    ""|show|list)
+                        log_error "branch listing moved to 'webwerk get branch' (-l local / -r remote); to merge use 'set branch merge [NAME]'."; exit 1 ;;
+                    *) log_error "branch: use merge [NAME] (defaults to 'live'); list branches with 'webwerk get branch'."; exit 1 ;;
                 esac
                 return 0
                 ;;

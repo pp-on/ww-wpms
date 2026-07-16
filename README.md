@@ -85,6 +85,7 @@ webwerk update -ASp                       # ein Sammel-Commit + Push (nur mit -p
 webwerk get brief                         # kurzer Überblick je Seite
 webwerk get brief --outdated              # nur Seiten mit verfügbaren Updates
 webwerk get plugins                       # Plugin-Liste je Seite
+webwerk get branch                        # Branches je wp-content-Repo (-l lokal / -r remote)
 webwerk get status -a                     # ausführlich, Seite für Seite (Pause dazwischen)
 
 # Ändern

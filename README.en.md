@@ -321,7 +321,7 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
   VERB = install | update | get | set | remove | doctor
   MODE = local (default) | bare | ddev   (ddev is a mode word, not a verb)
   WHAT = the verb's object/scope, where it has one:
-           get    plugins | themes | core | status | brief | git | url | db
+           get    plugins | themes | core | status | brief | git | branch | url | db
            update plugins | plugin <name> | themes | theme <name> | core
            set    theme [webwerk|NAME|NUM]
                   plugin <install|copy|update|activate|deactivate|remove> [NAME]
@@ -584,7 +584,7 @@ in `webwerk get`; health checks in `webwerk doctor`.
 # 'branch merge [NAME]' merges the current branch into NAME (default: live),
 # switches back afterwards and never pushes; dirty trees, detached HEADs and
 # missing target branches are skipped, conflicting merges are aborted.
-./webwerk set -A branch                            # overview of every site
+./webwerk get branch                               # LIST branches per site (-l/-r)
 ./webwerk set -s mysite branch merge               # merge current -> live
 ./webwerk set -A branch merge staging              # merge current -> staging
 
@@ -634,6 +634,11 @@ automatically when the output is piped.
 
 # Git overview of each wp-content repo (remote, branch/upstream, dirty count)
 ./webwerk get git
+
+# List branches in each wp-content repo (both local + remote by default)
+./webwerk get branch
+./webwerk get branch -l           # local branches only
+./webwerk get branch -r           # remote branches only
 
 # Site URLs (siteurl / home) per site
 ./webwerk get url

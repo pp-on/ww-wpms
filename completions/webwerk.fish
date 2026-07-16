@@ -74,7 +74,7 @@ end
 
 function __ww_get_no_target
     __ww_get_ctx
-    and not __fish_seen_subcommand_from plugins themes core status brief git url db
+    and not __fish_seen_subcommand_from plugins themes core status brief git branch url db
 end
 
 function __ww_install_ctx
@@ -295,11 +295,14 @@ complete -c webwerk -f -n __ww_get_no_target -a core    -d 'Core version (+updat
 complete -c webwerk -f -n __ww_get_no_target -a status  -d 'Full per-site status'
 complete -c webwerk -f -n __ww_get_no_target -a brief   -d 'Brief: core + plugin/theme update counts'
 complete -c webwerk -f -n __ww_get_no_target -a git     -d 'Git overview of each wp-content repo'
+complete -c webwerk -f -n __ww_get_no_target -a branch  -d 'List branches in each wp-content repo (-l/-r)'
 complete -c webwerk -f -n __ww_get_no_target -a url     -d 'siteurl / home per site'
 complete -c webwerk -f -n __ww_get_no_target -a db      -d 'Run a query per site (warns on non-SELECT)'
 complete -c webwerk -n __ww_get_ctx -s s -l sites    -x -a '(__ww_site_names)' -d 'Comma-separated site names'
 complete -c webwerk -n __ww_get_ctx -s a -l all-sites       -d 'All sites, pausing between each so you can read it'
 complete -c webwerk -n __ww_get_ctx -s A -l all-sites-auto  -d 'All sites, no pause (also the default)'
+complete -c webwerk -n __ww_get_ctx -s l -l local           -d 'branch: local branches only'
+complete -c webwerk -n __ww_get_ctx -s r -l remote          -d 'branch: remote branches only'
 complete -c webwerk -n __ww_get_ctx -l format        -r -d 'Output format (table|csv|json|count|yaml)'
 complete -c webwerk -n __ww_get_ctx -l errors           -d 'brief: only broken sites'
 complete -c webwerk -n __ww_get_ctx -l outdated         -d 'brief: only sites with updates'

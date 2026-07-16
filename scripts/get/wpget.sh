@@ -30,6 +30,7 @@ WORDPRESS_BASE_DIR="${WORDPRESS_BASE_DIR:-$PWD}"
 WP_CLI_PATH="${WP_CLI_PATH:-wp}"
 FORMAT=""   # optional --format passthrough for `wp ... list`
 pause_between=0   # -a pauses between sites so each can be read; -A / default stream
+BRANCH_SCOPE="both"   # get branch: both | local (-l) | remote (-r)
 
 # Helper functions are loaded and exported by the webwerk dispatcher.
 
@@ -298,6 +299,32 @@ get_git() {
     done
 }
 
+# List branches in each site's wp-content repo.
+# BRANCH_SCOPE: both (default) | local (-l) | remote (-r).
+get_branch() {
+    collect_site_dirs
+    local total=${#SITE_DIRS[@]} idx=0 site_dir name repo
+    for site_dir in "${SITE_DIRS[@]}"; do
+        (( ++idx ))
+        maybe_pause $(( idx - 1 ))
+        name="$(basename "$site_dir")"
+        repo="$site_dir/wp-content"
+        echo -e "\033[36m== [$idx/$total] $name ==\033[0m"
+        if ! git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
+            echo -e "  \033[33mno git repo in wp-content\033[0m"
+            continue
+        fi
+        if [[ "$BRANCH_SCOPE" != "remote" ]]; then
+            echo -e "  \033[33mlocal:\033[0m"
+            git -C "$repo" branch 2>/dev/null | sed 's/^/  /' || echo "    (none)"
+        fi
+        if [[ "$BRANCH_SCOPE" != "local" ]]; then
+            echo -e "  \033[33mremote:\033[0m"
+            git -C "$repo" branch -r 2>/dev/null | sed 's/^/  /' || echo "    (none)"
+        fi
+    done
+}
+
 #===============================================================================
 # HELP
 #===============================================================================
@@ -377,6 +404,18 @@ Usage:
   webwerk get git [-s sites | -a]
 EOF
             ;;
+        branch)
+            cat <<EOF
+webwerk get branch — list branches in each site's wp-content repo
+
+Per site, lists the branches in wp-content. With no flag both local and remote
+branches are shown; -l restricts to local, -r to remote. Read-only.
+(To merge a branch, use 'webwerk set branch merge [NAME]'.)
+
+Usage:
+  webwerk get branch [-l | -r] [-s sites | -a]
+EOF
+            ;;
         url)
             cat <<EOF
 webwerk get url — site URLs per site
@@ -419,6 +458,7 @@ WHAT:
   status               Full per-site status (core + plugins + themes)
   brief                Brief overview: core version + plugin/theme update counts
   git                  Git overview of each site's wp-content repo
+  branch               List branches in each site's wp-content repo (-l/-r)
   url                  siteurl / home per site
   db "SQL"             Run a query per site (warns on non-SELECT)
 
@@ -426,6 +466,8 @@ OPTIONS:
   -s, --sites SITES    Comma-separated site names (under the base dir)
   -a, --all-sites      All sites, pausing between each so you can read it
   -A, --all-sites-auto All sites, no pause (also the default when -s omitted)
+  -l, --local          branch: list only local branches
+  -r, --remote         branch: list only remote branches (default: both)
   --format FORMAT      Output format for plugins/themes (table|csv|json|count|yaml)
   --errors             brief: only sites that are broken
   --outdated           brief: only sites with available updates
@@ -471,6 +513,10 @@ main() {
                 sites=(); pause_between=1; shift ;;
             -A|--all-sites-auto)
                 sites=(); pause_between=0; shift ;;
+            -l|--local)
+                BRANCH_SCOPE="local"; shift ;;
+            -r|--remote)
+                BRANCH_SCOPE="remote"; shift ;;
             --format)
                 require_arg "$1" "${2:-}"
                 FORMAT="$2"; shift 2 ;;
@@ -502,11 +548,12 @@ main() {
         status)  get_status ;;
         brief)   get_brief ;;
         git)     get_git ;;
+        branch)  get_branch ;;
         url)     get_url ;;
         db)      get_db "${positionals[0]:-}" ;;
         "")      show_help; exit 0 ;;
         *)
-            log_error "Unknown target: '$what'. Use: plugins, themes, core, status, brief, git, url, db."
+            log_error "Unknown target: '$what'. Use: plugins, themes, core, status, brief, git, branch, url, db."
             exit 1 ;;
     esac
 }

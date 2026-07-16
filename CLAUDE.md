@@ -25,7 +25,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/set/wpset.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|url|db`. Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|themes|core|status|brief|git|branch|url|db` (`get branch` lists wp-content branches; `-l` local / `-r` remote / both). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 
@@ -41,8 +41,8 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `update plugins`, `update plugin <name>`, `set theme [webwerk|NAME|NUM]`,
   `set plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
   `set site <license|remote|url> [show|set|add …]`,
-  `set branch [merge [NAME]]` (overview / merge current branch into NAME,
-  default `live`, no push),
+  `set branch merge [NAME]` (merge current branch into NAME, default `live`,
+  no push; listing branches moved to `get branch`),
   `set config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
   `set user [add NAME [--role R] [--pass P] [--email E]]`.
   (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
