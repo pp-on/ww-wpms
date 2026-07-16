@@ -327,7 +327,8 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
                   plugin <install|copy|update|activate|deactivate|remove> [NAME]
                   site   <license|remote|url> [show|set|add …]
                   config <debug|errors|indexing|https|htaccess> [on|off|…]
-                  branch [merge [NAME]]        # overview / merge current → NAME (live)
+                  branch <add|merge> [NAME]    # add: create+switch (push optional);
+                                               # merge: current → NAME (default live)
                   user   [add NAME [--role R] [--pass P] [--email E]]
            doctor config (tool setup) | sites (per-site health)
 
@@ -585,6 +586,9 @@ in `webwerk get`; health checks in `webwerk doctor`.
 # switches back afterwards and never pushes; dirty trees, detached HEADs and
 # missing target branches are skipped, conflicting merges are aborted.
 ./webwerk get branch                               # LIST branches per site (-l/-r)
+./webwerk set -s mysite branch add staging         # create 'staging' if missing + switch (local)
+./webwerk set -s mysite branch add staging push    # …and push -u origin
+./webwerk set -A   branch add                       # pick from existing branches, then switch
 ./webwerk set -s mysite branch merge               # merge current -> live
 ./webwerk set -A branch merge staging              # merge current -> staging
 

@@ -41,8 +41,9 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `update plugins`, `update plugin <name>`, `set theme [webwerk|NAME|NUM]`,
   `set plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
   `set site <license|remote|url> [show|set|add …]`,
-  `set branch merge [NAME]` (merge current branch into NAME, default `live`,
-  no push; listing branches moved to `get branch`),
+  `set branch <add|merge> [NAME]` (add: create NAME if missing + switch, local,
+  `push` also pushes, no NAME → pick from existing; merge: merge current into NAME,
+  default `live`, no push; listing branches moved to `get branch`),
   `set config <debug|errors|indexing|https|htaccess> [on|off|hide|show]`,
   `set user [add NAME [--role R] [--pass P] [--email E]]`.
   (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,

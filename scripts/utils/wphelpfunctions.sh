@@ -1264,6 +1264,91 @@ select_sites_interactive() {
     return 0
 }
 
+# set branch add [NAME] [push] — per site's wp-content: create NAME if it does not
+# exist, then switch to it. Local only unless do_push=1 (then `git push -u origin`).
+# With no NAME, list the branches across the selected sites and pick one or more
+# (names or numbers); missing ones are created, and the first pick is checked out.
+site_branch_add() {
+    local want="$1" do_push="${2:-0}"
+    local site sp repo
+
+    if [[ -z "$want" ]]; then
+        if ! { true </dev/tty; } 2>/dev/null; then
+            log_error "'set branch add' with no NAME needs a terminal to pick (or: set branch add NAME)."
+            return 1
+        fi
+        local -a all=() uniq=()
+        local b x y seen
+        for site in "${sites[@]}"; do
+            while IFS= read -r b; do
+                b="${b#origin/}"
+                [[ -z "$b" || "$b" == HEAD* ]] && continue
+                all+=("$b")
+            done < <(git -C "$(_site_path "$site")/wp-content" branch --all --format='%(refname:short)' 2>/dev/null)
+        done
+        for x in ${all[@]+"${all[@]}"}; do
+            seen=0
+            for y in ${uniq[@]+"${uniq[@]}"}; do [[ "$y" == "$x" ]] && { seen=1; break; }; done
+            [[ $seen -eq 0 ]] && uniq+=("$x")
+        done
+        if [[ ${#uniq[@]} -eq 0 ]]; then
+            log_error "No existing branches to pick from — give a new name: set branch add NAME"
+            return 1
+        fi
+        local i
+        for i in "${!uniq[@]}"; do printf '  [%d] %s\n' "$((i + 1))" "${uniq[i]}" >/dev/tty; done
+        printf 'Add/switch to which branch(es)? (names or numbers, e.g. %s or 1): ' "${uniq[0]}" >/dev/tty
+        local reply=""; read -r reply </dev/tty || reply=""
+        local -a picks=() chosen=()
+        IFS=', ' read -ra picks <<< "$reply"
+        local p
+        for p in ${picks[@]+"${picks[@]}"}; do
+            [[ -z "$p" ]] && continue
+            if [[ "$p" =~ ^[0-9]+$ ]]; then
+                if [[ "$p" -ge 1 && "$p" -le ${#uniq[@]} ]]; then chosen+=("${uniq[$((p - 1))]}"); fi
+            else
+                chosen+=("$p")
+            fi
+        done
+        if [[ ${#chosen[@]} -eq 0 ]]; then log_error "No branch selected."; return 1; fi
+        want="${chosen[*]}"
+    fi
+
+    local -a names=(); read -ra names <<< "$want"
+    local first="${names[0]}" nm
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if ! git -C "$repo" rev-parse --git-dir &>/dev/null; then
+            echo -e "  ${Yellow}skipped: no git repository in wp-content${Color_Off}"; continue
+        fi
+        if [[ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ]]; then
+            echo -e "  ${Yellow}skipped: working tree dirty (commit/stash first)${Color_Off}"; continue
+        fi
+        for nm in "${names[@]}"; do
+            if git -C "$repo" show-ref --verify --quiet "refs/heads/$nm"; then
+                echo "  branch '$nm' already exists"
+            elif git -C "$repo" branch "$nm" 2>/dev/null; then
+                echo -e "  ${Green}created '$nm'${Color_Off}"
+            else
+                echo -e "  ${Red}failed to create '$nm'${Color_Off}"; continue
+            fi
+            if [[ "$do_push" == "1" ]]; then
+                if git -C "$repo" push -u origin "$nm" &>/dev/null; then
+                    echo -e "  ${Green}pushed '$nm' to origin${Color_Off}"
+                else
+                    echo -e "  ${Yellow}push failed for '$nm' (no remote?)${Color_Off}"
+                fi
+            fi
+        done
+        if git -C "$repo" checkout --quiet "$first" 2>/dev/null; then
+            echo -e "  ${Green}on '$first'${Color_Off}"
+        else
+            echo -e "  ${Red}could not switch to '$first'${Color_Off}"
+        fi
+    done
+}
+
 #===============================================================================
 # FUNCTION EXPORTS
 #===============================================================================
@@ -1277,7 +1362,7 @@ export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setu
 export -f _site_path _site_header site_license_status site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
 export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
-export -f site_branch_merge
+export -f site_branch_merge site_branch_add
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https
 export -f update_repo git_wp wp_block_se wp_enable_se

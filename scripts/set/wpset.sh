@@ -222,16 +222,20 @@ EOF
 # Per-WHAT help: webwerk set branch help
 show_branch_help() {
     cat << EOF
-webwerk set branch — merge wp-content branches per site
+webwerk set branch — create/switch and merge wp-content branches per site
 
 Usage:
-  webwerk set branch merge [NAME]    merge the current branch into NAME
-                                     (default: live), then switch back
+  webwerk set branch add [NAME] [push]   create NAME if missing + switch to it
+                                         (local; add 'push' to push -u origin).
+                                         No NAME -> pick from existing branches
+                                         (one or more; missing ones are created)
+  webwerk set branch merge [NAME]        merge the current branch into NAME
+                                         (default: live), then switch back
 
 To LIST branches use 'webwerk get branch' (-l local / -r remote); for a repo
 overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
 
-merge never pushes (push with 'webwerk update -P' or manually) and never
+add and merge never push unless asked; merge never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
 target branch are skipped, and conflicting merges are aborted.
 
@@ -300,6 +304,8 @@ OUTPUT & FORMATTING:
   -t, --text-color TEXT COLOR  Output colored text
 
 GIT OPERATIONS (webwerk set branch help for details):
+  branch add [NAME] [push]    Create NAME if missing + switch to it (local;
+                              'push' also pushes). No NAME -> pick from existing
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
                               (to LIST branches: webwerk get branch -l/-r)
@@ -530,15 +536,27 @@ parse_arguments() {
                 return 0
                 ;;
             branch)
-                # WHAT form: webwerk set branch merge [NAME]
+                # WHAT form: webwerk set branch <add|merge> [NAME] [push]
+                #   add   -> create NAME if missing + switch to it (local; 'push' also
+                #            pushes to origin). No NAME -> pick from existing branches.
                 #   merge -> merge current branch into NAME (default live), no push
                 #   (listing branches is read-only -> 'webwerk get branch')
-                local b_sub="${2:-}" b_target="${3:-}"
-                case "$b_sub" in
-                    merge)      site_branch_merge "${b_target:-live}" ;;
+                case "${2:-}" in
+                    add)
+                        shift 2 2>/dev/null || shift $#   # drop 'branch' 'add'
+                        local add_name="" add_push=0 a
+                        for a in "$@"; do
+                            case "$a" in
+                                push|-p|--push) add_push=1 ;;
+                                -*) : ;;
+                                *) [[ -z "$add_name" ]] && add_name="$a" || add_name="$add_name $a" ;;
+                            esac
+                        done
+                        site_branch_add "$add_name" "$add_push" ;;
+                    merge)      site_branch_merge "${3:-live}" ;;
                     ""|show|list)
-                        log_error "branch listing moved to 'webwerk get branch' (-l local / -r remote); to merge use 'set branch merge [NAME]'."; exit 1 ;;
-                    *) log_error "branch: use merge [NAME] (defaults to 'live'); list branches with 'webwerk get branch'."; exit 1 ;;
+                        log_error "branch listing moved to 'webwerk get branch' (-l local / -r remote); use 'set branch add [NAME]' or 'set branch merge [NAME]'."; exit 1 ;;
+                    *) log_error "branch: use add [NAME] [push] | merge [NAME]; list branches with 'webwerk get branch'."; exit 1 ;;
                 esac
                 return 0
                 ;;
