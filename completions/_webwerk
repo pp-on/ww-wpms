@@ -166,7 +166,7 @@ _webwerk_update_targets() {
 _webwerk_get() {
     _arguments \
         '1: :_webwerk_get_targets' \
-        '2::action:(help)' \
+        '2::action:_webwerk_get_arg' \
         '(-s --sites)'{-s,--sites}'=[Specific sites (comma-separated)]:sites:_webwerk_site_names' \
         '(-a --all-sites)'{-a,--all-sites}'[All sites, pausing between each so you can read it]' \
         '(-A --all-sites-auto)'{-A,--all-sites-auto}'[All sites, no pause (also the default)]' \
@@ -178,9 +178,19 @@ _webwerk_get() {
         '(-h --help)'{-h,--help}'[Show help]'
 }
 
+# Second positional for `get`: plugin names after `plugin`, else just `help`.
+_webwerk_get_arg() {
+    if [[ "${words[2]}" == plugin ]]; then
+        _webwerk_content_names plugins
+    else
+        _values 'action' 'help'
+    fi
+}
+
 _webwerk_get_targets() {
     local targets=(
         'plugins:List plugins per site'
+        'plugin:Find which sites have a plugin (by NAME)'
         'themes:List themes per site'
         'core:Core version (+update) per site'
         'status:Full per-site status'

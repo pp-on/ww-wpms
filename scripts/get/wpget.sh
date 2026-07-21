@@ -113,6 +113,58 @@ get_plugins() {
     for_each_site plugin list "${fmt[@]}"
 }
 
+# get plugin NAME — find which sites have a plugin matching NAME.
+# Case-insensitive substring match on the plugin slug OR its human title. If a
+# site has no substring hit, fall back to an acronym match: NAME (>=2 chars) as
+# a prefix of the title's initials, so 'acf' finds 'Advanced Custom Fields'.
+# Only matching sites print. title is queried last so it's the only field that
+# may contain commas — the slug/status/version columns stay safe to split on.
+get_plugin() {
+    local needle="${1:-}"
+    if [[ -z "$needle" ]]; then
+        log_error "Usage: webwerk get plugin NAME [-s sites | -a]"
+        exit 1
+    fi
+    collect_site_dirs
+    local total=${#SITE_DIRS[@]} idx=0 site_dir name matches found=0
+    for site_dir in "${SITE_DIRS[@]}"; do
+        (( ++idx ))
+        matches=$($WP_CLI_PATH --path="$site_dir" plugin list \
+            --fields=name,status,version,update_version,title --format=csv 2>/dev/null \
+            | awk -F, -v n="${needle,,}" '
+                NR==1 { next }
+                {
+                    title = ""
+                    for (i = 5; i <= NF; i++) title = title (i > 5 ? "," : "") $i
+                    row = $1 "," $2 "," $3 "," $4
+                    if (index(tolower($1), n) || index(tolower(title), n)) {
+                        sub_rows[++s] = row; next
+                    }
+                    if (length(n) >= 2) {           # acronym fallback candidate
+                        m = split(tolower(title), w, /[^a-z0-9]+/)
+                        acr = ""
+                        for (j = 1; j <= m; j++) if (w[j] != "") acr = acr substr(w[j], 1, 1)
+                        if (index(acr, n) == 1) acr_rows[++a] = row
+                    }
+                }
+                END {
+                    if (s > 0)      { print "substring"; for (i = 1; i <= s; i++) print sub_rows[i] }
+                    else if (a > 0) { print "acronym";   for (i = 1; i <= a; i++) print acr_rows[i] }
+                }')
+        [[ -z "$matches" ]] && continue
+        maybe_pause "$found"
+        name="$(basename "$site_dir")"
+        local mode rows tag=""
+        mode="${matches%%$'\n'*}"   # first line: match mode
+        rows="${matches#*$'\n'}"    # remaining lines: the plugin rows
+        [[ "$mode" == acronym ]] && tag=" \033[2m(acronym)\033[0m"
+        echo -e "\033[36m== [$idx/$total] $name ==\033[0m$tag"
+        echo "name,status,version,update_version" | cat - <(echo "$rows") | column -t -s, | sed 's/^/  /'
+        found=1
+    done
+    (( found )) || echo "No site has a plugin matching '$needle'."
+}
+
 get_themes() {
     local fmt=(--fields=name,status,version,update_version)
     [[ -n "$FORMAT" ]] && fmt=(--format="$FORMAT")
@@ -356,6 +408,26 @@ Examples:
   webwerk get $topic --format count
 EOF
             ;;
+        plugin)
+            cat <<EOF
+webwerk get plugin — find which sites have a plugin
+
+Searches each selected site for a plugin whose slug OR human title contains
+NAME (case-insensitive substring), so 'anti-spam' finds the plugin with slug
+'akismet'. If a site has no substring hit, NAME (2+ chars) is tried as an
+acronym of the title's initials, so 'acf' finds 'Advanced Custom Fields'.
+Only sites with a match are printed, with the plugin's status, version and
+available update. Read-only.
+
+Usage:
+  webwerk get plugin NAME [-s sites | -a]
+
+Examples:
+  webwerk get plugin woocommerce -s acme
+  webwerk get plugin anti-spam
+  webwerk get plugin acf -a
+EOF
+            ;;
         core)
             cat <<EOF
 webwerk get core — WordPress core version per site
@@ -453,6 +525,7 @@ Usage:
 
 WHAT:
   plugins              List plugins per site
+  plugin NAME          Find which sites have a plugin matching NAME
   themes               List themes per site
   core                 Core version (+ update available) per site
   status               Full per-site status (core + plugins + themes)
@@ -475,6 +548,7 @@ OPTIONS:
 
 EXAMPLES:
   webwerk get plugins
+  webwerk get plugin woocommerce -a
   webwerk get plugins -s acme --format json
   webwerk get brief --outdated
   webwerk get url -a
@@ -543,6 +617,7 @@ main() {
 
     case "$what" in
         plugins) get_plugins ;;
+        plugin)  get_plugin "${positionals[0]:-}" ;;
         themes)  get_themes ;;
         core)    get_core ;;
         status)  get_status ;;
@@ -553,7 +628,7 @@ main() {
         db)      get_db "${positionals[0]:-}" ;;
         "")      show_help; exit 0 ;;
         *)
-            log_error "Unknown target: '$what'. Use: plugins, themes, core, status, brief, git, branch, url, db."
+            log_error "Unknown target: '$what'. Use: plugins, plugin, themes, core, status, brief, git, branch, url, db."
             exit 1 ;;
     esac
 }

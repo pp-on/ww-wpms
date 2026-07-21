@@ -74,7 +74,7 @@ end
 
 function __ww_get_no_target
     __ww_get_ctx
-    and not __fish_seen_subcommand_from plugins themes core status brief git branch url db
+    and not __fish_seen_subcommand_from plugins plugin themes core status brief git branch url db
 end
 
 function __ww_install_ctx
@@ -293,6 +293,7 @@ complete -c webwerk -n __ww_set_ctx -s h -l help                           -d 'S
 
 # ── get: read-only retrieval ──────────────────────────────────────────────────
 complete -c webwerk -f -n __ww_get_no_target -a plugins -d 'List plugins per site'
+complete -c webwerk -f -n __ww_get_no_target -a plugin  -d 'Find which sites have a plugin (by NAME)'
 complete -c webwerk -f -n __ww_get_no_target -a themes  -d 'List themes per site'
 complete -c webwerk -f -n __ww_get_no_target -a core    -d 'Core version (+update) per site'
 complete -c webwerk -f -n __ww_get_no_target -a status  -d 'Full per-site status'
@@ -301,6 +302,7 @@ complete -c webwerk -f -n __ww_get_no_target -a git     -d 'Git overview of each
 complete -c webwerk -f -n __ww_get_no_target -a branch  -d 'List branches in each wp-content repo (-l/-r)'
 complete -c webwerk -f -n __ww_get_no_target -a url     -d 'siteurl / home per site'
 complete -c webwerk -f -n __ww_get_no_target -a db      -d 'Run a query per site (warns on non-SELECT)'
+complete -c webwerk -f -n '__ww_get_ctx; and __ww_after_word plugin' -a '(__ww_content_names plugins)' -d 'Installed plugin'
 complete -c webwerk -n __ww_get_ctx -s s -l sites    -x -a '(__ww_site_names)' -d 'Comma-separated site names'
 complete -c webwerk -n __ww_get_ctx -s a -l all-sites       -d 'All sites, pausing between each so you can read it'
 complete -c webwerk -n __ww_get_ctx -s A -l all-sites-auto  -d 'All sites, no pause (also the default)'

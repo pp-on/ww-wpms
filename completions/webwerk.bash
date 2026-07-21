@@ -13,7 +13,7 @@ _webwerk() {
 
     local commands='install update set get remove doctor help'
     local update_targets='core plugins plugin themes theme'
-    local get_targets='plugins themes core status brief git branch url db'
+    local get_targets='plugins plugin themes core status brief git branch url db'
     local install_modes='local bare ddev'
 
     # Helper: check if a word exists in the command line
@@ -222,7 +222,7 @@ _webwerk() {
                 *)
                     local has_target=false w
                     for w in "${words[@]}"; do
-                        case "$w" in plugins|themes|core|status|brief|git|branch|url|db) has_target=true; break ;; esac
+                        case "$w" in plugins|plugin|themes|core|status|brief|git|branch|url|db) has_target=true; break ;; esac
                     done
                     if [[ "$has_target" == false ]]; then
                         COMPREPLY=( $(compgen -W "$get_targets help" -- "$cur") )
