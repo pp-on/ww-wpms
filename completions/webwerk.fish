@@ -138,6 +138,7 @@ complete -c webwerk -n __ww_install_ctx -l wp-admin-user -l wpu       -r -d 'Adm
 complete -c webwerk -n __ww_install_ctx -l wp-admin-pass -l wpp       -r -d 'Admin password'
 complete -c webwerk -n __ww_install_ctx -s e -l wp-admin-email -l wpe -r -d 'Admin email'
 complete -c webwerk -n __ww_install_ctx -s T -l theme         -d 'Activate site theme after clone (auto-detect, or =NAME)'
+complete -c webwerk -n __ww_install_ctx -l no-activate       -d "Don't activate cloned plugins (default: activate all)"
 complete -c webwerk -n __ww_install_ctx -s r -l repo-url       -r -d 'Repository URL to clone'
 complete -c webwerk -n __ww_install_ctx -s g -l git-user       -r -d 'Git username'
 complete -c webwerk -n __ww_install_ctx -s p -l git-protocol   -r -d 'Git protocol' -a 'https\tHTTPS ssh\tSSH'

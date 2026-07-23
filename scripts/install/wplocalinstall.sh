@@ -363,10 +363,14 @@ clone_repository() {
     
     if git clone "$REPO_URL" wp-content; then
         log_success "Repository cloned successfully"
-        
-        log_info "Activating all plugins"
-        $WP_CLI_PATH plugin activate --all
-        log_success "All plugins activated"
+
+        if [[ "${ACTIVATE_PLUGINS:-true}" == "true" ]]; then
+            log_info "Activating all plugins"
+            $WP_CLI_PATH plugin activate --all
+            log_success "All plugins activated"
+        else
+            log_info "Skipping plugin activation (--no-activate)"
+        fi
     else
         log_error "Failed to clone repository: $REPO_URL"
         return 1
@@ -610,6 +614,7 @@ WORDPRESS OPTIONS:
                         auto-detect: try "webwerk", then the dir name, then the
                         dir name with a trailing -suffix stripped (e.g.
                         acme-relaunch -> acme); activates the first one installed
+  --no-activate         Don't activate the cloned plugins (default: activate all)
 
 GIT OPTIONS:
   -r, --repo-url=URL    Full repository URL to clone
@@ -651,6 +656,7 @@ parse_arguments() {
     USE_WINDOWS_HOSTS=false
     ACTIVATE_THEME=false
     THEME_NAME=""
+    ACTIVATE_PLUGINS=true   # activate all cloned plugins by default; --no-activate opts out
 
     # First argument is the installation mode (local/bare/ddev)
     local mode="${1:-local}"
@@ -798,6 +804,9 @@ parse_arguments() {
                 ;;
             -T|--theme)
                 ACTIVATE_THEME=true
+                ;;
+            --no-activate)
+                ACTIVATE_PLUGINS=false
                 ;;
             # Short aliases for the long options above (take the next arg as value)
             -w) [[ -z "${2:-}" ]] && { log_error "-w requires an argument"; exit 1; }; WP_CLI_PATH="$2"; skip_next=true ;;
