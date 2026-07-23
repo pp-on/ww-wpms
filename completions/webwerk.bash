@@ -193,6 +193,7 @@ _webwerk() {
                 --git -G --git-pull -u --update
                 -i --install-plugin
                 -y --copy-plugins
+                --no-activate
                 -f --acf-pro-lk
                 -m --wp-migrate-db-pro
                 -k --akeeba-license --setup-all-licenses

@@ -170,6 +170,9 @@ Actions:
   remove NAME       delete a plugin
   (to list plugins, use 'webwerk get plugins')
 
+Options:
+  --no-activate     with install/copy, don't activate the plugin (default: activate)
+
 Site selection (may appear anywhere on the line):
   -s NAMES   comma-separated site names under the base dir
   -a         all sites under the base dir, prompting y/N per site
@@ -320,6 +323,7 @@ PLUGIN MANAGEMENT:
   plugin deactivate NAME       Deactivate a plugin
   plugin remove NAME           Delete a plugin
   (to list plugins, use 'webwerk get plugins')
+  --no-activate                With install/copy, skip activating (default: activate)
   Flag aliases for the first three:
   -i, --install-plugin PLUGIN  = plugin install
   -y, --copy-plugins FROM      = plugin copy
@@ -712,6 +716,9 @@ parse_arguments() {
                 local _sr_new="$1"
                 do_search_replace "$_sr_old" "$_sr_new"
                 ;;
+            --no-activate)
+                # Handled in main() pre-scan (sets ACTIVATE_PLUGINS); no-op here.
+                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -758,6 +765,14 @@ main() {
     type colors &>/dev/null && colors
 
     sites=()
+
+    # Activate a plugin after install/copy by default; --no-activate opts out.
+    # Pre-scanned here (not in parse_arguments) because plugin actions execute
+    # inline during parsing, so the flag must take effect regardless of position.
+    ACTIVATE_PLUGINS=true
+    for arg in "$@"; do
+        [[ "$arg" == "--no-activate" ]] && ACTIVATE_PLUGINS=false
+    done
 
     # Set verbose mode for search functions
     verbose=1

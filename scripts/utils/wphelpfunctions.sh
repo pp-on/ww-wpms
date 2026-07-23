@@ -447,8 +447,12 @@ copy_plugins() {
             cp "$from" "${target}" -r
             echo "Done"
 
-            out "Activating $plugin_name" 2
-            ( cd "${WORDPRESS_BASE_DIR}/${site}" && "${WP_CLI_PATH}" plugin activate "$plugin_name" )
+            if [[ "${ACTIVATE_PLUGINS:-true}" == "true" ]]; then
+                out "Activating $plugin_name" 2
+                ( cd "${WORDPRESS_BASE_DIR}/${site}" && "${WP_CLI_PATH}" plugin activate "$plugin_name" )
+            else
+                out "Skipping activation of $plugin_name (--no-activate)" 3
+            fi
         fi
     done
 }
@@ -493,7 +497,11 @@ install_plugins() {
                 out "${plugin_name} already exists" 3
             else
                 "${WP_CLI_PATH}" plugin install "$plugin_name"
-                "${WP_CLI_PATH}" plugin activate "$plugin_name"
+                if [[ "${ACTIVATE_PLUGINS:-true}" == "true" ]]; then
+                    "${WP_CLI_PATH}" plugin activate "$plugin_name"
+                else
+                    out "Skipping activation of $plugin_name (--no-activate)" 3
+                fi
             fi
         )
     done

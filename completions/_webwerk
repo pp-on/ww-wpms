@@ -225,6 +225,7 @@ _webwerk_set() {
         '(-u --update)'{-u,--update}'=[Update plugin (or all)]:plugin' \
         '(-i --install-plugin)'{-i,--install-plugin}'=[Install plugin on selected sites]:plugin' \
         '(-y --copy-plugins)'{-y,--copy-plugins}'=[Copy plugin from path]:path:_files' \
+        "--no-activate[With plugin install/copy, don't activate (default: activate)]" \
         '(-f --acf-pro-lk)'{-f,--acf-pro-lk}'[Setup ACF Pro license key]' \
         '(-m --wp-migrate-db-pro)'{-m,--wp-migrate-db-pro}'[Setup WP Migrate DB Pro license key]' \
         '(-k --akeeba-license)'{-k,--akeeba-license}'[Setup Akeeba Download ID]' \
