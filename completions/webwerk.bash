@@ -170,8 +170,8 @@ _webwerk() {
                 license) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
                 remote) COMPREPLY=( $(compgen -W 'show add set' -- "$cur") ); return 0 ;;
                 url) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
-                config) COMPREPLY=( $(compgen -W 'debug errors indexing https htaccess help' -- "$cur") ); return 0 ;;
-                debug|indexing) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
+                config) COMPREPLY=( $(compgen -W 'debug errors indexing hardening https htaccess help' -- "$cur") ); return 0 ;;
+                debug|indexing|hardening) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 errors) COMPREPLY=( $(compgen -W 'hide show' -- "$cur") ); return 0 ;;
                 user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
                 branch) COMPREPLY=( $(compgen -W 'add merge help' -- "$cur") ); return 0 ;;

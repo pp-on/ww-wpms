@@ -215,8 +215,14 @@ Usage:
   webwerk set config debug on|off    toggle WP_DEBUG        (= -x on|off)
   webwerk set config errors hide|show   hide/show PHP errors   (hide = -z)
   webwerk set config indexing on|off search-engine indexing (off = -r)
+  webwerk set config hardening on|off plugin-free wp-config.php hardening
   webwerk set config https           force HTTPS in wp-config + URLs (= -S)
   webwerk set config htaccess        create/update .htaccess (= --htaccess)
+
+'hardening on' adds a marked block to wp-config.php: DISALLOW_FILE_EDIT,
+DISALLOW_UNFILTERED_HTML, WP_AUTO_UPDATE_CORE=minor, disables xmlrpc and the
+generator tag. 'off' removes it. Server-level rules (block PHP in uploads,
+HSTS) come from the nginx '-X' install block or the .htaccess ('config htaccess').
 
 Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
 EOF
@@ -346,7 +352,7 @@ DATABASE:
   -R, --search-replace OLD NEW  Run wp search-replace across selected sites
 
 WORDPRESS CONFIGURATION (webwerk set config help for details):
-  config [debug|errors|indexing|https|htaccess …]  View/toggle the settings below
+  config [debug|errors|indexing|hardening|https|htaccess …]  View/toggle the settings below
   -x, --wp-debug MODE         Enable/disable debug mode (on/off)
   -z, --hide-errors           Hide WordPress errors
   -r, --disable-search-engine-indexing  Disable search engine indexing
@@ -572,9 +578,10 @@ parse_arguments() {
                     debug)    [[ "$c_val" =~ ^(on|off)$ ]]   || { log_error "config debug on|off"; exit 1; };    site_config debug "$c_val" ;;
                     errors)   [[ "$c_val" =~ ^(hide|show)$ ]] || { log_error "config errors hide|show"; exit 1; }; site_config errors "$c_val" ;;
                     indexing) [[ "$c_val" =~ ^(on|off)$ ]]   || { log_error "config indexing on|off"; exit 1; }; site_config indexing "$c_val" ;;
+                    hardening) [[ -z "$c_val" || "$c_val" =~ ^(on|off)$ ]] || { log_error "config hardening on|off"; exit 1; }; site_config hardening "${c_val:-on}" ;;
                     https)    wp_force_https ;;
                     htaccess) site_config htaccess ;;
-                    *) log_error "config: use [show] | debug on|off | errors hide|show | indexing on|off | https | htaccess"; exit 1 ;;
+                    *) log_error "config: use [show] | debug on|off | errors hide|show | indexing on|off | hardening on|off | https | htaccess"; exit 1 ;;
                 esac
                 return 0
                 ;;

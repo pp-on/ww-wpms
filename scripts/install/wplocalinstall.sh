@@ -467,7 +467,22 @@ RewriteRule ^index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . $target_directory/index.php [L]
+
+# webwerk hardening: block PHP execution in uploads
+RewriteRule ^wp-content/uploads/.*\.php$ - [F,L]
 </IfModule>
+
+# webwerk hardening: security headers (HSTS requires the site to be HTTPS)
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# webwerk hardening: protect sensitive files
+<FilesMatch "^(wp-config\.php|readme\.html|xmlrpc\.php)$">
+Require all denied
+</FilesMatch>
 EOF
 
     chmod 644 .htaccess
@@ -498,9 +513,14 @@ setup_nginx_config() {
         deny all;
     }
 
+    location ~* /wp-content/uploads/.*\.php\$ {
+        deny all;
+    }
+
     add_header X-Content-Type-Options nosniff;
     add_header X-Frame-Options SAMEORIGIN;
-    add_header X-XSS-Protection \"1; mode=block\";"
+    add_header X-XSS-Protection \"1; mode=block\";
+    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;"
     fi
 
     cat > nginx.conf << EOF
@@ -536,7 +556,17 @@ EOF
 }
 
 setup_webserver_config() {
-    if [[ "${WEBSERVER_TYPE:-nginx}" != "apache" ]]; then
+    # Auto-detect the stack when --lemp/--lamp wasn't given (detect_webserver is
+    # exported by the dispatcher; fall back to nginx if it isn't available).
+    if [[ -z "${WEBSERVER_TYPE:-}" ]]; then
+        if type detect_webserver >/dev/null 2>&1; then
+            WEBSERVER_TYPE="$(detect_webserver)"
+        else
+            WEBSERVER_TYPE=nginx
+        fi
+        log_info "Web server not specified, auto-detected: $WEBSERVER_TYPE (override with --lemp/--lamp)"
+    fi
+    if [[ "$WEBSERVER_TYPE" != "apache" ]]; then
         setup_nginx_config
     else
         setup_htaccess
@@ -626,9 +656,10 @@ OTHER OPTIONS:
   -w, --wp-cli=PATH     Path to WP-CLI executable (default: wp)
   -d, --target-dir=DIR  Target installation directory (default: current dir)
   -n, --nip-io          Use nip.io for DNS (no hosts file needed, DDEV mode only)
-  --lemp, --nginx       Generate nginx.conf (LEMP stack, default)
+  --lemp, --nginx       Generate nginx.conf (LEMP stack)
   --lamp, --apache      Generate .htaccess instead of nginx.conf (LAMP stack)
-  -X, --production      Add security hardening to nginx.conf (deny xmlrpc, headers, etc.)
+                        (default: auto-detect the running web server; nginx if unsure)
+  -X, --production      Add nginx security hardening (deny xmlrpc/uploads-PHP, headers, HSTS)
   -m, --multisite       Install as WordPress Multisite (wp core multisite-install)
   -s, --subdomains      Use subdomain network (default: subdirectory); requires --multisite
   -v, --verbose         Show full install log instead of the progress bar

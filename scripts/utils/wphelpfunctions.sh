@@ -826,6 +826,7 @@ site_config() {
               debug)    wp_debug "$value" ;;
               errors)   if [[ "$value" == show ]]; then wp_show_errors; else wp_hide_errors; fi ;;
               indexing) if [[ "$value" == off ]]; then wp_block_se; else wp_enable_se; fi ;;
+              hardening) if [[ "$value" == off ]]; then wp_harden off; else wp_harden on; fi ;;
               htaccess) htaccess ;;
           esac )
     done
@@ -1001,11 +1002,63 @@ RewriteRule ^index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . $target_directory/index.php [L]
+
+# webwerk hardening: block PHP execution in uploads
+RewriteRule ^wp-content/uploads/.*\.php$ - [F,L]
 </IfModule>
+
+# webwerk hardening: security headers (HSTS requires the site to be HTTPS)
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# webwerk hardening: protect sensitive files
+<FilesMatch "^(wp-config\.php|readme\.html|xmlrpc\.php)$">
+Require all denied
+</FilesMatch>
 EOF
 
     chmod "${HTACCESS_FILE_PERMISSIONS:-644}" .htaccess
     echo "Done"
+}
+
+# Detect whether this machine runs nginx or apache. Prints "nginx" or "apache".
+# Signal order: running process -> installed config dir / binary -> fallback nginx.
+# (Detection reflects the machine running the command, not a remote host.)
+detect_webserver() {
+    if pgrep -x nginx >/dev/null 2>&1; then echo "nginx"; return; fi
+    if pgrep -x apache2 >/dev/null 2>&1 || pgrep -x httpd >/dev/null 2>&1; then echo "apache"; return; fi
+    if [[ -d /etc/nginx ]] || command -v nginx >/dev/null 2>&1; then echo "nginx"; return; fi
+    if [[ -d /etc/apache2 || -d /etc/httpd ]] || command -v apache2ctl >/dev/null 2>&1 || command -v httpd >/dev/null 2>&1; then
+        echo "apache"; return
+    fi
+    echo "nginx"
+}
+
+# Plugin-free hardening block in wp-config.php (server-agnostic). Idempotent via
+# markers: on = (re)write the block, off = remove it. Run inside a site dir.
+wp_harden() {
+    local mode="${1:-on}"
+    local begin="// BEGIN webwerk hardening" end="// END webwerk hardening"
+    # Drop any existing block first, so on is a clean rewrite and off removes it.
+    sed -i "\#$begin#,\#$end#d" wp-config.php 2>/dev/null || true
+    if [[ "$mode" == "off" ]]; then
+        out "Hardening block removed from wp-config.php" 4
+        return 0
+    fi
+    cat <<EOF >> wp-config.php
+
+$begin
+if ( ! defined('DISALLOW_FILE_EDIT') )       define('DISALLOW_FILE_EDIT', true);
+if ( ! defined('DISALLOW_UNFILTERED_HTML') ) define('DISALLOW_UNFILTERED_HTML', true);
+if ( ! defined('WP_AUTO_UPDATE_CORE') )      define('WP_AUTO_UPDATE_CORE', 'minor');
+add_filter('xmlrpc_enabled', '__return_false');
+remove_action('wp_head', 'wp_generator');
+$end
+EOF
+    out "Hardening block written to wp-config.php" 4
 }
 
 #===============================================================================
@@ -1372,7 +1425,7 @@ export -f site_remote_show site_remote_add site_remote_set site_url_show site_ur
 export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
 export -f site_branch_merge site_branch_add
 export -f wp_new_user wp_rights
-export -f htaccess wp_hide_errors wp_debug wp_force_https
+export -f htaccess wp_hide_errors wp_debug wp_force_https wp_harden detect_webserver
 export -f update_repo git_wp wp_block_se wp_enable_se
 export -f wp_getCPT assign_env
 
