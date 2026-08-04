@@ -240,11 +240,20 @@ Usage:
                                          (one or more; missing ones are created)
   webwerk set branch merge [NAME]        merge the current branch into NAME
                                          (default: live), then switch back
+  webwerk set branch fetch [NAME...]     fetch origin, then create a local
+                                         branch for every remote branch that
+                                         has none yet (no NAME = all). A clone
+                                         only makes the default branch local,
+                                         so this brings 'live', 'staging', …
+                                         into an already installed site.
+                                         Nothing is checked out or pushed; the
+                                         current branch stays as it is.
+                                         (at install time: install -B)
 
 To LIST branches use 'webwerk get branch' (-l local / -r remote); for a repo
 overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
 
-add and merge never push unless asked; merge never
+add, merge and fetch never push unless asked; merge never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
 target branch are skipped, and conflicting merges are aborted.
 
@@ -317,6 +326,8 @@ GIT OPERATIONS (webwerk set branch help for details):
                               'push' also pushes). No NAME -> pick from existing
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
+  branch fetch [NAME...]      Fetch origin + make every remote branch local
+                              (no NAME = all); no checkout, no push
                               (to LIST branches: webwerk get branch -l/-r)
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
@@ -546,10 +557,12 @@ parse_arguments() {
                 return 0
                 ;;
             branch)
-                # WHAT form: webwerk set branch <add|merge> [NAME] [push]
+                # WHAT form: webwerk set branch <add|merge|fetch> [NAME] [push]
                 #   add   -> create NAME if missing + switch to it (local; 'push' also
                 #            pushes to origin). No NAME -> pick from existing branches.
                 #   merge -> merge current branch into NAME (default live), no push
+                #   fetch -> fetch origin + create a local branch for each remote one
+                #            that has none yet (no NAME = all); no checkout, no push
                 #   (listing branches is read-only -> 'webwerk get branch')
                 case "${2:-}" in
                     add)
@@ -564,9 +577,20 @@ parse_arguments() {
                         done
                         site_branch_add "$add_name" "$add_push" ;;
                     merge)      site_branch_merge "${3:-live}" ;;
+                    fetch)
+                        # fetch -> make every remote branch local (no NAME = all)
+                        shift 2 2>/dev/null || shift $#   # drop 'branch' 'fetch'
+                        local fetch_names="" f
+                        for f in "$@"; do
+                            case "$f" in
+                                -*) : ;;
+                                *) fetch_names="${fetch_names:+$fetch_names }$f" ;;
+                            esac
+                        done
+                        site_branch_fetch "$fetch_names" ;;
                     ""|show|list)
                         log_error "branch listing moved to 'webwerk get branch' (-l local / -r remote); use 'set branch add [NAME]' or 'set branch merge [NAME]'."; exit 1 ;;
-                    *) log_error "branch: use add [NAME] [push] | merge [NAME]; list branches with 'webwerk get branch'."; exit 1 ;;
+                    *) log_error "branch: use add [NAME] [push] | merge [NAME] | fetch [NAME...]; list branches with 'webwerk get branch'."; exit 1 ;;
                 esac
                 return 0
                 ;;

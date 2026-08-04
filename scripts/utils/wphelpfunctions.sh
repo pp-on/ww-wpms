@@ -1410,6 +1410,67 @@ site_branch_add() {
     done
 }
 
+# set branch fetch [NAME...] — per site's wp-content: fetch from origin, then
+# create a local tracking branch for every remote branch that has none yet. A
+# clone only makes the default branch local (main), so this is how an already
+# installed site gets 'live', 'staging', … locally. With NAMEs, only those are
+# considered; a name without a remote branch is reported and skipped. Nothing is
+# checked out, nothing is pushed — the current branch and working tree are left
+# untouched.
+site_branch_fetch() {
+    local want="$1"
+    local -a names=()
+    [[ -n "$want" ]] && read -ra names <<< "$want"
+    local site sp repo b created skipped found n
+
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if ! git -C "$repo" rev-parse --git-dir &>/dev/null; then
+            echo -e "  ${Yellow}skipped: no git repository in wp-content${Color_Off}"; continue
+        fi
+        if ! git -C "$repo" remote | grep -q .; then
+            echo -e "  ${Yellow}skipped: no remote configured${Color_Off}"; continue
+        fi
+        if ! git -C "$repo" fetch --prune origin &>/dev/null; then
+            echo -e "  ${Red}fetch failed (remote unreachable?)${Color_Off}"; continue
+        fi
+
+        # remote branches (lstrip=3 drops "refs/remotes/origin/"; HEAD is not a branch)
+        local -a remotes=()
+        while IFS= read -r b; do
+            [[ -z "$b" || "$b" == "HEAD" ]] && continue
+            remotes+=("$b")
+        done < <(git -C "$repo" for-each-ref --format='%(refname:lstrip=3)' 'refs/remotes/origin/**')
+
+        local -a cands=()
+        if [[ ${#names[@]} -gt 0 ]]; then
+            for n in "${names[@]}"; do
+                found=0
+                for b in ${remotes[@]+"${remotes[@]}"}; do [[ "$b" == "$n" ]] && { found=1; break; }; done
+                if [[ $found -eq 1 ]]; then cands+=("$n")
+                else echo -e "  ${Yellow}no remote branch '$n'${Color_Off}"; fi
+            done
+        else
+            cands=(${remotes[@]+"${remotes[@]}"})
+        fi
+
+        created=0; skipped=0
+        for b in ${cands[@]+"${cands[@]}"}; do
+            if git -C "$repo" show-ref --verify --quiet "refs/heads/$b"; then
+                skipped=$((skipped + 1)); continue
+            fi
+            if git -C "$repo" branch --track "$b" "origin/$b" &>/dev/null; then
+                echo -e "  ${Green}created '$b'${Color_Off} (tracking origin/$b)"
+                created=$((created + 1))
+            else
+                echo -e "  ${Red}failed to create '$b'${Color_Off}"
+            fi
+        done
+        echo "  $created new, $skipped already local"
+    done
+}
+
 #===============================================================================
 # FUNCTION EXPORTS
 #===============================================================================
@@ -1423,7 +1484,7 @@ export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setu
 export -f _site_path _site_header site_license_status site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
 export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
-export -f site_branch_merge site_branch_add
+export -f site_branch_merge site_branch_add site_branch_fetch
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https wp_harden detect_webserver
 export -f update_repo git_wp wp_block_se wp_enable_se

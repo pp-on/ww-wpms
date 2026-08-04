@@ -55,6 +55,13 @@ function __ww_branch_names
     end | sort -u
 end
 
+# Remote branch names (without the origin/ prefix) — for 'set branch fetch'
+function __ww_branch_names_remote
+    for d in wp-content */wp-content
+        git -C $d for-each-ref --format='%(refname:lstrip=3)' 'refs/remotes/origin/**' 2>/dev/null
+    end | grep -v '^HEAD$' | sort -u
+end
+
 # Installed plugin/theme names in the current dir's site(s); comma lists ok
 function __ww_content_names # plugins|themes
     set -l kind $argv[1]
@@ -260,8 +267,10 @@ complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from config;
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from debug indexing hardening; and not __fish_seen_subcommand_from on off' -a 'on off' -d 'state'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from errors; and not __fish_seen_subcommand_from hide show' -a 'hide show' -d 'errors display'
 complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a branch -d 'Git branches: branch [merge [NAME]]'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge' -a add   -d 'Create NAME if missing + switch (local; add "push" to push)'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge' -a merge -d 'Merge current branch into NAME (default live), no push'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge fetch' -a add   -d 'Create NAME if missing + switch (local; add "push" to push)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge fetch' -a merge -d 'Merge current branch into NAME (default live), no push'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge fetch' -a fetch -d 'Make every remote branch local (no NAME = all)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from fetch' -a '(__ww_branch_names_remote)' -d 'Remote branch to make local'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from merge' -a '(__ww_branch_names)' -d 'Target branch'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a '(__ww_branch_names)' -d 'Branch to create/switch'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a push -d 'Also push -u origin'
