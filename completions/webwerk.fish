@@ -320,6 +320,7 @@ complete -c webwerk -n __ww_get_ctx -s a -l all-sites       -d 'All sites, pausi
 complete -c webwerk -n __ww_get_ctx -s A -l all-sites-auto  -d 'All sites, no pause (also the default)'
 complete -c webwerk -n __ww_get_ctx -s l -l local           -d 'branch: local branches only'
 complete -c webwerk -n __ww_get_ctx -s r -l remote          -d 'branch: remote branches only'
+complete -c webwerk -n __ww_get_ctx -l no-fetch             -d "branch: don't refresh remote refs before listing"
 complete -c webwerk -n __ww_get_ctx -l format        -r -d 'Output format (table|csv|json|count|yaml)'
 complete -c webwerk -n __ww_get_ctx -l errors           -d 'brief: only broken sites'
 complete -c webwerk -n __ww_get_ctx -l outdated         -d 'brief: only sites with updates'

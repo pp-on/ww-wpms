@@ -25,7 +25,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/set/wpset.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch fetch`). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 

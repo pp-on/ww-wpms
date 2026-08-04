@@ -31,6 +31,7 @@ WP_CLI_PATH="${WP_CLI_PATH:-wp}"
 FORMAT=""   # optional --format passthrough for `wp ... list`
 pause_between=0   # -a pauses between sites so each can be read; -A / default stream
 BRANCH_SCOPE="both"   # get branch: both | local (-l) | remote (-r)
+BRANCH_FETCH=1        # get branch: refresh remote refs before listing (--no-fetch = off)
 
 # Helper functions are loaded and exported by the webwerk dispatcher.
 
@@ -356,6 +357,9 @@ get_git() {
 get_branch() {
     collect_site_dirs
     local total=${#SITE_DIRS[@]} idx=0 site_dir name repo
+    # keep an unreachable remote from hanging a read command
+    local BRANCH_FETCH_TIMEOUT=""
+    if command -v timeout &>/dev/null; then BRANCH_FETCH_TIMEOUT="timeout 10"; fi
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
         maybe_pause $(( idx - 1 ))
@@ -365,6 +369,16 @@ get_branch() {
         if ! git -C "$repo" rev-parse --is-inside-work-tree &>/dev/null; then
             echo -e "  \033[33mno git repo in wp-content\033[0m"
             continue
+        fi
+        # Refresh the remote-tracking refs first, otherwise "remote:" shows the
+        # state at clone time, not what is on origin now. Only refs/remotes is
+        # touched — no local branch, no working tree, no site state. --no-fetch
+        # (or -l, which needs no remote data) skips it.
+        if [[ "$BRANCH_FETCH" == "1" && "$BRANCH_SCOPE" != "local" ]] \
+           && git -C "$repo" remote | grep -q .; then
+            if ! GIT_TERMINAL_PROMPT=0 $BRANCH_FETCH_TIMEOUT git -C "$repo" fetch --prune --quiet origin 2>/dev/null; then
+                echo -e "  \033[33mfetch failed — remote list may be stale\033[0m"
+            fi
         fi
         if [[ "$BRANCH_SCOPE" != "remote" ]]; then
             echo -e "  \033[33mlocal:\033[0m"
@@ -482,10 +496,17 @@ webwerk get branch — list branches in each site's wp-content repo
 
 Per site, lists the branches in wp-content. With no flag both local and remote
 branches are shown; -l restricts to local, -r to remote. Read-only.
-(To merge a branch, use 'webwerk set branch merge [NAME]'.)
+
+Before listing, the remote refs are refreshed (git fetch --prune), so branches
+created on origin after your clone do show up. That only updates refs/remotes —
+no local branch, no working tree, no site state is touched. --no-fetch skips it
+(and -l never fetches, since local branches need no remote data).
+
+To make those remote branches local, use 'webwerk set branch fetch [NAME...]';
+to merge a branch, 'webwerk set branch merge [NAME]'.
 
 Usage:
-  webwerk get branch [-l | -r] [-s sites | -a]
+  webwerk get branch [-l | -r] [--no-fetch] [-s sites | -a]
 EOF
             ;;
         url)
@@ -591,6 +612,8 @@ main() {
                 BRANCH_SCOPE="local"; shift ;;
             -r|--remote)
                 BRANCH_SCOPE="remote"; shift ;;
+            --no-fetch)
+                BRANCH_FETCH=0; shift ;;
             --format)
                 require_arg "$1" "${2:-}"
                 FORMAT="$2"; shift 2 ;;
