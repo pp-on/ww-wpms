@@ -93,6 +93,7 @@ _webwerk_install() {
         '(-e --wp-admin-email --wpe)'{-e,--wp-admin-email,--wpe}'=[Admin email]:email' \
         '(-T --theme)'{-T,--theme}'=[Activate site theme after clone (auto-detect, or =NAME)]::theme' \
         "--no-activate[Don't activate cloned plugins (default: activate all)]" \
+        '(-B --all-branches)'{-B,--all-branches}'[Create a local branch for every remote branch]' \
         '(-r --repo-url)'{-r,--repo-url}'=[Repository URL to clone]:url' \
         '(-g --git-user)'{-g,--git-user}'=[Git username]:user' \
         '(-p --git-protocol)'{-p,--git-protocol}'=[Git protocol]:protocol:(https ssh)' \

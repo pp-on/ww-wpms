@@ -348,6 +348,33 @@ install_wordpress() {
     log_info "Admin credentials - User: $WP_ADMIN_USER, Password: $WP_ADMIN_PASSWORD"
 }
 
+# git clone fetches every branch but only creates a local one for the default
+# branch. Create a local tracking branch for each remaining remote branch, so
+# `webwerk get branch -l` / `set branch` see them without an extra checkout.
+# $1 = repository directory
+track_all_branches() {
+    local repo_dir="$1"
+    local created=0 branch
+
+    log_info "Creating local branches for all remote branches"
+
+    # lstrip=3 drops "refs/remotes/origin/"; refs/remotes/origin/HEAD is skipped
+    while read -r branch; do
+        [[ -z "$branch" || "$branch" == "HEAD" ]] && continue
+        # already checked out (default branch) or otherwise present
+        git -C "$repo_dir" show-ref --verify --quiet "refs/heads/$branch" && continue
+
+        if git -C "$repo_dir" branch --track "$branch" "origin/$branch" >/dev/null 2>&1; then
+            log_info "  branch: $branch"
+            created=$((created + 1))
+        else
+            log_warning "  could not create branch: $branch"
+        fi
+    done < <(git -C "$repo_dir" for-each-ref --format='%(refname:lstrip=3)' 'refs/remotes/origin/**')
+
+    log_success "$created additional branch(es) available locally"
+}
+
 clone_repository() {
     if [[ -z "${REPO_URL:-}" ]]; then
         log_warning "No repository URL specified, skipping git clone"
@@ -363,6 +390,10 @@ clone_repository() {
     
     if git clone "$REPO_URL" wp-content; then
         log_success "Repository cloned successfully"
+
+        if [[ "${CLONE_ALL_BRANCHES:-false}" == "true" ]]; then
+            track_all_branches wp-content
+        fi
 
         if [[ "${ACTIVATE_PLUGINS:-true}" == "true" ]]; then
             log_info "Activating all plugins"
@@ -651,6 +682,9 @@ GIT OPTIONS:
   -g, --git-user=USER   GitHub username (default: pfennigparade)
   -p, --git-protocol=PROTO  Git protocol: https or ssh (default: https)
   -G, --git-host=HOST   SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
+  -B, --all-branches    Create a local branch for every remote branch, not just
+                        the default one (e.g. live, staging); stays on the
+                        default branch after cloning
 
 OTHER OPTIONS:
   -w, --wp-cli=PATH     Path to WP-CLI executable (default: wp)
@@ -688,6 +722,7 @@ parse_arguments() {
     ACTIVATE_THEME=false
     THEME_NAME=""
     ACTIVATE_PLUGINS=true   # activate all cloned plugins by default; --no-activate opts out
+    CLONE_ALL_BRANCHES=false  # only the default branch becomes local; -B/--all-branches opts in
 
     # First argument is the installation mode (local/bare/ddev)
     local mode="${1:-local}"
@@ -838,6 +873,9 @@ parse_arguments() {
                 ;;
             --no-activate)
                 ACTIVATE_PLUGINS=false
+                ;;
+            -B|--all-branches)
+                CLONE_ALL_BRANCHES=true
                 ;;
             # Short aliases for the long options above (take the next arg as value)
             -w) [[ -z "${2:-}" ]] && { log_error "-w requires an argument"; exit 1; }; WP_CLI_PATH="$2"; skip_next=true ;;
