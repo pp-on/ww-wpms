@@ -15,7 +15,8 @@ Web-Agenturen und Entwickler:innen.
 
 - **Multi-Mode-Installation**: lokal (mit Git-Repo), bare (nur WordPress) oder DDEV
 - **Sammel-Updates**: Core, Plugins und Themes über viele Seiten hinweg
-- **Git-Integration**: Klonen und Synchronisieren von `wp-content`-Repos, Commit/Push
+- **Git-Integration**: Klonen und Synchronisieren von `wp-content`-Repos, Commit/Push,
+  Branch-Verwaltung je Seite (`install -B`, `get branch`, `set branch add|merge`)
 - **Lizenzverwaltung**: ACF Pro, WP Migrate DB Pro, Akeeba
 - **Nur-Lesen-Abfragen** (`get`) und **Diagnose** (`doctor`) getrennt von Änderungen (`set`)
 - **Barrierefreiheit**: das Leitthema der gesamten Suite
@@ -74,6 +75,7 @@ Verb-zuerst: `webwerk VERB [MODUS] [WAS] [OPTIONEN]`
 webwerk install --wp-title="Barrierefreie Website"
 webwerk install ddev                      # im DDEV-Container
 webwerk install -A -G arbeit              # Batch: in jedes leere Unterverzeichnis
+webwerk install -G arbeit -B              # alle Branches lokal anlegen, nicht nur main
 
 # Updates
 webwerk update -a                         # alle Seiten, Pause nach jeder (x = Abbruch)
@@ -85,12 +87,17 @@ webwerk update -ASp                       # ein Sammel-Commit + Push (nur mit -p
 webwerk get brief                         # kurzer Überblick je Seite
 webwerk get brief --outdated              # nur Seiten mit verfügbaren Updates
 webwerk get plugins                       # Plugin-Liste je Seite
-webwerk get branch                        # Branches je wp-content-Repo (-l lokal / -r remote)
+webwerk get branch                        # Branches je wp-content-Repo (-l lokal / -r remote);
+                                          # holt vorher die Remote-Refs, zeigt also auch
+                                          # Branches, die nach dem Klonen entstanden sind
 webwerk get status -a                     # ausführlich, Seite für Seite (Pause dazwischen)
 
 # Ändern
 webwerk set -s meineseite -x on           # Debug-Modus einschalten
 webwerk set plugin update all             # Plugins aktualisieren
+webwerk set branch add live               # Branch 'live' holen + hinwechseln
+                                          # (folgt origin/live, wenn es dort existiert)
+webwerk set branch add all                # alle Remote-Branches lokal anlegen (kein Wechsel)
 
 # Diagnose
 webwerk doctor                            # = doctor config: Tool-Einrichtung prüfen
