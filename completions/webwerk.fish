@@ -55,7 +55,7 @@ function __ww_branch_names
     end | sort -u
 end
 
-# Remote branch names (without the origin/ prefix) — for 'set branch fetch'
+# Remote branch names (without the origin/ prefix) — for 'set branch add'
 function __ww_branch_names_remote
     for d in wp-content */wp-content
         git -C $d for-each-ref --format='%(refname:lstrip=3)' 'refs/remotes/origin/**' 2>/dev/null
@@ -266,15 +266,13 @@ complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from the
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from config; and not __fish_seen_subcommand_from debug errors indexing hardening https htaccess' -a 'debug errors indexing hardening https htaccess' -d 'config toggle'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from debug indexing hardening; and not __fish_seen_subcommand_from on off' -a 'on off' -d 'state'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from errors; and not __fish_seen_subcommand_from hide show' -a 'hide show' -d 'errors display'
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a branch -d 'Git branches: branch [merge [NAME]]'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge fetch' -a add   -d 'Give the site branch NAME + switch (tracks origin/NAME; "all" = every remote branch)'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge fetch' -a merge -d 'Merge current branch into NAME (default live), no push'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge fetch' -a fetch -d "Alias for 'add all' (with NAMEs: only those)"
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from fetch' -a '(__ww_branch_names_remote)' -d 'Remote branch to make local'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a branch -d 'Git branches: branch <add NAME|all|merge [NAME]>'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge' -a add   -d 'Work on NAME here: fetch + create + switch + push ("all" = every remote branch)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge' -a merge -d 'Merge current branch into NAME (default live), no push'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from merge' -a '(__ww_branch_names)' -d 'Target branch'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a all -d 'Every remote branch that is not local yet'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a '(__ww_branch_names; __ww_branch_names_remote)' -d 'Branch to create/switch'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a push -d 'Also push -u origin'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a no-push -d 'Keep it local (add pushes -u origin by default)'
 complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a user -d 'Users: user [add NAME --role ... --pass ... --email ...]'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user; and not __fish_seen_subcommand_from add' -a add -d 'add a user'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l role -r -a 'admin editor author contributor subscriber' -d 'role (admin default)'

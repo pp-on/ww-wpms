@@ -25,7 +25,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/set/wpset.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch fetch`). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch add`). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 
@@ -41,13 +41,14 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `update plugins`, `update plugin <name>`, `set theme [webwerk|NAME|NUM]`,
   `set plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
   `set site <license|remote|url> [show|set|add …]`,
-  `set branch <add|merge> [NAME]` (add NAME: give the site that branch + switch to it
-  — when origin has NAME it is created *tracking* `origin/NAME` (auto-fetches if the
-  name is unknown), otherwise it starts from the current branch; `push` also pushes,
-  no NAME → pick from existing. `add all`: bring in every remote branch not local yet,
-  no checkout/no push — the `set`-time counterpart of `install -B/--all-branches`;
-  `fetch [NAME...]` is an alias for `add all`. merge: merge current into NAME, default
-  `live`, no push. Listing branches moved to `get branch`),
+  `set branch <add|merge> [NAME]` (add NAME does the whole sequence in one command:
+  fetch (when NAME is unknown) → create it *tracking* `origin/NAME` if origin has it,
+  else from the current branch → switch to it → `push -u origin`; the word `no-push`
+  keeps it local, no NAME → pick from existing. `add all`: bring in every remote branch
+  not local yet, no checkout/no push — the `set`-time counterpart of
+  `install -B/--all-branches`. merge: merge current into NAME, default `live`, no push.
+  There is no `branch fetch` verb — it was folded into `add`. Listing branches moved to
+  `get branch`),
   `set config <debug|errors|indexing|hardening|https|htaccess> [on|off|hide|show]`,
   `set user [add NAME [--role R] [--pass P] [--email E]]`.
   (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,

@@ -95,8 +95,9 @@ webwerk get status -a                     # ausführlich, Seite für Seite (Paus
 # Ändern
 webwerk set -s meineseite -x on           # Debug-Modus einschalten
 webwerk set plugin update all             # Plugins aktualisieren
-webwerk set branch add live               # Branch 'live' holen + hinwechseln
-                                          # (folgt origin/live, wenn es dort existiert)
+webwerk set branch add live               # ein Befehl: fetch + anlegen (folgt origin/live,
+                                          # wenn dort vorhanden) + hinwechseln + push -u origin
+webwerk set branch add live no-push       # dasselbe, aber nur lokal
 webwerk set branch add all                # alle Remote-Branches lokal anlegen (kein Wechsel)
 
 # Diagnose

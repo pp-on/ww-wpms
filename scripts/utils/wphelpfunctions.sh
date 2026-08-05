@@ -1325,16 +1325,18 @@ select_sites_interactive() {
     return 0
 }
 
-# set branch add [NAME] [push] — per site's wp-content: create NAME if it does not
-# exist, then switch to it. A name origin already has is created *tracking*
-# origin/NAME (like `git checkout NAME`), so 'add live' gives you live's commits,
-# not an empty branch under that name; only an unknown name starts from HEAD.
-# Local only unless do_push=1 (then `git push -u origin`).
+# set branch add [NAME] [no-push] — one command for the whole "work on that branch
+# here" sequence, per site's wp-content: fetch (when the name is unknown), create
+# the branch, switch to it, and push -u origin. A name origin already has is
+# created *tracking* origin/NAME (like `git checkout NAME`), so 'add live' gives
+# you live's commits, not an empty branch under that name; only an unknown name
+# starts from HEAD — and pushing it is what publishes it plus sets the upstream.
+# do_push=0 (the 'no-push' word) keeps everything local.
 # With no NAME, list the branches across the selected sites and pick one or more
 # (names or numbers); missing ones are created, and the first pick is checked out.
 # 'add all' (routed by wpset.sh) means every remote branch -> site_branch_fetch.
 site_branch_add() {
-    local want="$1" do_push="${2:-0}"
+    local want="$1" do_push="${2:-1}"
     local site sp repo
 
     if [[ -z "$want" ]]; then
@@ -1417,10 +1419,12 @@ site_branch_add() {
                 fi
             fi
             if [[ "$do_push" == "1" ]]; then
-                if git -C "$repo" push -u origin "$nm" &>/dev/null; then
-                    echo -e "  ${Green}pushed '$nm' to origin${Color_Off}"
+                if ! git -C "$repo" remote | grep -q .; then
+                    echo -e "  ${Yellow}no remote — '$nm' stays local${Color_Off}"
+                elif GIT_TERMINAL_PROMPT=0 $tmo git -C "$repo" push -u origin "$nm" &>/dev/null; then
+                    echo -e "  ${Green}pushed '$nm' → origin${Color_Off} (upstream set)"
                 else
-                    echo -e "  ${Yellow}push failed for '$nm' (no remote?)${Color_Off}"
+                    echo -e "  ${Yellow}push failed for '$nm' — it stays local (add 'no-push' to skip pushing)${Color_Off}"
                 fi
             fi
         done
@@ -1432,13 +1436,13 @@ site_branch_add() {
     done
 }
 
-# set branch fetch [NAME...] — per site's wp-content: fetch from origin, then
+# Backs 'set branch add all' — per site's wp-content: fetch from origin, then
 # create a local tracking branch for every remote branch that has none yet. A
 # clone only makes the default branch local (main), so this is how an already
-# installed site gets 'live', 'staging', … locally. With NAMEs, only those are
-# considered; a name without a remote branch is reported and skipped. Nothing is
-# checked out, nothing is pushed — the current branch and working tree are left
-# untouched.
+# installed site gets 'live', 'staging', … locally. The $want argument narrows it
+# to the given names (a name without a remote branch is reported and skipped);
+# 'add all' passes none. Nothing is checked out, nothing is pushed — the current
+# branch and working tree are left untouched (that is 'add NAME's job).
 site_branch_fetch() {
     local want="$1"
     local -a names=()

@@ -186,12 +186,11 @@ _webwerk() {
                 debug|indexing|hardening) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 errors) COMPREPLY=( $(compgen -W 'hide show' -- "$cur") ); return 0 ;;
                 user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
-                branch) COMPREPLY=( $(compgen -W 'add merge fetch help' -- "$cur") ); return 0 ;;
+                branch) COMPREPLY=( $(compgen -W 'add merge help' -- "$cur") ); return 0 ;;
                 merge) _webwerk_branches; return 0 ;;
-                fetch) COMPREPLY=( $(_webwerk_branches_remote_words) ); return 0 ;;
                 add)   _webwerk_branches
                        COMPREPLY+=( $(_webwerk_branches_remote_words) )
-                       COMPREPLY+=( $(compgen -W 'all push' -- "$cur") ); return 0 ;;
+                       COMPREPLY+=( $(compgen -W 'all no-push' -- "$cur") ); return 0 ;;
                 --role) COMPREPLY=( $(compgen -W 'admin editor author contributor subscriber' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '

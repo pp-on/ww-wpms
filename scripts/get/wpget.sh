@@ -502,8 +502,8 @@ created on origin after your clone do show up. That only updates refs/remotes â€
 no local branch, no working tree, no site state is touched. --no-fetch skips it
 (and -l never fetches, since local branches need no remote data).
 
-To make those remote branches local, use 'webwerk set branch fetch [NAME...]';
-to merge a branch, 'webwerk set branch merge [NAME]'.
+To work on one of those branches, use 'webwerk set branch add NAME' (or
+'add all' to bring them all in); to merge, 'webwerk set branch merge [NAME]'.
 
 Usage:
   webwerk get branch [-l | -r] [--no-fetch] [-s sites | -a]
