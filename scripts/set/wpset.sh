@@ -234,26 +234,30 @@ show_branch_help() {
 webwerk set branch — create/switch and merge wp-content branches per site
 
 Usage:
-  webwerk set branch add [NAME] [push]   create NAME if missing + switch to it
-                                         (local; add 'push' to push -u origin).
+  webwerk set branch add NAME [push]     give this site the branch NAME and
+                                         switch to it. If origin has NAME, the
+                                         branch is created *tracking* origin/NAME
+                                         (its real commits); a name origin does
+                                         not know starts from the current branch.
+                                         Local unless you add 'push'.
                                          No NAME -> pick from existing branches
-                                         (one or more; missing ones are created)
+  webwerk set branch add all             bring in every branch origin has that
+                                         is not local yet. A clone only makes
+                                         the default branch local, so this is
+                                         how an already installed site gets
+                                         'live', 'staging', … Nothing is checked
+                                         out or pushed — you stay where you are.
+                                         (at install time: install -B)
   webwerk set branch merge [NAME]        merge the current branch into NAME
                                          (default: live), then switch back
-  webwerk set branch fetch [NAME...]     fetch origin, then create a local
-                                         branch for every remote branch that
-                                         has none yet (no NAME = all). A clone
-                                         only makes the default branch local,
-                                         so this brings 'live', 'staging', …
-                                         into an already installed site.
-                                         Nothing is checked out or pushed; the
-                                         current branch stays as it is.
-                                         (at install time: install -B)
+  webwerk set branch fetch [NAME...]     alias for 'add all'; with NAMEs, only
+                                         those remote branches are brought in
 
-To LIST branches use 'webwerk get branch' (-l local / -r remote); for a repo
+To LIST branches use 'webwerk get branch' (-l local / -r remote) — it refreshes
+from origin first, so a branch created after your clone is listed; for a repo
 overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
 
-add, merge and fetch never push unless asked; merge never
+add and merge never push unless asked; merge never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
 target branch are skipped, and conflicting merges are aborted.
 
@@ -322,12 +326,13 @@ OUTPUT & FORMATTING:
   -t, --text-color TEXT COLOR  Output colored text
 
 GIT OPERATIONS (webwerk set branch help for details):
-  branch add [NAME] [push]    Create NAME if missing + switch to it (local;
-                              'push' also pushes). No NAME -> pick from existing
+  branch add NAME [push]      Give the site branch NAME + switch to it (tracks
+                              origin/NAME if origin has it; 'push' also pushes).
+                              No NAME -> pick from existing
+  branch add all              Bring in every remote branch that is not local yet
+                              (no checkout, no push); alias: branch fetch
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
-  branch fetch [NAME...]      Fetch origin + make every remote branch local
-                              (no NAME = all); no checkout, no push
                               (to LIST branches: webwerk get branch -l/-r)
   --git SUBCOMMAND            Run git subcommand (pull, log)
   -G, --git-pull              Update repositories via git pull (legacy alias: -gl)
@@ -558,11 +563,11 @@ parse_arguments() {
                 ;;
             branch)
                 # WHAT form: webwerk set branch <add|merge|fetch> [NAME] [push]
-                #   add   -> create NAME if missing + switch to it (local; 'push' also
-                #            pushes to origin). No NAME -> pick from existing branches.
+                #   add   -> create NAME if missing + switch to it (tracking origin/NAME
+                #            when origin has it; 'push' also pushes). No NAME -> pick
+                #            from existing branches. 'add all' -> every remote branch.
                 #   merge -> merge current branch into NAME (default live), no push
-                #   fetch -> fetch origin + create a local branch for each remote one
-                #            that has none yet (no NAME = all); no checkout, no push
+                #   fetch -> alias for 'add all' (with NAMEs: only those); no checkout
                 #   (listing branches is read-only -> 'webwerk get branch')
                 case "${2:-}" in
                     add)
@@ -575,10 +580,16 @@ parse_arguments() {
                                 *) [[ -z "$add_name" ]] && add_name="$a" || add_name="$add_name $a" ;;
                             esac
                         done
-                        site_branch_add "$add_name" "$add_push" ;;
+                        # 'add all' = bring in every remote branch (no checkout)
+                        if [[ "$add_name" == "all" ]]; then
+                            site_branch_fetch ""
+                        else
+                            site_branch_add "$add_name" "$add_push"
+                        fi ;;
                     merge)      site_branch_merge "${3:-live}" ;;
                     fetch)
-                        # fetch -> make every remote branch local (no NAME = all)
+                        # alias for 'add all' (kept for muscle memory); with NAMEs,
+                        # only those remote branches are made local
                         shift 2 2>/dev/null || shift $#   # drop 'branch' 'fetch'
                         local fetch_names="" f
                         for f in "$@"; do

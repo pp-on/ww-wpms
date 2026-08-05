@@ -56,15 +56,16 @@ _webwerk() {
         COMPREPLY=( $(compgen -W "$(printf '%s\n' "${names[@]}" | sort -u)" -- "$cur") )
     }
 
-    # Helper: remote branch names (without origin/) — for 'set branch fetch'
-    _webwerk_branches_remote() {
+    # Helper: remote branch names (without origin/) — prints matching words, so
+    # callers can use them alone or append them to local branch names
+    _webwerk_branches_remote_words() {
         local d
         local -a names=()
         for d in wp-content */wp-content; do
             [[ -d "$d" ]] || continue
             names+=( $(git -C "$d" for-each-ref --format='%(refname:lstrip=3)' 'refs/remotes/origin/**' 2>/dev/null | grep -v '^HEAD$') )
         done
-        COMPREPLY=( $(compgen -W "$(printf '%s\n' "${names[@]}" | sort -u)" -- "$cur") )
+        compgen -W "$(printf '%s\n' "${names[@]}" | sort -u)" -- "$cur"
     }
 
     # Helper: installed plugin/theme names in ./ or ./*/ sites; comma lists ok
@@ -187,8 +188,10 @@ _webwerk() {
                 user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
                 branch) COMPREPLY=( $(compgen -W 'add merge fetch help' -- "$cur") ); return 0 ;;
                 merge) _webwerk_branches; return 0 ;;
-                fetch) _webwerk_branches_remote; return 0 ;;
-                add)   _webwerk_branches; COMPREPLY+=( $(compgen -W 'push' -- "$cur") ); return 0 ;;
+                fetch) COMPREPLY=( $(_webwerk_branches_remote_words) ); return 0 ;;
+                add)   _webwerk_branches
+                       COMPREPLY+=( $(_webwerk_branches_remote_words) )
+                       COMPREPLY+=( $(compgen -W 'all push' -- "$cur") ); return 0 ;;
                 --role) COMPREPLY=( $(compgen -W 'admin editor author contributor subscriber' -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W '

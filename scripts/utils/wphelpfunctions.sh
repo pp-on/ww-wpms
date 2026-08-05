@@ -1326,9 +1326,13 @@ select_sites_interactive() {
 }
 
 # set branch add [NAME] [push] — per site's wp-content: create NAME if it does not
-# exist, then switch to it. Local only unless do_push=1 (then `git push -u origin`).
+# exist, then switch to it. A name origin already has is created *tracking*
+# origin/NAME (like `git checkout NAME`), so 'add live' gives you live's commits,
+# not an empty branch under that name; only an unknown name starts from HEAD.
+# Local only unless do_push=1 (then `git push -u origin`).
 # With no NAME, list the branches across the selected sites and pick one or more
 # (names or numbers); missing ones are created, and the first pick is checked out.
+# 'add all' (routed by wpset.sh) means every remote branch -> site_branch_fetch.
 site_branch_add() {
     local want="$1" do_push="${2:-0}"
     local site sp repo
@@ -1376,7 +1380,8 @@ site_branch_add() {
     fi
 
     local -a names=(); read -ra names <<< "$want"
-    local first="${names[0]}" nm
+    local first="${names[0]}" nm cur
+    local tmo=""; if command -v timeout &>/dev/null; then tmo="timeout 10"; fi
     for site in "${sites[@]}"; do
         sp="$(_site_path "$site")"; repo="$sp/wp-content"
         _site_header "$site"
@@ -1386,13 +1391,30 @@ site_branch_add() {
         if [[ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ]]; then
             echo -e "  ${Yellow}skipped: working tree dirty (commit/stash first)${Color_Off}"; continue
         fi
+        cur="$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)"
         for nm in "${names[@]}"; do
             if git -C "$repo" show-ref --verify --quiet "refs/heads/$nm"; then
                 echo "  branch '$nm' already exists"
-            elif git -C "$repo" branch "$nm" 2>/dev/null; then
-                echo -e "  ${Green}created '$nm'${Color_Off}"
             else
-                echo -e "  ${Red}failed to create '$nm'${Color_Off}"; continue
+                # Not local yet. If origin has this branch, branch off it and track
+                # it (what `git checkout NAME` does) — creating it from HEAD instead
+                # would silently give an empty branch under an existing name. Only
+                # a name origin does not know becomes a new branch from HEAD.
+                if ! git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/$nm" \
+                   && git -C "$repo" remote | grep -q .; then
+                    GIT_TERMINAL_PROMPT=0 $tmo git -C "$repo" fetch --quiet origin &>/dev/null || true
+                fi
+                if git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/$nm"; then
+                    if git -C "$repo" branch --track "$nm" "origin/$nm" &>/dev/null; then
+                        echo -e "  ${Green}created '$nm'${Color_Off} (tracking origin/$nm)"
+                    else
+                        echo -e "  ${Red}failed to create '$nm'${Color_Off}"; continue
+                    fi
+                elif git -C "$repo" branch "$nm" 2>/dev/null; then
+                    echo -e "  ${Green}created '$nm'${Color_Off} (new${cur:+, from $cur})"
+                else
+                    echo -e "  ${Red}failed to create '$nm'${Color_Off}"; continue
+                fi
             fi
             if [[ "$do_push" == "1" ]]; then
                 if git -C "$repo" push -u origin "$nm" &>/dev/null; then
