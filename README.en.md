@@ -684,6 +684,51 @@ automatically when the output is piped.
 ./webwerk get db "SELECT post_title FROM wp_posts LIMIT 5" -s acme
 ```
 
+### Branch Workflow
+
+Each site's `wp-content` is a git repo, and the branch commands sit under three
+different verbs on purpose: `install` sets a site up, `get` shows you where things
+stand, `set` changes them. The everyday sequence:
+
+```bash
+# 1. INSTALL — make every branch local right away.
+#    A plain clone only creates a local branch for the default one, so 'live',
+#    'staging', … would exist as origin/* refs only.
+webwerk install -G arbeit -B
+
+# 2. GET — see what is actually there. Refreshes from origin first, so a branch
+#    created after your clone shows up; it never creates anything locally.
+webwerk get branch -s acme
+webwerk get git                      # remote, upstream, ahead/behind, dirty count
+
+# 3. SET — work on a branch. One command: fetch (if the name is unknown) +
+#    create + switch + push -u origin.
+webwerk set -s acme branch live              # origin has it -> tracks origin/live
+webwerk set -s acme branch relaunch          # new name -> starts from current branch
+webwerk set -s acme branch relaunch no-push  # …the same, but keep it local
+
+# 4. Bring in the rest later — site installed without -B, or new branches
+#    appeared on origin since. No checkout, no push: you stay where you are.
+webwerk set -s acme branch all
+
+# 5. Merge your work into the deploy branch. Never pushes — you review, then push.
+webwerk set -s acme branch merge             # current -> live (the default target)
+webwerk set -A branch merge staging          # …across every site
+```
+
+What keeps this safe when it runs across many sites at once:
+
+- **`set branch NAME` pushes by default.** With `-A`/`-a` that publishes the branch
+  on *every* selected site — add `no-push` when you only want it locally. A failed
+  push never loses work: the branch is created and checked out either way.
+- **`merge` never pushes** and never leaves a repo half-done: sites with a dirty
+  tree, a detached HEAD or a missing target branch are skipped, conflicting merges
+  are aborted, and it switches back to where you were afterwards.
+- **`get branch` changes nothing** — its fetch only updates `refs/remotes`.
+- **The verb `add` is optional** (`branch add live` == `branch live`), but required
+  for several names at once, so a mistyped `merge` is refused instead of creating
+  and pushing branches named after the typo.
+
 ### Remove Commands (destructive)
 
 `webwerk remove` drops the database **and** deletes the site files. `local` is the

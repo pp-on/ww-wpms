@@ -118,6 +118,48 @@ webwerk remove -s meineseite
 Die volle Optionsliste je Befehl: `webwerk <verb> -h` — oder die
 **[englische Referenz](README.en.md)**.
 
+### Branch-Workflow
+
+`wp-content` ist je Seite ein Git-Repo. Die Branch-Befehle liegen bewusst unter
+drei Verben: `install` richtet ein, `get` zeigt den Stand, `set` ändert ihn.
+
+```bash
+# 1. Installieren — gleich alle Branches lokal anlegen. Ein normaler Klon legt
+#    nur den Default-Branch lokal an; live/staging gäbe es nur als origin/*.
+webwerk install -G arbeit -B
+
+# 2. Ansehen — holt vorher von origin, zeigt also auch Branches, die nach dem
+#    Klonen entstanden sind. Legt selbst nichts an.
+webwerk get branch -s meineseite
+
+# 3. Auf einem Branch arbeiten — ein Befehl: fetch + anlegen + hinwechseln
+#    + push -u origin
+webwerk set -s meineseite branch live             # bei origin vorhanden -> folgt origin/live
+webwerk set -s meineseite branch relaunch         # neuer Name -> vom aktuellen Branch
+webwerk set -s meineseite branch relaunch no-push # dasselbe, aber nur lokal
+
+# 4. Den Rest nachholen (ohne -B installiert oder neue Branches bei origin):
+#    kein Wechsel, kein Push — du bleibst, wo du bist.
+webwerk set -s meineseite branch all
+
+# 5. Zusammenführen — pusht nie, du prüfst und pushst selbst.
+webwerk set -s meineseite branch merge            # aktueller -> live (Standardziel)
+webwerk set -A branch merge staging               # …über alle Seiten
+```
+
+Sicherheitsnetze bei vielen Seiten gleichzeitig:
+
+- **`set branch NAME` pusht standardmäßig** — mit `-A`/`-a` also auf *jeder*
+  gewählten Seite. `no-push` hält es lokal; ein fehlgeschlagener Push verliert
+  nichts, der Branch wird trotzdem angelegt und ausgecheckt.
+- **`merge` pusht nie** und lässt kein Repo halbfertig: verschmutzter
+  Arbeitsbaum, detached HEAD oder fehlendes Ziel werden übersprungen, Konflikte
+  abgebrochen, danach wird zurückgewechselt.
+- **`get branch` ändert nichts** — der Fetch berührt nur `refs/remotes`.
+- **`add` ist optional** (`branch add live` = `branch live`), aber bei mehreren
+  Namen nötig — so wird ein vertipptes `merge` abgelehnt statt Branches mit dem
+  Tippfehler anzulegen und zu pushen.
+
 ## Ausgabe & Barrierefreiheit
 
 `update` zeigt je Seite eine aufgeräumte Zusammenfassung. Anzeige-Modi:
