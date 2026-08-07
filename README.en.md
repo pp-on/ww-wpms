@@ -31,7 +31,7 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 - **Multi-Mode Installation**: Local, bare, and DDEV containerized installations
 - **Automated Updates**: Batch update WordPress core, themes, and plugins across multiple sites
 - **License Management**: Secure handling of ACF Pro, WP Migrate DB Pro, and Akeeba licenses
-- **Git Integration**: Automatic repository cloning and synchronization, plus per-site branch handling (`install -B`, `get branch`, `set branch add|merge`)
+- **Git Integration**: Automatic repository cloning and synchronization, plus per-site branch handling (`install -B`, `get branch`, `set branch NAME|all|merge`)
 - **Environment Detection**: Automatic detection of WSL2, DDEV, Docker, and Git Bash environments
 - **Debug Management**: Easy toggle of WordPress debug modes
 - **User Management**: Create and manage WordPress admin users
@@ -327,13 +327,15 @@ webwerk VERB [MODE] [WHAT] [OPTIONS]
                   plugin <install|copy|update|activate|deactivate|remove> [NAME]
                   site   <license|remote|url> [show|set|add …]
                   config <debug|errors|indexing|https|htaccess> [on|off|…]
-                  branch <add|merge> [NAME]    # add NAME: fetch + create (tracking
+                  branch <NAME|all|merge [NAME]>
+                                               # NAME: fetch + create (tracking
                                                #   origin/NAME if origin has it) +
                                                #   switch + push -u origin;
                                                #   'no-push' keeps it local
-                                               # add all: every remote branch, no
+                                               # all: every remote branch, no
                                                #   checkout, no push
                                                # merge: current → NAME (default live)
+                                               # ('add' is optional: branch add NAME)
                   user   [add NAME [--role R] [--pass P] [--email E]]
            doctor config (tool setup) | sites (per-site health)
 
@@ -420,7 +422,7 @@ number or name (Enter skips). A miss only warns; it never fails the install.
 one, so `live`, `staging`, … would exist as `origin/*` only; with `-B` each gets a
 local tracking branch (the checkout stays on the default branch). Branches that
 appear later, or sites installed without `-B`, are handled by
-`webwerk set branch add all`.
+`webwerk set branch all`.
 
 Most long install options also have short aliases: `-H`/`-U`/`-P`/`-N` (database),
 `-u` `--wp-url`, `-t` `--wp-title`, `-e` `--wp-admin-email`, `-r` `--repo-url`,
@@ -595,22 +597,26 @@ in `webwerk get`; health checks in `webwerk doctor`.
 ./webwerk set -s mysite config indexing off        # search-engine indexing (off = -r)
 ./webwerk set -s mysite config https               # force HTTPS       (= -S)
 
-# Git branches (WHAT form): 'branch add NAME' is the whole "work on that branch
-# here" sequence in one command — fetch (when NAME is not known yet), create the
-# branch *tracking* origin/NAME if origin has it (its real commits) or from the
-# current branch if it does not, switch to it, and push -u origin (which publishes
-# a new branch and sets its upstream). The word 'no-push' keeps everything local.
-# Since it pushes, 'add NAME' with -A/-a publishes that branch on every selected
-# site. 'branch add all' brings in every remote branch that is not local yet,
-# without checking anything out or pushing.
+# Git branches (WHAT form): 'branch NAME' is the whole "work on that branch here"
+# sequence in one command — fetch (when NAME is not known yet), create the branch
+# *tracking* origin/NAME if origin has it (its real commits) or from the current
+# branch if it does not, switch to it, and push -u origin (which publishes a new
+# branch and sets its upstream). The word 'no-push' keeps everything local.
+# Since it pushes, 'branch NAME' with -A/-a publishes that branch on every selected
+# site. 'branch all' brings in every remote branch that is not local yet, without
+# checking anything out or pushing.
+# The verb 'add' is optional ('branch add live' == 'branch live'); it is required
+# for more than one name at once, so a mistyped 'merge' is refused instead of
+# creating and pushing branches.
 # 'branch merge [NAME]' merges the current branch into NAME (default: live),
 # switches back afterwards and never pushes; dirty trees, detached HEADs and
 # missing target branches are skipped, conflicting merges are aborted.
 ./webwerk get branch                               # LIST branches per site (-l/-r)
-./webwerk set -s mysite branch add staging         # fetch + create + switch + push -u origin
-./webwerk set -s mysite branch add staging no-push # …the same, but keep it local
-./webwerk set -s mysite branch add all             # every remote branch, no checkout, no push
-./webwerk set -A   branch add                       # pick from existing branches, then switch
+./webwerk set -s mysite branch staging             # fetch + create + switch + push -u origin
+./webwerk set -s mysite branch staging no-push     # …the same, but keep it local
+./webwerk set -s mysite branch all                 # every remote branch, no checkout, no push
+./webwerk set -s mysite branch add a b             # several names at once (needs 'add')
+./webwerk set -A   branch                           # pick from existing branches, then switch
 ./webwerk set -s mysite branch merge               # merge current -> live
 ./webwerk set -A branch merge staging              # merge current -> staging
 
@@ -665,7 +671,7 @@ automatically when the output is piped.
 # The remote refs are refreshed first (git fetch --prune), so a branch created on
 # origin after your clone is listed. That updates refs/remotes only — no local
 # branch, no working tree, no site state changes. To *work on* one of those
-# branches: webwerk set branch add NAME (or 'add all' to bring them all in).
+# branches: webwerk set branch NAME (or 'set branch all' for every one of them).
 ./webwerk get branch
 ./webwerk get branch -l           # local branches only (never fetches)
 ./webwerk get branch -r           # remote branches only

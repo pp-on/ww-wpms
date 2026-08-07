@@ -16,7 +16,7 @@ Web-Agenturen und Entwickler:innen.
 - **Multi-Mode-Installation**: lokal (mit Git-Repo), bare (nur WordPress) oder DDEV
 - **Sammel-Updates**: Core, Plugins und Themes über viele Seiten hinweg
 - **Git-Integration**: Klonen und Synchronisieren von `wp-content`-Repos, Commit/Push,
-  Branch-Verwaltung je Seite (`install -B`, `get branch`, `set branch add|merge`)
+  Branch-Verwaltung je Seite (`install -B`, `get branch`, `set branch NAME|all|merge`)
 - **Lizenzverwaltung**: ACF Pro, WP Migrate DB Pro, Akeeba
 - **Nur-Lesen-Abfragen** (`get`) und **Diagnose** (`doctor`) getrennt von Änderungen (`set`)
 - **Barrierefreiheit**: das Leitthema der gesamten Suite
@@ -95,10 +95,10 @@ webwerk get status -a                     # ausführlich, Seite für Seite (Paus
 # Ändern
 webwerk set -s meineseite -x on           # Debug-Modus einschalten
 webwerk set plugin update all             # Plugins aktualisieren
-webwerk set branch add live               # ein Befehl: fetch + anlegen (folgt origin/live,
+webwerk set branch live                   # ein Befehl: fetch + anlegen (folgt origin/live,
                                           # wenn dort vorhanden) + hinwechseln + push -u origin
-webwerk set branch add live no-push       # dasselbe, aber nur lokal
-webwerk set branch add all                # alle Remote-Branches lokal anlegen (kein Wechsel)
+webwerk set branch live no-push           # dasselbe, aber nur lokal
+webwerk set branch all                    # alle Remote-Branches lokal anlegen (kein Wechsel)
 
 # Diagnose
 webwerk doctor                            # = doctor config: Tool-Einrichtung prüfen

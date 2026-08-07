@@ -41,14 +41,15 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   `update plugins`, `update plugin <name>`, `set theme [webwerk|NAME|NUM]`,
   `set plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
   `set site <license|remote|url> [show|set|add …]`,
-  `set branch <add|merge> [NAME]` (add NAME does the whole sequence in one command:
-  fetch (when NAME is unknown) → create it *tracking* `origin/NAME` if origin has it,
-  else from the current branch → switch to it → `push -u origin`; the word `no-push`
-  keeps it local, no NAME → pick from existing. `add all`: bring in every remote branch
-  not local yet, no checkout/no push — the `set`-time counterpart of
+  `set branch <NAME|all|merge [NAME]>` (`branch NAME` does the whole sequence in one
+  command: fetch (when NAME is unknown) → create it *tracking* `origin/NAME` if origin
+  has it, else from the current branch → switch to it → `push -u origin`; the word
+  `no-push` keeps it local, no NAME → pick from existing. `branch all`: bring in every
+  remote branch not local yet, no checkout/no push — the `set`-time counterpart of
   `install -B/--all-branches`. merge: merge current into NAME, default `live`, no push.
-  There is no `branch fetch` verb — it was folded into `add`. Listing branches moved to
-  `get branch`),
+  The verb `add` is optional (`branch add NAME` == `branch NAME`) and is *required* for
+  more than one name, so a mistyped `merge` can't create+push branches. There is no
+  `branch fetch` verb. Listing branches moved to `get branch`),
   `set config <debug|errors|indexing|hardening|https|htaccess> [on|off|hide|show]`,
   `set user [add NAME [--role R] [--pass P] [--email E]]`.
   (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,

@@ -1325,7 +1325,7 @@ select_sites_interactive() {
     return 0
 }
 
-# set branch add [NAME] [no-push] — one command for the whole "work on that branch
+# set branch [add] NAME [no-push] — one command for the whole "work on that branch
 # here" sequence, per site's wp-content: fetch (when the name is unknown), create
 # the branch, switch to it, and push -u origin. A name origin already has is
 # created *tracking* origin/NAME (like `git checkout NAME`), so 'add live' gives
@@ -1341,7 +1341,7 @@ site_branch_add() {
 
     if [[ -z "$want" ]]; then
         if ! { true </dev/tty; } 2>/dev/null; then
-            log_error "'set branch add' with no NAME needs a terminal to pick (or: set branch add NAME)."
+            log_error "'set branch' with no NAME needs a terminal to pick (or: set branch NAME)."
             return 1
         fi
         local -a all=() uniq=()
@@ -1359,7 +1359,7 @@ site_branch_add() {
             [[ $seen -eq 0 ]] && uniq+=("$x")
         done
         if [[ ${#uniq[@]} -eq 0 ]]; then
-            log_error "No existing branches to pick from — give a new name: set branch add NAME"
+            log_error "No existing branches to pick from — give a new name: set branch NAME"
             return 1
         fi
         local i
@@ -1436,7 +1436,7 @@ site_branch_add() {
     done
 }
 
-# Backs 'set branch add all' — per site's wp-content: fetch from origin, then
+# Backs 'set branch all' — per site's wp-content: fetch from origin, then
 # create a local tracking branch for every remote branch that has none yet. A
 # clone only makes the default branch local (main), so this is how an already
 # installed site gets 'live', 'staging', … locally. The $want argument narrows it

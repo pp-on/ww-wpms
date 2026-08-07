@@ -234,7 +234,7 @@ show_branch_help() {
 webwerk set branch — create/switch and merge wp-content branches per site
 
 Usage:
-  webwerk set branch add NAME            work on branch NAME here — one command
+  webwerk set branch NAME                work on branch NAME here — one command
                                          for the whole sequence:
                                            fetch (if NAME is not known yet)
                                            create it, tracking origin/NAME when
@@ -244,8 +244,8 @@ Usage:
                                            switch to it
                                            push -u origin (sets the upstream)
                                          Add 'no-push' to keep it local.
-                                         No NAME -> pick from existing branches
-  webwerk set branch add all             bring in every branch origin has that
+  webwerk set branch                     no NAME -> pick from existing branches
+  webwerk set branch all                 bring in every branch origin has that
                                          is not local yet. A clone only makes
                                          the default branch local, so this is
                                          how an already installed site gets
@@ -259,8 +259,13 @@ To LIST branches use 'webwerk get branch' (-l local / -r remote) — it refreshe
 from origin first, so a branch created after your clone is listed; for a repo
 overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
 
-'add NAME' pushes, so with -A/-a it publishes that branch on every selected site
-— use 'no-push' if you only want it locally. merge never pushes, and never
+The verb 'add' is optional — 'set branch live' and 'set branch add live' are the
+same command. Say 'add' when you mean several names at once ('set branch add a b')
+or a branch actually called 'all'/'merge'; a bare line with more than one name is
+refused, so a mistyped 'merge' cannot create and push branches by accident.
+
+'set branch NAME' pushes, so with -A/-a it publishes that branch on every selected
+site — use 'no-push' if you only want it locally. merge never pushes, and never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
 target branch are skipped, and conflicting merges are aborted.
 
@@ -329,10 +334,11 @@ OUTPUT & FORMATTING:
   -t, --text-color TEXT COLOR  Output colored text
 
 GIT OPERATIONS (webwerk set branch help for details):
-  branch add NAME [no-push]   Work on NAME here: fetch + create (tracking
+  branch NAME [no-push]       Work on NAME here: fetch + create (tracking
                               origin/NAME if origin has it) + switch + push -u
                               origin. 'no-push' keeps it local. No NAME -> pick
-  branch add all              Bring in every remote branch that is not local yet
+                              ('add' is optional: branch add NAME does the same)
+  branch all                  Bring in every remote branch that is not local yet
                               (no checkout, no push)
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
@@ -565,38 +571,46 @@ parse_arguments() {
                 return 0
                 ;;
             branch)
-                # WHAT form: webwerk set branch <add|merge> [NAME] [no-push]
-                #   add   -> fetch + create NAME (tracking origin/NAME when origin has
+                # WHAT form: webwerk set branch [add] <NAME|all> [no-push] | merge [NAME]
+                #   NAME  -> fetch + create NAME (tracking origin/NAME when origin has
                 #            it) + switch to it + push -u origin; 'no-push' keeps it
                 #            local. No NAME -> pick from existing branches.
-                #            'add all' -> every remote branch (no checkout, no push).
+                #            'all' -> every remote branch (no checkout, no push).
                 #   merge -> merge current branch into NAME (default live), no push
+                #   The verb 'add' is optional ('set branch live' == 'set branch add
+                #   live'); it stays accepted, and is *required* for more than one
+                #   name, so a mistyped 'merge' cannot silently create+push branches.
                 #   (listing branches is read-only -> 'webwerk get branch')
                 case "${2:-}" in
-                    add)
-                        shift 2 2>/dev/null || shift $#   # drop 'branch' 'add'
-                        local add_name="" add_push=1 a
-                        for a in "$@"; do
-                            case "$a" in
-                                no-push|--no-push) add_push=0 ;;
-                                push|-p|--push) add_push=1 ;;   # now the default; kept for muscle memory
-                                -*) : ;;
-                                *) [[ -z "$add_name" ]] && add_name="$a" || add_name="$add_name $a" ;;
-                            esac
-                        done
-                        # 'add all' = bring in every remote branch (no checkout)
-                        if [[ "$add_name" == "all" ]]; then
-                            site_branch_fetch ""
-                        else
-                            site_branch_add "$add_name" "$add_push"
-                        fi ;;
-                    merge)      site_branch_merge "${3:-live}" ;;
+                    merge)  site_branch_merge "${3:-live}"; return 0 ;;
                     fetch)
-                        log_error "'branch fetch' is now 'branch add all' (or 'branch add NAME' for one)."; exit 1 ;;
-                    ""|show|list)
-                        log_error "branch listing moved to 'webwerk get branch' (-l local / -r remote); use 'set branch add [NAME]' or 'set branch merge [NAME]'."; exit 1 ;;
-                    *) log_error "branch: use add <NAME|all> [no-push] | merge [NAME]; list branches with 'webwerk get branch'."; exit 1 ;;
+                        log_error "'branch fetch' is now 'branch all' (or 'branch NAME' for one)."; exit 1 ;;
+                    show|list)
+                        log_error "branch listing moved to 'webwerk get branch' (-l local / -r remote); use 'set branch NAME' or 'set branch merge [NAME]'."; exit 1 ;;
                 esac
+                shift                                       # drop 'branch'
+                local had_add=0
+                if [[ "${1:-}" == "add" ]]; then had_add=1; shift; fi
+                local add_name="" add_push=1 a
+                for a in "$@"; do
+                    case "$a" in
+                        no-push|--no-push) add_push=0 ;;
+                        push|-p|--push) add_push=1 ;;   # now the default; kept for muscle memory
+                        -*) : ;;
+                        *) [[ -z "$add_name" ]] && add_name="$a" || add_name="$add_name $a" ;;
+                    esac
+                done
+                # Several bare names is more likely a mistyped verb than an intent to
+                # create+push that many branches — make the user say 'add' for those.
+                if [[ $had_add -eq 0 && "$add_name" == *" "* ]]; then
+                    log_error "branch: several names without 'add' ('$add_name'). To merge: 'set branch merge NAME'. To create them all: 'set branch add $add_name'."
+                    exit 1
+                fi
+                if [[ "$add_name" == "all" ]]; then
+                    site_branch_fetch ""        # every remote branch, no checkout
+                else
+                    site_branch_add "$add_name" "$add_push"
+                fi
                 return 0
                 ;;
             config)
