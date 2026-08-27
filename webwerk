@@ -58,8 +58,14 @@ load_environment() {
         source "$env_file"
         set +a
     else
+        # No .env yet: profiles are written to ~/.env when the user adds one
+        env_file="$HOME/.env"
         log_warning ".env file not found! Using defaults or environment variables"
     fi
+
+    # Where 'set profile' reads and writes profiles
+    export WEBWERK_ENV_FILE="$env_file"
+    export WEBWERK_DIR="$SCRIPT_DIR"
 }
 
 load_license_keys() {
@@ -78,6 +84,11 @@ load_license_keys() {
 
 load_helper_functions() {
     # Source wphelpfunctions.sh from utils directory
+    if [[ -f "${SCRIPT_DIR}/scripts/utils/gitprofiles.sh" ]]; then
+        # shellcheck source=./scripts/utils/gitprofiles.sh
+        source "${SCRIPT_DIR}/scripts/utils/gitprofiles.sh"
+    fi
+
     if [[ -f "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh" ]]; then
         # shellcheck source=./scripts/utils/wphelpfunctions.sh
         source "${SCRIPT_DIR}/scripts/utils/wphelpfunctions.sh" || true
@@ -148,6 +159,7 @@ COMMANDS:  ( webwerk VERB [MODE] [OPTIONS] ;  MODE = local (default) | bare | dd
   update [ddev]    Update WordPress core, plugins and themes (local default)
   set [ddev]       Modify/manage existing WordPress sites (local default)
   get [ddev]       Read-only: list plugins/themes/core, status, URLs, db query
+                   'get profiles' lists the git profiles installs clone from
   remove [local]   DESTRUCTIVE: drop the DB + delete files of a WP site (default)
                    (current dir; -s sites; -a/-A all sites; -y skip prompt)
   remove ddev      Remove DDEV containers and configuration
@@ -165,7 +177,9 @@ OPTIONS:
 EXAMPLES:
   $0 install --wp-title="My Site"        # local install (default)
   $0 install bare
-  $0 install ddev -G arbeit
+  $0 install ddev -G arbeit               # clone with the 'arbeit' git profile
+  $0 get profiles                         # list git profiles
+  $0 set profile add                      # add one (name, user, host, protocol)
   $0 i ddev -n                            # Use nip.io (no hosts file needed)
   $0 update --sites=site1,site2
   $0 update --all-sites --yes-update
@@ -187,7 +201,7 @@ CONFIGURATION:
   - Database Host: ${DB_HOST:-'not set'}
   - Database User: ${DB_USER:-'not set'}
   - WP-CLI Path: ${WP_CLI_PATH:-'not set'}
-  - Git User: ${GIT_USER:-'not set'}
+  - Git Profile: ${GIT_PROFILE:-'not set'} (profiles: GIT_PROFILE_<name>=USER@SSHHOST in .env)
 
 FILES:
   ${SCRIPT_DIR}/.env                     Main configuration file
@@ -211,7 +225,8 @@ show_status() {
     echo "Database Host: ${DB_HOST:-'not configured'}"
     echo "Database User: ${DB_USER:-'not configured'}"
     echo "WP-CLI: ${WP_CLI_PATH:-'not configured'} $(if command -v "${WP_CLI_PATH:-wp}" &> /dev/null; then echo "(✓)"; else echo "(✗)"; fi)"
-    echo "Git User: ${GIT_USER:-'not configured'}"
+    echo "Git Profile: ${GIT_PROFILE:-'not configured'}"
+    echo "Git Profiles: $(compgen -v 2>/dev/null | sed -n 's/^GIT_PROFILE_//p' | sort | tr '\n' ' ' | sed 's/ $//' || true)"
     echo "Log File: $LOG_FILE"
     echo ""
     

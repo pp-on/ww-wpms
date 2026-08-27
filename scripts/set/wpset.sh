@@ -20,6 +20,12 @@ readonly SCRIPT_NAME="WordPress Site Modification Script"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly LOG_FILE="${PWD}/webwerk-set.log"
 
+# Git profiles (gp_* functions); normally already exported by the dispatcher
+if ! declare -F gp_list >/dev/null 2>&1 && [[ -f "${SCRIPT_DIR}/../utils/gitprofiles.sh" ]]; then
+    # shellcheck source=../utils/gitprofiles.sh
+    source "${SCRIPT_DIR}/../utils/gitprofiles.sh"
+fi
+
 #===============================================================================
 # CONFIGURATION
 #===============================================================================
@@ -225,6 +231,34 @@ generator tag. 'off' removes it. Server-level rules (block PHP in uploads,
 HSTS) come from the nginx '-X' install block or the .htaccess ('config htaccess').
 
 Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
+EOF
+}
+
+# Per-WHAT help: webwerk set profile help
+show_profile_help() {
+    cat << EOF
+webwerk set profile — manage git profiles (the accounts installs clone from)
+
+A profile has four parts: its name, the git user/organisation, the host, and the
+protocol. Nothing about the account is hardcoded — a clone URL only ever comes
+from a profile (or from install -r URL for a one-off).
+
+  ssh   HOST is usually a Host alias from ~/.ssh/config, where the real
+        hostname and the key live:   privat:ojnickel/<repo>.git
+  https HOST is the hostname:        https://github.com/ojnickel/<repo>.git
+
+Usage:
+  webwerk set profile add                        ask for name, user, host, proto
+  webwerk set profile add NAME USER HOST [PROTO] add without prompting (ssh)
+  webwerk set profile edit NAME                  change it, current values offered
+  webwerk set profile edit NAME USER HOST PROTO  change it without prompting
+  webwerk set profile rm NAME                    remove it
+  webwerk set profile default NAME               use it when install has no -G
+  webwerk get profiles                           list them (read-only)
+
+Profiles are written to the .env in use (project .env, else ~/.env), never into
+the repository. The first profile added becomes the default automatically.
+If an install finds no profiles at all, it offers to create one on the spot.
 EOF
 }
 
@@ -570,6 +604,28 @@ parse_arguments() {
                 esac
                 return 0
                 ;;
+            profile)
+                # WHAT form: webwerk set profile <add|edit|rm|default> [NAME] [USER] [HOST] [PROTO]
+                #   A profile holds git user + host + protocol; it is the only
+                #   source of clone URLs. Not site-scoped - it writes the .env.
+                #   (listing is read-only -> 'webwerk get profiles')
+                case "${2:-}" in
+                    add)     gp_add  "${3:-}" "${4:-}" "${5:-}" "${6:-}" || exit 1 ;;
+                    edit)    gp_edit "${3:-}" "${4:-}" "${5:-}" "${6:-}" || exit 1 ;;
+                    rm|remove|delete)
+                             gp_rm   "${3:-}" || exit 1 ;;
+                    default|use)
+                             if [[ -z "${3:-}" ]]; then
+                                 log_error "set profile default NAME"; exit 1
+                             fi
+                             gp_set_default "${3}" || exit 1 ;;
+                    show|list)
+                             log_error "profile listing is read-only: 'webwerk get profiles'"; exit 1 ;;
+                    "")      log_error "set profile: use add | edit NAME | rm NAME | default NAME"; exit 1 ;;
+                    *)       log_error "set profile: unknown action '${2}'. Use: add, edit, rm, default"; exit 1 ;;
+                esac
+                exit 0
+                ;;
             branch)
                 # WHAT form: webwerk set branch [add] <NAME|all> [no-push] | merge [NAME]
                 #   NAME  -> fetch + create NAME (tracking origin/NAME when origin has
@@ -793,7 +849,7 @@ main() {
     for arg in "$@"; do
         case "$arg" in
             -h|--help|help)              _help_req=1 ;;
-            theme|plugin|site|config|user|branch) _help_what="$arg" ;;
+            theme|plugin|site|config|user|branch|profile) _help_what="$arg" ;;
         esac
     done
     if [[ $_help_req -eq 1 ]]; then
@@ -804,6 +860,7 @@ main() {
             config) show_config_help ;;
             user)   show_user_help ;;
             branch) show_branch_help ;;
+            profile) show_profile_help ;;
             *)      show_help ;;
         esac
         exit 0

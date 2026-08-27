@@ -45,6 +45,51 @@ Zwei Dateien:
 - **`.env`** — Datenbank, WordPress, Git, lokale URL-Basis (`cp env.example .env`)
 - **`~/.keys`** — Lizenzschlüssel, außerhalb des Repos (`cp keys.template ~/.keys && chmod 600 ~/.keys`)
 
+### Git-Profile
+
+Ein Profil benennt ein Git-Konto: **Profilname, Git-Benutzer/Organisation, Host,
+Protokoll**. Profile sind die einzige Quelle für Klon-URLs — kein Git-Konto ist
+irgendwo fest eingebaut.
+
+```bash
+webwerk get profiles              # auflisten
+webwerk set profile add           # fragt nach Name, Benutzer, Host, Protokoll
+webwerk set profile edit NAME     # ändern (aktuelle Werte als Vorgabe)
+webwerk set profile rm NAME       # entfernen
+webwerk set profile default NAME  # gilt, wenn install ohne -G läuft
+```
+
+Gespeichert wird in der genutzten `.env` (Projekt-`.env`, sonst `~/.env`) als
+`GIT_PROFILE_<name>="USER HOST PROTO"` — also außerhalb dieses Repos. Wer
+ww-wpms klont, bekommt keine Konten mit.
+
+Bei `ssh` ist der Host üblicherweise ein `Host`-Alias aus `~/.ssh/config`, wo
+Hostname und Schlüssel stehen:
+
+| Profil | ergibt |
+|---|---|
+| `"ojnickel privat ssh"` | `privat:ojnickel/<verzeichnis>.git` |
+| `"ojnickel github.com https"` | `https://github.com/ojnickel/<verzeichnis>.git` |
+
+Auswahl pro Installation mit `-G NAME`, ohne `-G` gilt das Standardprofil:
+
+```bash
+webwerk install -G privat
+```
+
+**Noch kein Profil?** Die Installation fragt die vier Werte ab und schreibt das
+Profil vor dem Klonen nach `~/.env`; das erste Profil wird automatisch zum
+Standard. Es gibt keinen eingebauten Ersatz-Account: Wenn kein Profil ermittelt
+werden kann, bricht der Lauf ab, statt aus einem fremden Konto zu klonen. Ein
+unbekannter `-G`-Name ist ein Fehler und listet die bekannten Profile auf.
+
+Genauso wenig ist die lokale URL-Basis fest eingebaut: Ist `LOCAL_URL_BASE`
+nicht gesetzt (und fehlen `-b`/`-u`), fragt die Installation einmal danach und
+schreibt den Wert in die `.env`.
+
+`install -r URL` umgeht Profile für einen einzelnen Klon. `-g`/`--git-user` und
+`-p`/`--git-protocol` gibt es nicht mehr — diese Werte stehen im Profil.
+
 ## Befehlsgrammatik
 
 Verb-zuerst: `webwerk VERB [MODUS] [WAS] [OPTIONEN]`

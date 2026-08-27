@@ -25,7 +25,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/set/wpset.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch add`). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db|profiles` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch add`). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 
@@ -51,7 +51,10 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   more than one name, so a mistyped `merge` can't create+push branches. There is no
   `branch fetch` verb. Listing branches moved to `get branch`),
   `set config <debug|errors|indexing|hardening|https|htaccess> [on|off|hide|show]`,
-  `set user [add NAME [--role R] [--pass P] [--email E]]`.
+  `set user [add NAME [--role R] [--pass P] [--email E]]`,
+  `set profile <add|edit|rm|default> [NAME] [USER] [HOST] [PROTO]` (git profiles:
+  name + git user + host + protocol, the only source of clone URLs. Not
+  site-scoped - it writes the `.env` and exits. Listing is `get profiles`).
   (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
   `-f`/`-m`/`-k`, `-x`/`-z`/`-S`/`-r`/`--htaccess`, `-n`+`-U`/`-P`/`-E`. `set site`
   groups site-level config views/writes: license applied-status (+`--values`),
@@ -183,8 +186,19 @@ The suite automatically detects:
 Essential variables defined in `.env`:
 - `DB_HOST`, `DB_USER`, `DB_PASSWORD` - Database connection
 - `WP_CLI_PATH` - WP-CLI binary location
-- `GIT_USER`, `GIT_PROTOCOL` - Repository settings
-- `LOCAL_URL_BASE` - Development URL structure
+- `GIT_PROFILE_<name>="USER HOST PROTO"` - **git profiles**, the only source of
+  clone URLs; nothing about a git account is hardcoded. Four parts: profile name,
+  git user/org, host (an `~/.ssh/config` alias when PROTO=ssh, a hostname when
+  https), protocol. `GIT_PROFILE` names the default; `-G NAME` picks one per run
+  (parsed into `WEBWERK_GIT_PROFILE` - do **not** name that variable
+  `GIT_PROFILE_*`, it would collide with the profile namespace). Stored in the
+  `.env` in use (`WEBWERK_ENV_FILE`), never in the repo. No profile and no `-r`
+  is a hard error; with no profiles at all, install prompts to create one.
+  `-g`/`--git-user` and `-p`/`--git-protocol` were removed (they error with a
+  pointer to profiles). Library: `scripts/utils/gitprofiles.sh` (`gp_*`, exported)
+- `LOCAL_URL_BASE` - Development URL structure (siteurl = `<base>/<dirname>`).
+  Not hardcoded either: unset + no `-b`/`-u` prompts once and saves to the
+  `.env` (`gp_resolve_base_url()`); ddev sets its own `.ddev.site`/nip.io URL
 - `WEBSERVER_USER`, `WEBSERVER_GROUP` - File permissions
 
 ## Logging

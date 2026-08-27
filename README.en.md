@@ -242,14 +242,73 @@ WP_LOCALE=de_DE
 # Git
 GIT_USER=your_github_username
 GIT_PROTOCOL=ssh
-GIT_SSH_HOST=arbeit  # SSH host alias from ~/.ssh/config (optional)
+GIT_PROFILE_arbeit="pfennigparade arbeit ssh"   # USER HOST PROTO
+GIT_PROFILE_privat="ojnickel privat ssh"
+GIT_PROFILE=arbeit                             # used when -G is not given
 
 # Development
 # Base URL for local installs — WordPress siteurl will be: LOCAL_URL_BASE/<dirname>
 # Must match an existing nginx/apache vhost with PHP-FPM support.
-LOCAL_URL_BASE=netcup.local
+LOCAL_URL_BASE=netcup.local   # unset -> install asks once and saves it here
 DISABLE_SEARCH_INDEXING=true
 ```
+
+### Git profiles
+
+A profile names a git account: **profile name, git user/organisation, host,
+protocol**. It is the only source of clone URLs — no git account is hardcoded
+anywhere in the suite.
+
+```bash
+webwerk get profiles              # list them
+webwerk set profile add           # asks for name, user, host, protocol
+webwerk set profile edit NAME     # change it (current values offered)
+webwerk set profile rm NAME       # remove it
+webwerk set profile default NAME  # use it when install runs without -G
+```
+
+```
+PROFILE          GIT USER                 HOST                 PROTO
+-------          --------                 ----                 -----
+arbeit *         pfennigparade            arbeit               ssh
+privat           ojnickel                 privat               ssh
+
+* default (GIT_PROFILE=arbeit), used when -G is not given
+```
+
+Profiles are stored in the `.env` in use (project `.env`, else `~/.env`) as
+`GIT_PROFILE_<name>="USER HOST PROTO"`, so they are yours and are **not** part of
+this repository — cloning ww-wpms gives you no accounts.
+
+With `ssh`, the host is normally a `Host` alias from `~/.ssh/config`, which is
+where the real hostname and the key live:
+
+```
+Host privat
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/privat
+```
+
+| profile | builds |
+|---|---|
+| `"ojnickel privat ssh"` | `privat:ojnickel/<dirname>.git` |
+| `"ojnickel github.com https"` | `https://github.com/ojnickel/<dirname>.git` |
+
+Pick one per install with `-G NAME`; without `-G` the default is used:
+
+```bash
+webwerk install -G privat
+```
+
+**No profiles yet?** The install asks for the four values and writes the profile
+to `~/.env` before cloning — the first one added also becomes the default. There
+is no built-in fallback account, so a run that cannot resolve a profile stops
+instead of cloning from a stranger's org. An unknown `-G` name is an error that
+lists the known profiles.
+
+`install -r URL` bypasses profiles for a one-off clone. `-g`/`--git-user` and
+`-p`/`--git-protocol` are gone — those values live in the profile now.
 
 ### License Keys (~/.keys)
 
@@ -360,7 +419,7 @@ webwerk install bare --wp-title="Simple Site"
 
 # DDEV install
 webwerk install ddev --wp-title="DDEV Site"
-webwerk install ddev -G arbeit          # with SSH host alias for repo cloning
+webwerk install ddev -G arbeit          # with the 'arbeit' git profile
 webwerk install ddev -n                 # use nip.io (no /etc/hosts admin rights needed)
 
 # Batch: install into every empty subdirectory of the current dir
@@ -376,9 +435,11 @@ webwerk install -H 127.0.0.1 -U custom -P secret
 # Short aliases also exist for the other options, e.g.
 webwerk install -t "My Site" -u https://example.test -w /usr/local/bin/wp -d /path/to/dir
 
-# SSH repository cloning
-webwerk install -G arbeit               # SSH host alias from ~/.ssh/config
-webwerk install -p ssh                  # -p = --git-protocol
+# Repository cloning via git profile (see "Git profiles" above)
+webwerk install -G arbeit               # -> arbeit:pfennigparade/<dirname>.git
+webwerk install -G privat               # -> privat:ojnickel/<dirname>.git
+webwerk install                         # -> the default profile (GIT_PROFILE)
+webwerk install -r privat:me/site.git   # -r bypasses profiles entirely
 
 # Override base URL (WordPress siteurl = <base>/<dirname>)
 webwerk install -G arbeit -b netcup.local
@@ -940,7 +1001,7 @@ Full DDEV support for containerized development:
 ```bash
 # Install DDEV site
 webwerk install ddev                        # standard install
-webwerk install ddev -G arbeit             # with SSH host for repo cloning
+webwerk install ddev -G arbeit             # with the 'arbeit' git profile
 webwerk install ddev -n                    # use nip.io (no /etc/hosts admin rights)
 webwerk install ddev -W                    # also add entry to Windows hosts file
 
@@ -1077,7 +1138,7 @@ webwerk update ddev -A
 ### Example 4: Repository Management
 
 ```bash
-# Clone repository during installation via SSH host alias
+# Clone repository during installation via git profile
 webwerk install -G arbeit --wp-title="Corporate Site"
 
 # Update repository on existing site

@@ -15,6 +15,13 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly LOG_FILE="${PWD}/webwerk-install.log"
 
+# Git profiles (gp_* functions) - needed by init_config, which runs before the
+# helper library is sourced in main()
+if [[ -f "${SCRIPT_DIR}/../utils/gitprofiles.sh" ]]; then
+    # shellcheck source=../utils/gitprofiles.sh
+    source "${SCRIPT_DIR}/../utils/gitprofiles.sh"
+fi
+
 #===============================================================================
 # CONFIGURATION SECTION
 #===============================================================================
@@ -26,7 +33,14 @@ init_config() {
     
     # Set defaults for variables not configured
     DB_NAME="${DB_NAME:-${CURRENT_DIR//[^a-zA-Z0-9]/_}}"
-    WP_URL="${WP_URL:-${LOCAL_URL_BASE:-arbeit.local/repos}/${CURRENT_DIR}}"
+    # Site URL: no hardcoded host. -u/--wp-url wins; otherwise it is built from
+    # LOCAL_URL_BASE, which is asked for and saved to the .env when unset.
+    # (ddev mode overrides WP_URL later with <site>.ddev.site / nip.io.)
+    if [[ -z "${WP_URL:-}" && "${INSTALL_MODE:-local}" != "ddev" ]]; then
+        local _base
+        _base="$(gp_resolve_base_url)" || exit 1
+        WP_URL="${_base}/${CURRENT_DIR}"
+    fi
     WP_TITLE="${WP_TITLE:-test${CURRENT_DIR^^}}"
     
     # Generate admin password if not set
@@ -34,23 +48,19 @@ init_config() {
         WP_ADMIN_PASSWORD="$(openssl rand -base64 12)"
     fi
     
-    # Construct repository URL if not explicitly set
-    if [[ -z "${REPO_URL:-}" ]]; then
-        # If GIT_SSH_HOST is set, use SSH config host alias (includes user from ~/.ssh/config)
-        if [[ -n "${GIT_SSH_HOST:-}" ]]; then
-            REPO_URL="${GIT_SSH_HOST}:pfennigparade/${CURRENT_DIR}.git"
+    # Repository URL comes from a git profile; nothing about the account is
+    # hardcoded. -r/--repo-url bypasses profiles for a one-off clone.
+    if [[ -z "${REPO_URL:-}" && "${INSTALL_MODE:-local}" != "bare" ]]; then
+        local _profile
+        if _profile="$(gp_resolve "${WEBWERK_GIT_PROFILE:-}")"; then
+            GIT_PROFILE="$_profile"
+            REPO_URL="$(gp_url "$_profile" "$CURRENT_DIR")" || exit 1
+            log_info "Git profile '$_profile' -> $REPO_URL"
         else
-            case "${GIT_PROTOCOL:-https}" in
-                "https")
-                    REPO_URL="https://${GIT_HOST:-github.com}/${GIT_USER:-pfennigparade}/${CURRENT_DIR}.git"
-                    ;;
-                "ssh")
-                    REPO_URL="git@${GIT_HOST:-github.com}:${GIT_USER:-pfennigparade}/${CURRENT_DIR}.git"
-                    ;;
-            esac
+            exit 1
         fi
     fi
-    
+
     log_info "Configuration initialized for: $CURRENT_DIR"
 }
 
@@ -642,7 +652,7 @@ USAGE:
 
 TLDR:
   webwerk install                         # local install (default)
-  webwerk install ddev -G arbeit          # DDEV install with SSH host alias
+  webwerk install ddev -G arbeit          # DDEV install with the 'arbeit' git profile
   webwerk install bare                    # bare install without repo
 
   Direct call (advanced):
@@ -666,7 +676,10 @@ DATABASE OPTIONS:
 
 WORDPRESS OPTIONS:
   -u, --wp-url=URL      WordPress site URL
-  -b, --base-url=URL    Base URL for local dev (sets LOCAL_URL_BASE, e.g. netcup.local)
+  -b, --base-url=URL    Base URL for local dev (sets LOCAL_URL_BASE, e.g.
+                        netcup.local). Nothing is hardcoded: with no -b, no -u
+                        and no LOCAL_URL_BASE you are asked for it once and it
+                        is saved to the .env
   -t, --wp-title=TITLE  WordPress site title
   --wp-admin-user=USER, --wpu=USER   WordPress admin username (default: admin)
   --wp-admin-pass=PASS, --wpp=PASS   WordPress admin password (auto-generated if unset)
@@ -678,10 +691,14 @@ WORDPRESS OPTIONS:
   --no-activate         Don't activate the cloned plugins (default: activate all)
 
 GIT OPTIONS:
-  -r, --repo-url=URL    Full repository URL to clone
-  -g, --git-user=USER   GitHub username (default: pfennigparade)
-  -p, --git-protocol=PROTO  Git protocol: https or ssh (default: https)
-  -G, --git-host=HOST   SSH host alias from ~/.ssh/config (e.g., arbeit, privat)
+  -G, --git-profile=NAME  Git profile to clone with. A profile holds the git
+                        user, the host and the protocol; nothing is hardcoded.
+                        Without -G the default profile (GIT_PROFILE) is used;
+                        with no profiles at all you are asked to create one.
+                          webwerk get profiles            list them
+                          webwerk set profile add         add one
+                          webwerk set profile edit NAME   change one
+  -r, --repo-url=URL    Full repository URL - bypasses profiles for one clone
   -B, --all-branches    Create a local branch for every remote branch, not just
                         the default one (e.g. live, staging); stays on the
                         default branch after cloning
@@ -817,21 +834,21 @@ parse_arguments() {
             --repo-url=*)
                 REPO_URL="${1#*=}"
                 ;;
-            --git-user=*)
-                GIT_USER="${1#*=}"
+            --git-user=*|--git-protocol=*)
+                log_error "${1%%=*} was replaced by git profiles"
+                log_error "Use: webwerk set profile add|edit NAME   (user, host and protocol live there)"
+                log_error "Then: webwerk install -G NAME   (or -r URL for a one-off clone)"
+                exit 1
                 ;;
-            --git-protocol=*)
-                GIT_PROTOCOL="${1#*=}"
-                ;;
-            --git-host=*)
-                GIT_SSH_HOST="${1#*=}"
+            --git-profile=*|--git-host=*)
+                WEBWERK_GIT_PROFILE="${1#*=}"
                 ;;
             -G)
                 if [[ -z "${2:-}" ]]; then
-                    log_error "-G requires an argument (SSH host alias)"
+                    log_error "-G requires an argument (git profile name)"
                     exit 1
                 fi
-                GIT_SSH_HOST="$2"
+                WEBWERK_GIT_PROFILE="$2"
                 skip_next=true
                 ;;
             --wp-cli=*)
@@ -884,8 +901,11 @@ parse_arguments() {
             -u) [[ -z "${2:-}" ]] && { log_error "-u requires an argument"; exit 1; }; WP_URL="$2"; skip_next=true ;;
             -e) [[ -z "${2:-}" ]] && { log_error "-e requires an argument"; exit 1; }; WP_ADMIN_EMAIL="$2"; skip_next=true ;;
             -r) [[ -z "${2:-}" ]] && { log_error "-r requires an argument"; exit 1; }; REPO_URL="$2"; skip_next=true ;;
-            -g) [[ -z "${2:-}" ]] && { log_error "-g requires an argument"; exit 1; }; GIT_USER="$2"; skip_next=true ;;
-            -p) [[ -z "${2:-}" ]] && { log_error "-p requires an argument"; exit 1; }; GIT_PROTOCOL="$2"; skip_next=true ;;
+            -g|-p)
+                log_error "$1 was replaced by git profiles (user, host and protocol live there)"
+                log_error "Use: webwerk set profile add|edit NAME, then: webwerk install -G NAME"
+                log_error "Or bypass profiles for one clone: webwerk install -r URL"
+                exit 1 ;;
             -H) [[ -z "${2:-}" ]] && { log_error "-H requires an argument"; exit 1; }; DB_HOST="$2"; skip_next=true ;;
             -U) [[ -z "${2:-}" ]] && { log_error "-U requires an argument"; exit 1; }; DB_USER="$2"; skip_next=true ;;
             -P) [[ -z "${2:-}" ]] && { log_error "-P requires an argument"; exit 1; }; DB_PASSWORD="$2"; skip_next=true ;;

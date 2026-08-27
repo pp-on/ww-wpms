@@ -21,6 +21,12 @@ readonly SCRIPT_NAME="WordPress Site Retrieval Script"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly LOG_FILE="${PWD}/webwerk-get.log"
 
+# Git profiles (gp_* functions); normally already exported by the dispatcher
+if ! declare -F gp_list >/dev/null 2>&1 && [[ -f "${SCRIPT_DIR}/../utils/gitprofiles.sh" ]]; then
+    # shellcheck source=../utils/gitprofiles.sh
+    source "${SCRIPT_DIR}/../utils/gitprofiles.sh"
+fi
+
 #===============================================================================
 # CONFIGURATION
 #===============================================================================
@@ -490,6 +496,24 @@ Usage:
   webwerk get git [-s sites | -a]
 EOF
             ;;
+        profiles|profile)
+            cat <<EOF
+webwerk get profiles - list the git profiles
+
+A profile names a git account: git user/organisation, host and protocol. It is
+the only source of clone URLs - nothing about the account is hardcoded.
+
+Shown per profile: name, git user, host, protocol. The default (GIT_PROFILE,
+used when install runs without -G) is marked with *.
+
+Profiles are stored in the .env in use (project .env, else ~/.env), so they are
+yours and are not part of the ww-wpms repository. Read-only; to change them:
+  webwerk set profile add|edit|rm|default
+
+Usage:
+  webwerk get profiles
+EOF
+            ;;
         branch)
             cat <<EOF
 webwerk get branch — list branches in each site's wp-content repo
@@ -649,9 +673,10 @@ main() {
         branch)  get_branch ;;
         url)     get_url ;;
         db)      get_db "${positionals[0]:-}" ;;
+        profiles|profile) gp_list ;;
         "")      show_help; exit 0 ;;
         *)
-            log_error "Unknown target: '$what'. Use: plugins, plugin, themes, core, status, brief, git, branch, url, db."
+            log_error "Unknown target: '$what'. Use: plugins, plugin, themes, core, status, brief, git, branch, url, db, profiles."
             exit 1 ;;
     esac
 }
