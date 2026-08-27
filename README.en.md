@@ -239,12 +239,10 @@ WP_ADMIN_USER=admin
 WP_ADMIN_EMAIL=your@email.com
 WP_LOCALE=de_DE
 
-# Git
-GIT_USER=your_github_username
-GIT_PROTOCOL=ssh
+# Git profiles — the only source of clone URLs
 GIT_PROFILE_arbeit="pfennigparade arbeit ssh"   # USER HOST PROTO
 GIT_PROFILE_privat="ojnickel privat ssh"
-GIT_PROFILE=arbeit                             # used when -G is not given
+GIT_PROFILE=arbeit                              # used when -G is not given
 
 # Development
 # Base URL for local installs — WordPress siteurl will be: LOCAL_URL_BASE/<dirname>
@@ -487,9 +485,9 @@ appear later, or sites installed without `-B`, are handled by
 
 Most long install options also have short aliases: `-H`/`-U`/`-P`/`-N` (database),
 `-u` `--wp-url`, `-t` `--wp-title`, `-e` `--wp-admin-email`, `-r` `--repo-url`,
-`-g` `--git-user`, `-p` `--git-protocol`, `-w` `--wp-cli`, `-d` `--target-dir`,
-`-X` `--production`, `-m` `--multisite`, `-s` `--subdomains`, `-T` `--theme`,
-`-B` `--all-branches` (plus existing `-b`, `-G`, `-n`, `-v`). The admin options have no single-letter short (since `-a`/`-A` are batch),
+`-w` `--wp-cli`, `-d` `--target-dir`, `-X` `--production`, `-m` `--multisite`,
+`-s` `--subdomains`, `-T` `--theme`,
+`-B` `--all-branches` (plus existing `-b`, `-G` `--git-profile`, `-n`, `-v`). The admin options have no single-letter short (since `-a`/`-A` are batch),
 but accept the shorter aliases `--wpu` (user), `--wpp` (pass), `--wpe` (email).
 
 ### Update Commands
@@ -1290,8 +1288,9 @@ mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e "SELECT 1;"
 # Check repository URL and permissions
 ./webwerk install --repo-url=https://github.com/user/repo.git
 
-# For private repos, use SSH or add token to ~/.keys
-GIT_PROTOCOL=ssh
+# For private repos use an ssh profile (host = your ~/.ssh/config alias)
+webwerk get profiles
+webwerk set profile edit NAME
 ```
 
 **License keys not working:**
