@@ -31,7 +31,7 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 - **Multi-Mode Installation**: Local, bare, and DDEV containerized installations
 - **Automated Updates**: Batch update WordPress core, themes, and plugins across multiple sites
 - **License Management**: Secure handling of ACF Pro, WP Migrate DB Pro, and Akeeba licenses
-- **Git Integration**: Automatic repository cloning and synchronization, plus per-site branch handling (`install -B`, `get branch`, `set branch NAME|all|merge`)
+- **Git Integration**: Automatic repository cloning and synchronization, plus per-site branch handling (`install -B`, `get branch`, `set branch NAME|all|rename|merge`)
 - **Environment Detection**: Automatic detection of WSL2, DDEV, Docker, and Git Bash environments
 - **Debug Management**: Easy toggle of WordPress debug modes
 - **User Management**: Create and manage WordPress admin users
@@ -770,7 +770,13 @@ webwerk set -s acme branch relaunch no-push  # …the same, but keep it local
 #    appeared on origin since. No checkout, no push: you stay where you are.
 webwerk set -s acme branch all
 
-# 5. Merge your work into the deploy branch. Never pushes — you review, then push.
+# 5. Rename a branch. One name = the branch the site is currently on; two names
+#    = old new. The new name is pushed (-u origin); origin/OLD is left in place.
+webwerk set -s acme branch rename relaunch           # current -> relaunch
+webwerk set -s acme branch rename staging preview    # staging -> preview
+webwerk set -s acme branch rename staging preview no-push   # keep it local
+
+# 6. Merge your work into the deploy branch. Never pushes — you review, then push.
 webwerk set -s acme branch merge             # current -> live (the default target)
 webwerk set -A branch merge staging          # …across every site
 ```
@@ -783,10 +789,15 @@ What keeps this safe when it runs across many sites at once:
 - **`merge` never pushes** and never leaves a repo half-done: sites with a dirty
   tree, a detached HEAD or a missing target branch are skipped, conflicting merges
   are aborted, and it switches back to where you were afterwards.
+- **`rename` deletes nothing on origin.** It pushes the new name and leaves
+  `origin/OLD` standing — deleting a remote branch is irreversible and breaks other
+  clones — printing the command in case you do want it gone. Sites without `OLD`,
+  or that already have `NEW`, are skipped.
 - **`get branch` changes nothing** — its fetch only updates `refs/remotes`.
 - **The verb `add` is optional** (`branch add live` == `branch live`), but required
   for several names at once, so a mistyped `merge` is refused instead of creating
-  and pushing branches named after the typo.
+  and pushing branches named after the typo. The same goes for `all` and `rename`:
+  a branch genuinely called that is created with `branch add rename`.
 
 ### Remove Commands (destructive)
 

@@ -1436,6 +1436,77 @@ site_branch_add() {
     done
 }
 
+# set branch rename [OLD] NEW [no-push] — per site's wp-content: rename a local
+# branch (git branch -m), then push the new name -u origin so it is published and
+# tracked. With one name OLD is the site's current branch, so 'rename preview'
+# renames wherever you are — across sites that may sit on different branches.
+# origin/OLD is deliberately left alone: deleting a remote branch is irreversible
+# and breaks other clones, so it is reported and left to the user. do_push=0 (the
+# 'no-push' word) keeps the rename local.
+site_branch_rename() {
+    local old="$1" new="$2" do_push="${3:-1}"
+    local site sp repo cur from
+
+    if [[ -z "$new" ]]; then
+        log_error "set branch rename [OLD] NEW — no new name given."
+        return 1
+    fi
+    if ! git check-ref-format --branch "$new" &>/dev/null; then
+        log_error "branch rename: '$new' is not a valid branch name."
+        return 1
+    fi
+    if [[ -n "$old" && "$old" == "$new" ]]; then
+        log_error "branch rename: old and new name are the same ('$new')."
+        return 1
+    fi
+
+    local tmo=""; if command -v timeout &>/dev/null; then tmo="timeout 10"; fi
+    for site in "${sites[@]}"; do
+        sp="$(_site_path "$site")"; repo="$sp/wp-content"
+        _site_header "$site"
+        if ! git -C "$repo" rev-parse --git-dir &>/dev/null; then
+            echo -e "  ${Yellow}skipped: no git repository in wp-content${Color_Off}"; continue
+        fi
+        # No OLD -> whatever this site is on right now.
+        if [[ -n "$old" ]]; then
+            from="$old"
+        else
+            cur="$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)"
+            if [[ -z "$cur" ]]; then
+                echo -e "  ${Yellow}skipped: detached HEAD — name the branch: rename OLD $new${Color_Off}"; continue
+            fi
+            from="$cur"
+        fi
+        if [[ "$from" == "$new" ]]; then
+            echo -e "  ${Yellow}skipped: already called '$new'${Color_Off}"; continue
+        fi
+        if ! git -C "$repo" show-ref --verify --quiet "refs/heads/$from"; then
+            echo -e "  ${Yellow}skipped: no local branch '$from'${Color_Off}"; continue
+        fi
+        if git -C "$repo" show-ref --verify --quiet "refs/heads/$new"; then
+            echo -e "  ${Yellow}skipped: '$new' already exists${Color_Off}"; continue
+        fi
+        if ! git -C "$repo" branch -m "$from" "$new" &>/dev/null; then
+            echo -e "  ${Red}failed to rename '$from'${Color_Off}"; continue
+        fi
+        echo -e "  ${Green}renamed '$from' → '$new'${Color_Off}"
+
+        if [[ "$do_push" == "1" ]]; then
+            if ! git -C "$repo" remote | grep -q .; then
+                echo -e "  ${Yellow}no remote — '$new' stays local${Color_Off}"
+            elif GIT_TERMINAL_PROMPT=0 $tmo git -C "$repo" push -u origin "$new" &>/dev/null; then
+                echo -e "  ${Green}pushed '$new' → origin${Color_Off} (upstream set)"
+            else
+                echo -e "  ${Yellow}push failed for '$new' — it stays local (add 'no-push' to skip pushing)${Color_Off}"
+            fi
+        fi
+        # The old name on origin is not ours to delete — say so instead.
+        if git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/$from"; then
+            echo "  origin/$from still exists — delete it yourself if you want: git -C $repo push origin --delete $from"
+        fi
+    done
+}
+
 # Backs 'set branch all' — per site's wp-content: fetch from origin, then
 # create a local tracking branch for every remote branch that has none yet. A
 # clone only makes the default branch local (main), so this is how an already
@@ -1510,7 +1581,7 @@ export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setu
 export -f _site_path _site_header site_license_status site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
 export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
-export -f site_branch_merge site_branch_add site_branch_fetch
+export -f site_branch_merge site_branch_add site_branch_rename site_branch_fetch
 export -f wp_new_user wp_rights
 export -f htaccess wp_hide_errors wp_debug wp_force_https wp_harden detect_webserver
 export -f update_repo git_wp wp_block_se wp_enable_se

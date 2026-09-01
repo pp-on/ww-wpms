@@ -188,8 +188,10 @@ _webwerk() {
                 user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
                 branch) _webwerk_branches
                         COMPREPLY+=( $(_webwerk_branches_remote_words) )
-                        COMPREPLY+=( $(compgen -W 'all add merge help' -- "$cur") ); return 0 ;;
+                        COMPREPLY+=( $(compgen -W 'all add merge rename help' -- "$cur") ); return 0 ;;
                 merge) _webwerk_branches; return 0 ;;
+                rename) _webwerk_branches
+                        COMPREPLY+=( $(compgen -W 'no-push' -- "$cur") ); return 0 ;;
                 add)   _webwerk_branches
                        COMPREPLY+=( $(_webwerk_branches_remote_words) )
                        COMPREPLY+=( $(compgen -W 'all no-push' -- "$cur") ); return 0 ;;

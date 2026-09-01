@@ -16,7 +16,7 @@ Web-Agenturen und Entwickler:innen.
 - **Multi-Mode-Installation**: lokal (mit Git-Repo), bare (nur WordPress) oder DDEV
 - **Sammel-Updates**: Core, Plugins und Themes über viele Seiten hinweg
 - **Git-Integration**: Klonen und Synchronisieren von `wp-content`-Repos, Commit/Push,
-  Branch-Verwaltung je Seite (`install -B`, `get branch`, `set branch NAME|all|merge`)
+  Branch-Verwaltung je Seite (`install -B`, `get branch`, `set branch NAME|all|rename|merge`)
 - **Lizenzverwaltung**: ACF Pro, WP Migrate DB Pro, Akeeba
 - **Nur-Lesen-Abfragen** (`get`) und **Diagnose** (`doctor`) getrennt von Änderungen (`set`)
 - **Barrierefreiheit**: das Leitthema der gesamten Suite
@@ -144,6 +144,7 @@ webwerk set branch live                   # ein Befehl: fetch + anlegen (folgt o
                                           # wenn dort vorhanden) + hinwechseln + push -u origin
 webwerk set branch live no-push           # dasselbe, aber nur lokal
 webwerk set branch all                    # alle Remote-Branches lokal anlegen (kein Wechsel)
+webwerk set branch rename relaunch        # aktuellen Branch umbenennen + neuen Namen pushen
 
 # Diagnose
 webwerk doctor                            # = doctor config: Tool-Einrichtung prüfen
@@ -187,7 +188,13 @@ webwerk set -s meineseite branch relaunch no-push # dasselbe, aber nur lokal
 #    kein Wechsel, kein Push — du bleibst, wo du bist.
 webwerk set -s meineseite branch all
 
-# 5. Zusammenführen — pusht nie, du prüfst und pushst selbst.
+# 5. Umbenennen — ein Name: der Branch, auf dem die Seite gerade steht;
+#    zwei Namen: alt neu. Der neue Name wird gepusht (-u origin).
+webwerk set -s meineseite branch rename relaunch          # aktueller -> relaunch
+webwerk set -s meineseite branch rename staging preview   # staging -> preview
+webwerk set -s meineseite branch rename staging preview no-push  # nur lokal
+
+# 6. Zusammenführen — pusht nie, du prüfst und pushst selbst.
 webwerk set -s meineseite branch merge            # aktueller -> live (Standardziel)
 webwerk set -A branch merge staging               # …über alle Seiten
 ```
@@ -200,10 +207,15 @@ Sicherheitsnetze bei vielen Seiten gleichzeitig:
 - **`merge` pusht nie** und lässt kein Repo halbfertig: verschmutzter
   Arbeitsbaum, detached HEAD oder fehlendes Ziel werden übersprungen, Konflikte
   abgebrochen, danach wird zurückgewechselt.
+- **`rename` löscht nichts bei origin.** Der neue Name wird gepusht, `origin/ALT`
+  bleibt stehen — das Löschen eines Remote-Branches ist unumkehrbar und bricht
+  fremde Klone; der Befehl dafür wird nur ausgegeben. Seiten ohne `ALT` oder mit
+  bereits vorhandenem `NEU` werden übersprungen.
 - **`get branch` ändert nichts** — der Fetch berührt nur `refs/remotes`.
 - **`add` ist optional** (`branch add live` = `branch live`), aber bei mehreren
   Namen nötig — so wird ein vertipptes `merge` abgelehnt statt Branches mit dem
-  Tippfehler anzulegen und zu pushen.
+  Tippfehler anzulegen und zu pushen. Das gilt genauso für `all` und `rename`:
+  einen Branch, der wirklich so heißt, legst du mit `branch add rename` an.
 
 ## Ausgabe & Barrierefreiheit
 

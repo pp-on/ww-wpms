@@ -265,7 +265,7 @@ EOF
 # Per-WHAT help: webwerk set branch help
 show_branch_help() {
     cat << EOF
-webwerk set branch — create/switch and merge wp-content branches per site
+webwerk set branch — create/switch, rename and merge wp-content branches per site
 
 Usage:
   webwerk set branch NAME                work on branch NAME here — one command
@@ -286,6 +286,11 @@ Usage:
                                          'live', 'staging', … Nothing is checked
                                          out or pushed — you stay where you are.
                                          (at install time: install -B)
+  webwerk set branch rename [OLD] NEW    rename a branch and push the new name
+                                         -u origin. One name renames the branch
+                                         the site is on; two name it explicitly.
+                                         'no-push' keeps the rename local.
+                                         origin/OLD is left alone (see below).
   webwerk set branch merge [NAME]        merge the current branch into NAME
                                          (default: live), then switch back
 
@@ -295,13 +300,17 @@ overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
 
 The verb 'add' is optional — 'set branch live' and 'set branch add live' are the
 same command. Say 'add' when you mean several names at once ('set branch add a b')
-or a branch actually called 'all'/'merge'; a bare line with more than one name is
-refused, so a mistyped 'merge' cannot create and push branches by accident.
+or a branch actually called 'all'/'merge'/'rename'; a bare line with more than one
+name is refused, so a mistyped 'merge' cannot create and push branches by accident.
 
 'set branch NAME' pushes, so with -A/-a it publishes that branch on every selected
 site — use 'no-push' if you only want it locally. merge never pushes, and never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
 target branch are skipped, and conflicting merges are aborted.
+
+rename never deletes anything on origin: it pushes the new name and then tells you
+the command to remove origin/OLD, because that is irreversible and breaks other
+clones. Sites without OLD, or that already have NEW, are skipped.
 
 Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
 EOF
@@ -374,6 +383,9 @@ GIT OPERATIONS (webwerk set branch help for details):
                               ('add' is optional: branch add NAME does the same)
   branch all                  Bring in every remote branch that is not local yet
                               (no checkout, no push)
+  branch rename [OLD] NEW     Rename a branch (one name = the one you are on)
+                              and push the new name -u origin; 'no-push' keeps
+                              it local. origin/OLD is kept, not deleted
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
                               (to LIST branches: webwerk get branch -l/-r)
@@ -632,13 +644,36 @@ parse_arguments() {
                 #            it) + switch to it + push -u origin; 'no-push' keeps it
                 #            local. No NAME -> pick from existing branches.
                 #            'all' -> every remote branch (no checkout, no push).
-                #   merge -> merge current branch into NAME (default live), no push
+                #   merge  -> merge current branch into NAME (default live), no push
+                #   rename -> git branch -m [OLD] NEW + push -u origin NEW; origin/OLD
+                #             is reported, never deleted ('no-push' stays local)
                 #   The verb 'add' is optional ('set branch live' == 'set branch add
                 #   live'); it stays accepted, and is *required* for more than one
                 #   name, so a mistyped 'merge' cannot silently create+push branches.
                 #   (listing branches is read-only -> 'webwerk get branch')
                 case "${2:-}" in
                     merge)  site_branch_merge "${3:-live}"; return 0 ;;
+                    rename|mv)
+                        # rename [OLD] NEW [no-push]: one name renames the branch
+                        # each site is currently on; two name it explicitly.
+                        shift 2                             # drop 'branch' 'rename'
+                        local rn_push=1 rn_names="" r
+                        for r in "$@"; do
+                            case "$r" in
+                                no-push|--no-push) rn_push=0 ;;
+                                push|--push) rn_push=1 ;;
+                                -*) : ;;
+                                *) [[ -z "$rn_names" ]] && rn_names="$r" || rn_names="$rn_names $r" ;;
+                            esac
+                        done
+                        local -a rn=(); read -ra rn <<< "$rn_names"
+                        case ${#rn[@]} in
+                            1) site_branch_rename "" "${rn[0]}" "$rn_push" || exit 1 ;;
+                            2) site_branch_rename "${rn[0]}" "${rn[1]}" "$rn_push" || exit 1 ;;
+                            0) log_error "set branch rename [OLD] NEW — no new name given."; exit 1 ;;
+                            *) log_error "set branch rename takes at most two names ('$rn_names')."; exit 1 ;;
+                        esac
+                        return 0 ;;
                     fetch)
                         log_error "'branch fetch' is now 'branch all' (or 'branch NAME' for one)."; exit 1 ;;
                     show|list)
