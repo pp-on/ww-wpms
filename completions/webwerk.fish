@@ -62,6 +62,24 @@ function __ww_branch_names_remote
     end | grep -v '^HEAD$' | sort -u
 end
 
+# Git profile names from the .env in use — the GIT_PROFILE_<name> namespace
+# gp_names() reads: $WEBWERK_ENV_FILE, else the .env next to the webwerk script,
+# else ~/.env.
+function __ww_profile_names
+    set -l f
+    if set -q WEBWERK_ENV_FILE
+        set f $WEBWERK_ENV_FILE
+    else
+        set -l bin (command -v webwerk)
+        if test -n "$bin"
+            set -l dir (dirname (realpath $bin))
+            test -f "$dir/.env"; and set f "$dir/.env"
+        end
+        set -q f[1]; or set f "$HOME/.env"
+    end
+    test -f "$f"; and sed -n 's/^GIT_PROFILE_\([A-Za-z0-9_]*\)=.*/\1/p' "$f" | sort -u
+end
+
 # Installed plugin/theme names in the current dir's site(s); comma lists ok
 function __ww_content_names # plugins|themes
     set -l kind $argv[1]
@@ -81,7 +99,7 @@ end
 
 function __ww_get_no_target
     __ww_get_ctx
-    and not __fish_seen_subcommand_from plugins plugin themes core status brief git branch url db
+    and not __fish_seen_subcommand_from plugins plugin themes core status brief git branch url db profiles
 end
 
 function __ww_install_ctx
@@ -148,9 +166,7 @@ complete -c webwerk -n __ww_install_ctx -s T -l theme         -d 'Activate site 
 complete -c webwerk -n __ww_install_ctx -l no-activate       -d "Don't activate cloned plugins (default: activate all)"
 complete -c webwerk -n __ww_install_ctx -s B -l all-branches  -d 'Create a local branch for every remote branch (not just the default)'
 complete -c webwerk -n __ww_install_ctx -s r -l repo-url       -r -d 'Repository URL to clone'
-complete -c webwerk -n __ww_install_ctx -s g -l git-user       -r -d 'Git username'
-complete -c webwerk -n __ww_install_ctx -s p -l git-protocol   -r -d 'Git protocol' -a 'https\tHTTPS ssh\tSSH'
-complete -c webwerk -n __ww_install_ctx -s G -l git-host       -r -d 'SSH host alias from ~/.ssh/config'
+complete -c webwerk -n __ww_install_ctx -s G -l git-profile -x -a '(__ww_profile_names)' -d 'Git profile to clone with (webwerk set profile add)'
 complete -c webwerk -n __ww_install_ctx -s w -l wp-cli         -r -d 'Path to WP-CLI executable'
 complete -c webwerk -n __ww_install_ctx -s d -l target-dir     -r -d 'Target installation directory'
 complete -c webwerk -n __ww_install_ctx -s n -l nip-io       -d 'Use nip.io DNS (no hosts file, DDEV only)'
@@ -249,24 +265,24 @@ complete -c webwerk -n __ww_set_ctx -s d -l original-dir                -r  -d '
 complete -c webwerk -n __ww_set_ctx -s p -l print                          -d 'Print selected sites'
 complete -c webwerk -n __ww_set_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_set_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a site -d 'Site config: site <license|remote|url> [show|set|add]'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a site -d 'Site config: site <license|remote|url> [show|set|add]'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from site; and not __fish_seen_subcommand_from license remote url' -a 'license remote url' -d 'site config target'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'license action'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and __fish_seen_subcommand_from set' -a 'acf wpmdb akeeba all' -d 'license to apply'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add set' -a 'show add set' -d 'remote action'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'url action'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and __fish_seen_subcommand_from set' -a 'home siteurl both' -d 'which url'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme plugin site config user branch' -a help -d 'Show help for this WHAT'
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme plugin site config user branch profile' -a help -d 'Show help for this WHAT'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a plugin -d 'Plugin actions: plugin <install|copy|update|activate|deactivate|remove>'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a plugin -d 'Plugin actions: plugin <install|copy|update|activate|deactivate|remove>'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from plugin; and not __fish_seen_subcommand_from install copy update activate deactivate remove' -a 'install copy update activate deactivate remove' -d 'plugin action'
 complete -c webwerk -n '__ww_set_ctx; and __fish_seen_subcommand_from plugin' -l no-activate -d "With install/copy, don't activate the plugin"
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a config -d 'WP toggles: config <debug|errors|indexing|hardening|https|htaccess>'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a config -d 'WP toggles: config <debug|errors|indexing|hardening|https|htaccess>'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from config; and not __fish_seen_subcommand_from debug errors indexing hardening https htaccess' -a 'debug errors indexing hardening https htaccess' -d 'config toggle'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from debug indexing hardening; and not __fish_seen_subcommand_from on off' -a 'on off' -d 'state'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from errors; and not __fish_seen_subcommand_from hide show' -a 'hide show' -d 'errors display'
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a branch -d 'Git branches: branch <NAME|all|rename [OLD] NEW|merge [NAME]>'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a branch -d 'Git branches: branch <NAME|all|rename [OLD] NEW|merge [NAME]>'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge rename' -a '(__ww_branch_names; __ww_branch_names_remote)' -d 'Work on this branch: fetch + create + switch + push'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge rename' -a all   -d 'Every remote branch that is not local yet'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and not __fish_seen_subcommand_from add merge rename' -a no-push -d 'Keep it local (pushes -u origin by default)'
@@ -279,7 +295,13 @@ complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch;
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a all -d 'Every remote branch that is not local yet'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a '(__ww_branch_names; __ww_branch_names_remote)' -d 'Branch to create/switch'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a no-push -d 'Keep it local (add pushes -u origin by default)'
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch' -a user -d 'Users: user [add NAME --role ... --pass ... --email ...]'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a user -d 'Users: user [add NAME --role ... --pass ... --email ...]'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a profile -d 'Git profiles: profile <add|edit|rm|default> NAME (writes the .env)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a add     -d 'Add a profile (asks for name, git user, host, protocol)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a edit    -d 'Change an existing profile'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a rm      -d 'Remove a profile'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a default -d 'Use this profile when install has no -G'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and __fish_seen_subcommand_from edit rm remove delete default use' -a '(__ww_profile_names)' -d 'Git profile'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user; and not __fish_seen_subcommand_from add' -a add -d 'add a user'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l role -r -a 'admin editor author contributor subscriber' -d 'role (admin default)'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l pass -r -d 'password'
@@ -319,6 +341,7 @@ complete -c webwerk -f -n __ww_get_no_target -a git     -d 'Git overview of each
 complete -c webwerk -f -n __ww_get_no_target -a branch  -d 'List branches in each wp-content repo (-l/-r)'
 complete -c webwerk -f -n __ww_get_no_target -a url     -d 'siteurl / home per site'
 complete -c webwerk -f -n __ww_get_no_target -a db      -d 'Run a query per site (warns on non-SELECT)'
+complete -c webwerk -f -n __ww_get_no_target -a profiles -d 'List the git profiles (* marks the default)'
 complete -c webwerk -f -n '__ww_get_ctx; and __ww_after_word plugin' -a '(__ww_content_names plugins)' -d 'Installed plugin'
 complete -c webwerk -n __ww_get_ctx -s s -l sites    -x -a '(__ww_site_names)' -d 'Comma-separated site names'
 complete -c webwerk -n __ww_get_ctx -s a -l all-sites       -d 'All sites, pausing between each so you can read it'
