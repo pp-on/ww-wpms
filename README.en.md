@@ -461,7 +461,7 @@ When run in a terminal, `webwerk install` shows a single-line progress bar
 (`[bar] xx% (n/11) | current activity`); errors and warnings break out on their
 own line. Use `-v`/`--verbose` (or `--debug`) for the full log. When the output is
 piped or redirected, the full log is used automatically. The cloned `wp-content`
-keeps its `.git`, so it stays a working git clone (use `webwerk get git` to inspect).
+keeps its `.git`, so it stays a working git clone (use `webwerk get remote` to inspect).
 
 `-A`/`-a` run a **batch install** over the immediate subdirectories of the current
 directory: each empty subdir is installed (its name becomes the site/repo name),
@@ -638,16 +638,17 @@ in `webwerk get`; health checks in `webwerk doctor`.
 ./webwerk set --sites=mysite plugin remove hello-dolly
 ./webwerk set --sites=mysite plugin copy /path/to/plugin
 
-# Site config (WHAT form): view with no sub-action, change with set/add.
+# Site config: 'get' views, 'set site' changes — no overlap.
 # (-s/-a/-A may appear anywhere; they're applied before the action)
-./webwerk set -s mysite site license               # is ACF/WP-Migrate/Akeeba applied?
-./webwerk set -s mysite site license --values      # also reveal the configured keys
-./webwerk set -s mysite site license set acf       # apply a license (acf|wpmdb|akeeba|all)
+./webwerk get license -s mysite                    # is ACF/WP-Migrate/Akeeba applied?
+./webwerk get license --values -s mysite           # also reveal the configured keys
+./webwerk set -s mysite site license acf           # apply a license (acf|wpmdb|akeeba|all)
 ./webwerk set -s mysite site remote                # show the wp-content git remote
-./webwerk set -s mysite site remote set URL        # set origin (omit URL to edit inline)
+./webwerk set -s mysite site remote URL            # set origin to that URL
+./webwerk set -s mysite site remote profile arbeit # build the URL from a git profile
 ./webwerk set -s mysite site remote add backup URL # add a named remote
 ./webwerk set -s mysite site url                   # show home + siteurl
-./webwerk set -s mysite site url set home URL      # set home (or: siteurl | both)
+./webwerk set -s mysite site url home URL          # set home (or: siteurl | both)
 
 # WordPress config toggles (WHAT form): view with no sub-action, change with a value
 ./webwerk set -s mysite config                     # show debug/indexing/https state
@@ -723,8 +724,8 @@ automatically when the output is piped.
 ./webwerk get brief --errors      # only broken sites
 ./webwerk get brief --outdated    # only sites with updates
 
-# Git overview of each wp-content repo (remote, branch/upstream, dirty count)
-./webwerk get git
+# Remote URL(s) of each wp-content repo (add fetch/push to see just one)
+./webwerk get remote
 
 # List branches in each wp-content repo (both local + remote by default).
 # The remote refs are refreshed first (git fetch --prune), so a branch created on
@@ -758,7 +759,7 @@ webwerk install -G arbeit -B
 # 2. GET — see what is actually there. Refreshes from origin first, so a branch
 #    created after your clone shows up; it never creates anything locally.
 webwerk get branch -s acme
-webwerk get git                      # remote, upstream, ahead/behind, dirty count
+webwerk get remote                   # remote URL(s)
 
 # 3. SET — work on a branch. One command: fetch (if the name is unknown) +
 #    create + switch + push -u origin.

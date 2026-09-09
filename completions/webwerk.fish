@@ -99,7 +99,7 @@ end
 
 function __ww_get_no_target
     __ww_get_ctx
-    and not __fish_seen_subcommand_from plugins plugin themes core status brief git branch url db profiles
+    and not __fish_seen_subcommand_from plugins plugin themes core status brief remote branch url license db profiles
 end
 
 function __ww_install_ctx
@@ -265,13 +265,12 @@ complete -c webwerk -n __ww_set_ctx -s d -l original-dir                -r  -d '
 complete -c webwerk -n __ww_set_ctx -s p -l print                          -d 'Print selected sites'
 complete -c webwerk -n __ww_set_ctx -s T -l themes                         -d 'List themes (optionally activate by number/name)'
 complete -c webwerk -n __ww_set_ctx -s W -l theme-webwerk                   -d "Activate 'webwerk' theme (skip if active; else pick one)"
-complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a site -d 'Site config: site <license|remote|url> [show|set|add]'
+complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a site -d 'Site config (write-only; view with get license/remote/url): site <license|remote|url>'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from site; and not __fish_seen_subcommand_from license remote url' -a 'license remote url' -d 'site config target'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'license action'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and __fish_seen_subcommand_from set' -a 'acf wpmdb akeeba all' -d 'license to apply'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add set' -a 'show add set' -d 'remote action'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show set' -a 'show set' -d 'url action'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and __fish_seen_subcommand_from set' -a 'home siteurl both' -d 'which url'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and not __fish_seen_subcommand_from acf wpmdb akeeba all' -a 'acf wpmdb akeeba all' -d 'license to apply'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add profile' -a 'show add profile' -d 'remote action (or type a URL directly)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and __fish_seen_subcommand_from profile' -a '(__ww_profile_names)' -d 'Git profile'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show home siteurl both' -a 'show home siteurl both' -d 'url action (or type a URL directly for both)'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme plugin site config user branch profile' -a help -d 'Show help for this WHAT'
 complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme' -a webwerk -d 'Activate the webwerk theme'
@@ -337,12 +336,14 @@ complete -c webwerk -f -n __ww_get_no_target -a themes  -d 'List themes per site
 complete -c webwerk -f -n __ww_get_no_target -a core    -d 'Core version (+update) per site'
 complete -c webwerk -f -n __ww_get_no_target -a status  -d 'Full per-site status'
 complete -c webwerk -f -n __ww_get_no_target -a brief   -d 'Brief: core + plugin/theme update counts'
-complete -c webwerk -f -n __ww_get_no_target -a git     -d 'Git overview of each wp-content repo'
+complete -c webwerk -f -n __ww_get_no_target -a remote  -d 'Remote URL(s) of each wp-content repo'
 complete -c webwerk -f -n __ww_get_no_target -a branch  -d 'List branches in each wp-content repo (-l/-r)'
 complete -c webwerk -f -n __ww_get_no_target -a url     -d 'siteurl / home per site'
+complete -c webwerk -f -n __ww_get_no_target -a license -d 'Per-site license applied-status (-x also shows keys)'
 complete -c webwerk -f -n __ww_get_no_target -a db      -d 'Run a query per site (warns on non-SELECT)'
 complete -c webwerk -f -n __ww_get_no_target -a profiles -d 'List the git profiles (* marks the default)'
 complete -c webwerk -f -n '__ww_get_ctx; and __ww_after_word plugin' -a '(__ww_content_names plugins)' -d 'Installed plugin'
+complete -c webwerk -f -n '__ww_get_ctx; and __ww_after_word remote' -a 'fetch push' -d 'Show only this URL'
 complete -c webwerk -n __ww_get_ctx -s s -l sites    -x -a '(__ww_site_names)' -d 'Comma-separated site names'
 complete -c webwerk -n __ww_get_ctx -s a -l all-sites       -d 'All sites, pausing between each so you can read it'
 complete -c webwerk -n __ww_get_ctx -s A -l all-sites-auto  -d 'All sites, no pause (also the default)'
@@ -352,5 +353,6 @@ complete -c webwerk -n __ww_get_ctx -l no-fetch             -d "branch: don't re
 complete -c webwerk -n __ww_get_ctx -l format        -r -d 'Output format (table|csv|json|count|yaml)'
 complete -c webwerk -n __ww_get_ctx -l errors           -d 'brief: only broken sites'
 complete -c webwerk -n __ww_get_ctx -l outdated         -d 'brief: only sites with updates'
+complete -c webwerk -n __ww_get_ctx -s x -l values          -d 'license: also print the configured key values'
 complete -c webwerk -n __ww_get_ctx -s h -l help        -d 'Show help'
 complete -c webwerk -f -n __ww_get_ctx -a help          -d 'Show help (per-target after a target word)'

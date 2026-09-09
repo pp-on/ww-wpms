@@ -193,16 +193,19 @@ show_site_help() {
 webwerk set site — view/change site config on selected sites
 
 Usage:
-  webwerk set site license [show [--values] | set <acf|wpmdb|akeeba|all>]
-  webwerk set site remote  [show | add NAME URL | set [URL]]
-  webwerk set site url     [show | set <home|siteurl|both> [URL]]
+  webwerk set site license  <acf|wpmdb|akeeba|all>
+  webwerk set site remote   [show | add NAME URL | URL | profile [NAME]]
+  webwerk set site url      [show | <home|siteurl|both> [URL]]
 
-No sub-action (or 'show') displays current values; 'set'/'add' change them.
-  license show   per-site: is each license applied? (--values also prints the
-                 configured keys from ~/.keys/.env)
-  license set    apply a license (acf=-f, wpmdb=-m, akeeba=-k, all)
-  remote set     set origin's URL; omit URL to edit the current value inline
-  url set        update home/siteurl; omit URL to edit the current value inline
+'set site' is write-only — to view current values use 'webwerk get license'
+/ 'webwerk get url' (remote's view is 'webwerk get remote', or 'site remote
+show' for a quick per-selection look).
+  license        apply a license (acf=-f, wpmdb=-m, akeeba=-k, all)
+  remote URL     set origin to that URL directly
+  remote profile [NAME]  build the URL from a git profile instead (omit NAME
+                 to use the default profile, like install without -G)
+  url <home|siteurl|both> [URL]  update it; omit URL to edit the current
+                 value inline; a bare URL alone means "both"
 
 Site selection (may appear anywhere on the line; default: current directory):
   -s NAMES   comma-separated site names under the base dir
@@ -295,8 +298,9 @@ Usage:
                                          (default: live), then switch back
 
 To LIST branches use 'webwerk get branch' (-l local / -r remote) — it refreshes
-from origin first, so a branch created after your clone is listed; for a repo
-overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
+from origin first, so a branch created after your clone is listed; for the
+wp-content remote URL(s) use 'webwerk get remote' (add fetch/push to see just
+one).
 
 The verb 'add' is optional — 'set branch live' and 'set branch add live' are the
 same command. Say 'add' when you mean several names at once ('set branch add a b')
@@ -360,10 +364,9 @@ INFORMATION & DISPLAY:
   core, git, url, db) — see 'webwerk get help'.
 
 SITE CONFIG (webwerk set site help for details):
-  site license [show|set ...]  Show if ACF/WP-Migrate/Akeeba licenses are applied
-                               (--values reveals keys); set applies them
-  site remote  [show|add|set]  Show/add/set the wp-content git remote
-  site url     [show|set ...]  Show/set home & siteurl
+  site license <acf|wpmdb|akeeba|all>  Apply a license (view: 'get license')
+  site remote  [show|add|URL|profile]  Show/add/set the wp-content git remote
+  site url     [show|<home|siteurl|both> ...]  Show/set home & siteurl
 
 THEMES:
   theme [webwerk|NAME|NUM]     Activate a theme. No arg = list & pick. 'webwerk'
@@ -579,37 +582,23 @@ parse_arguments() {
                 local _sub="${2:-}" a3="${3:-}" a4="${4:-}" a5="${5:-}"
                 case "$_sub" in
                     license)
-                        case "$a3" in
-                            ""|show)
-                                if [[ "$a4" == "--values" || "$a4" == "-x" ]]; then
-                                    site_license_status 1; else site_license_status 0; fi ;;
-                            --values|-x) site_license_status 1 ;;
-                            set)
-                                [[ -z "$a4" ]] && { log_error "site license set <acf|wpmdb|akeeba|all>"; exit 1; }
-                                site_license_set "$a4" ;;
-                            *) log_error "site license: use [show [--values]] | set <acf|wpmdb|akeeba|all>"; exit 1 ;;
-                        esac ;;
+                        [[ -z "$a3" ]] && { log_error "site license <acf|wpmdb|akeeba|all>  (to view: webwerk get license)"; exit 1; }
+                        site_license_set "$a3" ;;
                     remote)
                         case "$a3" in
                             ""|show) site_remote_show ;;
                             add)
                                 [[ -z "$a4" || -z "$a5" ]] && { log_error "site remote add NAME URL"; exit 1; }
                                 site_remote_add "$a4" "$a5" ;;
-                            set) site_remote_set "$a4" ;;
-                            *) log_error "site remote: use [show] | add NAME URL | set [URL]"; exit 1 ;;
+                            *) site_remote_set "$a3" "$a4" ;;
                         esac ;;
                     url)
                         case "$a3" in
-                            ""|show) site_url_show ;;
-                            set)
-                                case "$a4" in
-                                    home)         site_url_set home "$a5" ;;
-                                    siteurl|site) site_url_set siteurl "$a5" ;;
-                                    both)         site_url_set both "$a5" ;;
-                                    "") log_error "site url set <home|siteurl|both> [URL]"; exit 1 ;;
-                                    *)  site_url_set both "$a4" ;;
-                                esac ;;
-                            *) log_error "site url: use [show] | set <home|siteurl|both> [URL]"; exit 1 ;;
+                            ""|show)      site_url_show ;;
+                            home)         site_url_set home "$a4" ;;
+                            siteurl|site) site_url_set siteurl "$a4" ;;
+                            both)         site_url_set both "$a4" ;;
+                            *)            site_url_set both "$a3" ;;
                         esac ;;
                     "") log_error "site: use license | remote | url"; exit 1 ;;
                     *) log_error "site: unknown target '$_sub'. Use: license, remote, url"; exit 1 ;;

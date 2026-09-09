@@ -680,30 +680,7 @@ _site_header() {
     echo -e "----------------${Color_Off}"
 }
 
-# set site license [show_values] — per site: is each license applied?
-site_license_status() {
-    local show_values="${1:-0}" site sp cfg mark
-    for site in "${sites[@]}"; do
-        sp="$(_site_path "$site")"; cfg="$sp/wp-config.php"
-        _site_header "$site"
-        if grep -q "ACF_PRO_LICENSE" "$cfg" 2>/dev/null; then mark="${Green}applied${Color_Off}"; else mark="${Yellow}not applied${Color_Off}"; fi
-        echo -e "  ACF Pro:     $mark"
-        if grep -q "WPMDB_LICENCE" "$cfg" 2>/dev/null; then mark="${Green}applied${Color_Off}"; else mark="${Yellow}not applied${Color_Off}"; fi
-        echo -e "  WP Migrate:  $mark"
-        if grep -q "AKEEBA_DOWNLOAD_ID" "$cfg" 2>/dev/null \
-           || [[ -n "$(${WP_CLI_PATH} --path="$sp" option get akeeba_download_id 2>/dev/null || true)" ]]; then
-            mark="${Green}applied${Color_Off}"; else mark="${Yellow}not applied${Color_Off}"; fi
-        echo -e "  Akeeba:      $mark"
-    done
-    if [[ "$show_values" == "1" ]]; then
-        echo -e "${Purple}Configured license values (from ~/.keys / .env):${Color_Off}"
-        echo "  ACF_PRO_LICENSE    = ${ACF_PRO_LICENSE:-<not set>}"
-        echo "  WPMDB_LICENCE      = ${WPMDB_LICENCE:-<not set>}"
-        echo "  AKEEBA_DOWNLOAD_ID = ${AKEEBA_DOWNLOAD_ID:-<not set>}"
-    fi
-}
-
-# set site license set <acf|wpmdb|akeeba|all>
+# set site license <acf|wpmdb|akeeba|all>
 site_license_set() {
     local which="$1" site sp
     for site in "${sites[@]}"; do
@@ -715,7 +692,7 @@ site_license_set() {
               wpmdb)  wp_key_migrate ;;
               akeeba) wp_key_akeeba ;;
               all)    wp_setup_all_licenses ;;
-              *) log_error "license set: use acf, wpmdb, akeeba, or all"; exit 1 ;;
+              *) log_error "site license: use acf, wpmdb, akeeba, or all"; exit 1 ;;
           esac )
     done
 }
@@ -749,9 +726,16 @@ site_remote_add() {
     done
 }
 
-# set site remote set [url] — set origin url; omit url to edit the current value
+# set site remote URL | set site remote profile [NAME] — set origin to a
+# literal URL, or build it from a git profile.
 site_remote_set() {
-    local url="${1:-}" site sp repo cur new
+    local mode="${1:-}" arg2="${2:-}" url="" resolved_profile=""
+    if [[ "$mode" == "profile" ]]; then
+        resolved_profile="$(gp_resolve "$arg2")" || return 1
+    else
+        url="$mode"
+    fi
+    local site sp repo cur new repo_name
     for site in "${sites[@]}"; do
         sp="$(_site_path "$site")"; repo="$sp/wp-content"
         _site_header "$site"
@@ -759,8 +743,12 @@ site_remote_set() {
             echo -e "  ${Yellow}no git repo in wp-content — skipped${Color_Off}"; continue
         fi
         cur="$(git -C "$repo" remote get-url origin 2>/dev/null || echo '')"
-        if [[ -n "$url" ]]; then new="$url"; else read -e -i "$cur" -p "  origin url: " new || true; fi
-        [[ -z "$new" ]] && { echo "  (skipped)"; continue; }
+        if [[ -n "$url" ]]; then
+            new="$url"
+        else
+            repo_name="$site"; [[ "$repo_name" == "." ]] && repo_name="$(basename "$PWD")"
+            new="$(gp_url "$resolved_profile" "$repo_name")" || { echo "  (skipped)"; continue; }
+        fi
         if [[ -n "$cur" ]]; then
             git -C "$repo" remote set-url origin "$new" && echo -e "  ${Green}origin -> $new${Color_Off}"
         else
@@ -780,7 +768,7 @@ site_url_show() {
     done
 }
 
-# set site url set <home|siteurl|both> [url] — omit url to edit the current value
+# set site url <home|siteurl|both> [url] — omit url to edit the current value
 site_url_set() {
     local which="$1" url="${2:-}" site sp opt c n
     local opts=()
@@ -1578,7 +1566,7 @@ export -f searchwp process_dirs process_sites process_sites_all print_sites
 export -f os_detection
 export -f list_wp_plugins list_wp_themes wp_activate_webwerk_theme copy_plugins remove_plugins install_plugins wp_update wp_plugin_action
 export -f wp_license_plugins wp_key_acf_pro wp_key_migrate wp_key_akeeba wp_setup_all_licenses
-export -f _site_path _site_header site_license_status site_license_set
+export -f _site_path _site_header site_license_set
 export -f site_remote_show site_remote_add site_remote_set site_url_show site_url_set
 export -f wp_show_errors site_config site_config_show pick_user_role site_user_add site_user_show
 export -f site_branch_merge site_branch_add site_branch_rename site_branch_fetch
