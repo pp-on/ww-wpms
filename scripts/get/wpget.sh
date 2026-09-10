@@ -213,6 +213,40 @@ get_url() {
     done
 }
 
+# Per-site license applied-status. show_values=1 also reveals configured keys.
+# The ACF_PRO_LICENSE/WPMDB_LICENCE/AKEEBA_DOWNLOAD_ID checks here are
+# independent of (must be kept in sync with) the ones wp_license_plugins()
+# and wp_key_akeeba() use to decide whether to (re)write wp-config.php —
+# scripts/utils/wphelpfunctions.sh, LICENSE KEY MANAGEMENT section.
+get_license() {
+    local show_values="${1:-0}"
+    collect_site_dirs
+    local total=${#SITE_DIRS[@]} idx=0
+    local site_dir name cfg mark
+    for site_dir in "${SITE_DIRS[@]}"; do
+        (( ++idx ))
+        maybe_pause $(( idx - 1 ))
+        name="$(basename "$site_dir")"
+        cfg="$site_dir/wp-config.php"
+        echo -e "\033[36m[$idx/$total] $name\033[0m"
+        if grep -q "ACF_PRO_LICENSE" "$cfg" 2>/dev/null; then mark="\033[32mapplied\033[0m"; else mark="\033[33mnot applied\033[0m"; fi
+        echo -e "  ACF Pro:     $mark"
+        if grep -q "WPMDB_LICENCE" "$cfg" 2>/dev/null; then mark="\033[32mapplied\033[0m"; else mark="\033[33mnot applied\033[0m"; fi
+        echo -e "  WP Migrate:  $mark"
+        if grep -q "AKEEBA_DOWNLOAD_ID" "$cfg" 2>/dev/null \
+           || [[ -n "$(${WP_CLI_PATH} --path="$site_dir" option get akeeba_download_id 2>/dev/null || true)" ]]; then
+            mark="\033[32mapplied\033[0m"; else mark="\033[33mnot applied\033[0m"; fi
+        echo -e "  Akeeba:      $mark"
+        echo
+    done
+    if [[ "$show_values" == "1" ]]; then
+        echo "Configured license values (from ~/.keys / .env):"
+        echo "  ACF_PRO_LICENSE    = ${ACF_PRO_LICENSE:-<not set>}"
+        echo "  WPMDB_LICENCE      = ${WPMDB_LICENCE:-<not set>}"
+        echo "  AKEEBA_DOWNLOAD_ID = ${AKEEBA_DOWNLOAD_ID:-<not set>}"
+    fi
+}
+
 get_status() {
     collect_site_dirs
     local total=${#SITE_DIRS[@]} idx=0 site_dir name version update
@@ -313,11 +347,16 @@ get_brief() {
     fi
 }
 
-# Git overview for each site's wp-content repo: remote, branch/upstream, dirty count.
-get_git() {
+# Remote URL(s) for each site's wp-content repo. filter: "" (both, labeled) | fetch | push.
+get_remote() {
+    local filter="${1:-}"
+    case "$filter" in
+        ""|fetch|push) ;;
+        *) log_error "get remote: unknown filter '$filter'. Use: fetch, push (or omit for both)."; exit 1 ;;
+    esac
     collect_site_dirs
     local total=${#SITE_DIRS[@]} idx=0
-    local site_dir name repo remote branch upstream ahead behind dirty
+    local site_dir name repo remotes r fetch push
     for site_dir in "${SITE_DIRS[@]}"; do
         (( ++idx ))
         maybe_pause $(( idx - 1 ))
@@ -328,31 +367,30 @@ get_git() {
             continue
         fi
         echo -e "\033[36m[$idx/$total] $name\033[0m"
-        remote=$(git -C "$repo" remote -v 2>/dev/null || true)
-        if [[ -n "$remote" ]]; then
-            echo "  remote:"; echo "$remote" | sed 's/^/    /'
+        remotes=$(git -C "$repo" remote 2>/dev/null || true)
+        if [[ -z "$remotes" ]]; then
+            echo "  <none>"
         else
-            echo "  remote: <none>"
-        fi
-        branch=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)
-        if [[ -z "$branch" ]]; then
-            echo "  branch: (detached HEAD)"
-        elif ! git -C "$repo" rev-parse --verify -q HEAD >/dev/null 2>&1; then
-            echo "  branch: $branch (no commits yet)"
-        else
-            upstream=$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
-            if [[ -n "$upstream" ]]; then
-                read -r behind ahead < <(git -C "$repo" rev-list --left-right --count "$upstream"...HEAD 2>/dev/null || echo "0 0")
-                echo "  branch: $branch → $upstream (ahead ${ahead:-0}, behind ${behind:-0})"
-            else
-                echo "  branch: $branch (no upstream)"
-            fi
-        fi
-        dirty=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l || true)
-        if [[ "$dirty" -gt 0 ]]; then
-            echo -e "  status: \033[33m$dirty uncommitted change(s)\033[0m"
-        else
-            echo "  status: clean"
+            while read -r r; do
+                [[ -z "$r" ]] && continue
+                # Fetch each URL at most once, only for the filter(s) in play.
+                [[ "$filter" != "push" ]] && fetch=$(git -C "$repo" remote get-url "$r" 2>/dev/null || echo '?')
+                [[ "$filter" != "fetch" ]] && push=$(git -C "$repo" remote get-url --push "$r" 2>/dev/null || echo '?')
+                case "$filter" in
+                    fetch)
+                        echo "  $r: $fetch" ;;
+                    push)
+                        echo "  $r: $push" ;;
+                    *)
+                        if [[ "$fetch" == "$push" ]]; then
+                            echo "  $r: $fetch"
+                        else
+                            echo "  $r:"
+                            echo "    fetch: $fetch"
+                            echo "    push:  $push"
+                        fi ;;
+                esac
+            done <<< "$remotes"
         fi
         echo
     done
@@ -485,15 +523,16 @@ Options:
   --outdated   Only sites with available updates
 EOF
             ;;
-        git)
+        remote)
             cat <<EOF
-webwerk get git — git overview of each site's wp-content repo
+webwerk get remote — remote URL(s) of each site's wp-content repo
 
-Per site: remote(s), branch/upstream with ahead/behind, and uncommitted-change
-count. Sites whose wp-content is not a git repo are noted. Read-only.
+Per site: each remote's URL (fetch/push shown together, or separately when
+they differ). Add 'fetch' or 'push' to show only that one. Sites whose
+wp-content is not a git repo are noted. Read-only.
 
 Usage:
-  webwerk get git [-s sites | -a]
+  webwerk get remote [fetch|push] [-s sites | -a]
 EOF
             ;;
         profiles|profile)
@@ -543,6 +582,18 @@ Usage:
   webwerk get url [-s sites | -a]
 EOF
             ;;
+        license)
+            cat <<EOF
+webwerk get license — per-site license applied-status
+
+Per site: is ACF Pro / WP Migrate DB Pro / Akeeba applied? -x/--values also
+prints the configured keys from ~/.keys/.env. Read-only. To apply a license,
+use 'webwerk set site license <acf|wpmdb|akeeba|all>'.
+
+Usage:
+  webwerk get license [-x] [-s sites | -a]
+EOF
+            ;;
         db)
             cat <<EOF
 webwerk get db — run a read query per site
@@ -575,9 +626,10 @@ WHAT:
   core                 Core version (+ update available) per site
   status               Full per-site status (core + plugins + themes)
   brief                Brief overview: core version + plugin/theme update counts
-  git                  Git overview of each site's wp-content repo
+  remote [fetch|push]  Remote URL(s) of each site's wp-content repo
   branch               List branches in each site's wp-content repo (-l/-r)
   url                  siteurl / home per site
+  license [-x]         Per-site license applied-status (-x also shows keys)
   db "SQL"             Run a query per site (warns on non-SELECT)
 
 OPTIONS:
@@ -589,6 +641,7 @@ OPTIONS:
   --format FORMAT      Output format for plugins/themes (table|csv|json|count|yaml)
   --errors             brief: only sites that are broken
   --outdated           brief: only sites with available updates
+  -x, --values         license: also print the configured key values
   -h, --help           Show this help
 
 EXAMPLES:
@@ -647,6 +700,8 @@ main() {
                 BRIEF_FILTER="errors"; shift ;;
             --outdated)
                 BRIEF_FILTER="outdated"; shift ;;
+            -x|--values)
+                LICENSE_VALUES=1; shift ;;
             --debug)
                 set -x; shift ;;
             -*)
@@ -662,6 +717,11 @@ main() {
         exit 0
     fi
 
+    if [[ "$BRANCH_SCOPE" != "both" && "$what" != "branch" ]]; then
+        log_error "-l/--local and -r/--remote only apply to 'get branch'"
+        exit 1
+    fi
+
     case "$what" in
         plugins) get_plugins ;;
         plugin)  get_plugin "${positionals[0]:-}" ;;
@@ -669,14 +729,15 @@ main() {
         core)    get_core ;;
         status)  get_status ;;
         brief)   get_brief ;;
-        git)     get_git ;;
+        remote)  get_remote "${positionals[0]:-}" ;;
         branch)  get_branch ;;
         url)     get_url ;;
+        license) get_license "${LICENSE_VALUES:-0}" ;;
         db)      get_db "${positionals[0]:-}" ;;
         profiles|profile) gp_list ;;
         "")      show_help; exit 0 ;;
         *)
-            log_error "Unknown target: '$what'. Use: plugins, plugin, themes, core, status, brief, git, branch, url, db, profiles."
+            log_error "Unknown target: '$what'. Use: plugins, plugin, themes, core, status, brief, remote, branch, url, license, db, profiles."
             exit 1 ;;
     esac
 }

@@ -31,7 +31,7 @@ A comprehensive WordPress management suite focused on **Barrierefreiheit** (Acce
 - **Multi-Mode Installation**: Local, bare, and DDEV containerized installations
 - **Automated Updates**: Batch update WordPress core, themes, and plugins across multiple sites
 - **License Management**: Secure handling of ACF Pro, WP Migrate DB Pro, and Akeeba licenses
-- **Git Integration**: Automatic repository cloning and synchronization, plus per-site branch handling (`install -B`, `get branch`, `set branch NAME|all|merge`)
+- **Git Integration**: Automatic repository cloning and synchronization, plus per-site branch handling (`install -B`, `get branch`, `set branch NAME|all|rename|merge`)
 - **Environment Detection**: Automatic detection of WSL2, DDEV, Docker, and Git Bash environments
 - **Debug Management**: Easy toggle of WordPress debug modes
 - **User Management**: Create and manage WordPress admin users
@@ -461,7 +461,7 @@ When run in a terminal, `webwerk install` shows a single-line progress bar
 (`[bar] xx% (n/11) | current activity`); errors and warnings break out on their
 own line. Use `-v`/`--verbose` (or `--debug`) for the full log. When the output is
 piped or redirected, the full log is used automatically. The cloned `wp-content`
-keeps its `.git`, so it stays a working git clone (use `webwerk get git` to inspect).
+keeps its `.git`, so it stays a working git clone (use `webwerk get remote` to inspect).
 
 `-A`/`-a` run a **batch install** over the immediate subdirectories of the current
 directory: each empty subdir is installed (its name becomes the site/repo name),
@@ -638,16 +638,17 @@ in `webwerk get`; health checks in `webwerk doctor`.
 ./webwerk set --sites=mysite plugin remove hello-dolly
 ./webwerk set --sites=mysite plugin copy /path/to/plugin
 
-# Site config (WHAT form): view with no sub-action, change with set/add.
+# Site config: 'get' views, 'set site' changes — no overlap.
 # (-s/-a/-A may appear anywhere; they're applied before the action)
-./webwerk set -s mysite site license               # is ACF/WP-Migrate/Akeeba applied?
-./webwerk set -s mysite site license --values      # also reveal the configured keys
-./webwerk set -s mysite site license set acf       # apply a license (acf|wpmdb|akeeba|all)
+./webwerk get license -s mysite                    # is ACF/WP-Migrate/Akeeba applied?
+./webwerk get license --values -s mysite           # also reveal the configured keys
+./webwerk set -s mysite site license acf           # apply a license (acf|wpmdb|akeeba|all)
 ./webwerk set -s mysite site remote                # show the wp-content git remote
-./webwerk set -s mysite site remote set URL        # set origin (omit URL to edit inline)
+./webwerk set -s mysite site remote URL            # set origin to that URL
+./webwerk set -s mysite site remote profile arbeit # build the URL from a git profile
 ./webwerk set -s mysite site remote add backup URL # add a named remote
 ./webwerk set -s mysite site url                   # show home + siteurl
-./webwerk set -s mysite site url set home URL      # set home (or: siteurl | both)
+./webwerk set -s mysite site url home URL          # set home (or: siteurl | both)
 
 # WordPress config toggles (WHAT form): view with no sub-action, change with a value
 ./webwerk set -s mysite config                     # show debug/indexing/https state
@@ -723,8 +724,8 @@ automatically when the output is piped.
 ./webwerk get brief --errors      # only broken sites
 ./webwerk get brief --outdated    # only sites with updates
 
-# Git overview of each wp-content repo (remote, branch/upstream, dirty count)
-./webwerk get git
+# Remote URL(s) of each wp-content repo (add fetch/push to see just one)
+./webwerk get remote
 
 # List branches in each wp-content repo (both local + remote by default).
 # The remote refs are refreshed first (git fetch --prune), so a branch created on
@@ -758,7 +759,7 @@ webwerk install -G arbeit -B
 # 2. GET — see what is actually there. Refreshes from origin first, so a branch
 #    created after your clone shows up; it never creates anything locally.
 webwerk get branch -s acme
-webwerk get git                      # remote, upstream, ahead/behind, dirty count
+webwerk get remote                   # remote URL(s)
 
 # 3. SET — work on a branch. One command: fetch (if the name is unknown) +
 #    create + switch + push -u origin.
@@ -770,7 +771,13 @@ webwerk set -s acme branch relaunch no-push  # …the same, but keep it local
 #    appeared on origin since. No checkout, no push: you stay where you are.
 webwerk set -s acme branch all
 
-# 5. Merge your work into the deploy branch. Never pushes — you review, then push.
+# 5. Rename a branch. One name = the branch the site is currently on; two names
+#    = old new. The new name is pushed (-u origin); origin/OLD is left in place.
+webwerk set -s acme branch rename relaunch           # current -> relaunch
+webwerk set -s acme branch rename staging preview    # staging -> preview
+webwerk set -s acme branch rename staging preview no-push   # keep it local
+
+# 6. Merge your work into the deploy branch. Never pushes — you review, then push.
 webwerk set -s acme branch merge             # current -> live (the default target)
 webwerk set -A branch merge staging          # …across every site
 ```
@@ -783,10 +790,15 @@ What keeps this safe when it runs across many sites at once:
 - **`merge` never pushes** and never leaves a repo half-done: sites with a dirty
   tree, a detached HEAD or a missing target branch are skipped, conflicting merges
   are aborted, and it switches back to where you were afterwards.
+- **`rename` deletes nothing on origin.** It pushes the new name and leaves
+  `origin/OLD` standing — deleting a remote branch is irreversible and breaks other
+  clones — printing the command in case you do want it gone. Sites without `OLD`,
+  or that already have `NEW`, are skipped.
 - **`get branch` changes nothing** — its fetch only updates `refs/remotes`.
 - **The verb `add` is optional** (`branch add live` == `branch live`), but required
   for several names at once, so a mistyped `merge` is refused instead of creating
-  and pushing branches named after the typo.
+  and pushing branches named after the typo. The same goes for `all` and `rename`:
+  a branch genuinely called that is created with `branch add rename`.
 
 ### Remove Commands (destructive)
 

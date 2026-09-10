@@ -25,7 +25,7 @@ This is the **Webwerk WordPress Management Suite v2.0** - a comprehensive collec
 - **`scripts/install/wplocalinstall.sh:1`** - WordPress installation engine
 - **`scripts/update/wpupdate.sh`** - Update management system
 - **`scripts/set/wpset.sh`** - Site modification tools (writes)
-- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|git|branch|url|db|profiles` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch add`). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
+- **`scripts/get/wpget.sh`** - Read-only retrieval: `webwerk get plugins|plugin|themes|core|status|brief|remote|branch|url|license|db|profiles` (`get plugin NAME` finds which sites have a plugin whose slug or human title matches NAME; `get branch` lists wp-content branches; `-l` local / `-r` remote / both; it refreshes the remote refs first (`git fetch --prune`, `--no-fetch` opts out) so branches created on origin after the clone are listed — that touches only `refs/remotes`, creating a local branch stays `set branch add`; `get license` shows per-site ACF/WP-Migrate/Akeeba applied-status, `-x`/`--values` also reveals the configured keys). Reads live here only; the old `set` read flags (`-C`/`-B`/`-e`/`-O`/`-l`/`-g`) and `set plugin list` were removed. (`set -T NUM|NAME` still activates a theme.)
 
 ## Command Grammar
 
@@ -40,15 +40,18 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
 - **WHAT** = the verb's object/scope where it has one, e.g. `get themes`,
   `update plugins`, `update plugin <name>`, `set theme [webwerk|NAME|NUM]`,
   `set plugin <install|copy|update|activate|deactivate|remove> [NAME]`,
-  `set site <license|remote|url> [show|set|add …]`,
-  `set branch <NAME|all|merge [NAME]>` (`branch NAME` does the whole sequence in one
+  `set site <license|remote|url>`,
+  `set branch <NAME|all|rename [OLD] NEW|merge [NAME]>` (`branch NAME` does the whole sequence in one
   command: fetch (when NAME is unknown) → create it *tracking* `origin/NAME` if origin
   has it, else from the current branch → switch to it → `push -u origin`; the word
   `no-push` keeps it local, no NAME → pick from existing. `branch all`: bring in every
   remote branch not local yet, no checkout/no push — the `set`-time counterpart of
   `install -B/--all-branches`. merge: merge current into NAME, default `live`, no push.
+  rename: `git branch -m [OLD] NEW` per site + `push -u origin NEW`; one name renames
+  whatever branch the site is on, `no-push` stays local. `origin/OLD` is deliberately
+  never deleted — irreversible and breaks other clones — only reported.
   The verb `add` is optional (`branch add NAME` == `branch NAME`) and is *required* for
-  more than one name, so a mistyped `merge` can't create+push branches. There is no
+  more than one name, so a mistyped `merge`/`rename` can't create+push branches. There is no
   `branch fetch` verb. Listing branches moved to `get branch`),
   `set config <debug|errors|indexing|hardening|https|htaccess> [on|off|hide|show]`,
   `set user [add NAME [--role R] [--pass P] [--email E]]`,
@@ -57,8 +60,15 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   site-scoped - it writes the `.env` and exits. Listing is `get profiles`).
   (`set` WHATs wrap the old flags, kept as aliases: `-T`, `-i`/`-y`/`-u`,
   `-f`/`-m`/`-k`, `-x`/`-z`/`-S`/`-r`/`--htaccess`, `-n`+`-U`/`-P`/`-E`. `set site`
-  groups site-level config views/writes: license applied-status (+`--values`),
-  git remote, home/siteurl. `set config` shows/toggles the WP settings; `set user`
+  is write-only (viewing moved to `get`: `get license`, `get url`, `get
+  remote` - `site remote show` also still works as a quick per-selection
+  look): `site license <acf|wpmdb|akeeba|all>` applies a license; `site
+  remote [URL|profile [NAME]]` sets the wp-content git remote directly or
+  builds it from a git profile the same way `install -G` does (no NAME uses
+  the default profile); `site url <home|siteurl|both> [URL]` (or a bare
+  `http(s)://` URL for "both" - anything else there is a hard error, not a
+  silent write) updates home/siteurl. `set config` shows/toggles the WP
+  settings; `set user`
   lists/adds users (role defaults to administrator).
   `set` hoists config/selection flags (`-d`/`-w`/`-s`/`-a`/`-A`) to the front in
   `main()`, so they may appear anywhere on the line — even after a WHAT action.)
@@ -144,7 +154,7 @@ cd ~/www/repos/netcup && ./webwerk install -A -G arbeit
 # Status overviews (read-only; live under `get`, add -s site1,site2 to scope)
 ./webwerk get status   # full per-site status (core, plugins, themes)
 ./webwerk get brief    # brief status; --errors = only errors, --outdated = only outdated
-./webwerk get git      # wp-content git overview (remote, branch, status)
+./webwerk get remote   # wp-content remote URL(s) (add fetch/push to see just one)
 
 # Modify a DDEV site (local is default): webwerk set [local|ddev]
 ./webwerk set ddev -x on
@@ -178,7 +188,7 @@ The suite automatically detects:
 - **Debug Control**: `wp_debug()`, `wp_hide_errors()`, `wp_force_https()` - Development mode and HTTPS
 - **SEO Management**: `wp_block_se()`, `wp_enable_se()` - Search engine indexing control
 - **Git Integration**: `update_repo()`, `git_wp()` - Repository synchronization
-- **Status Overviews (wpget.sh)**: `get_status()` (`get status`), `get_brief()` (`get brief` + `--errors`/`--outdated`), `get_git()` (`get git`) - per-site core/plugin/theme and wp-content git overviews; honor `-s` or scan the base dir. `-a` pauses between sites (`maybe_pause()`, TTY only, `x` quits); `-A`/default stream
+- **Status Overviews (wpget.sh)**: `get_status()` (`get status`), `get_brief()` (`get brief` + `--errors`/`--outdated`), `get_remote()` (`get remote [fetch|push]`) - per-site core/plugin/theme status and wp-content remote URL(s); honor `-s` or scan the base dir. `-a` pauses between sites (`maybe_pause()`, TTY only, `x` quits); `-A`/default stream
 - **Install Progress (webwerk)**: `render_install_progress()` + `run_install()` - single-line phase progress bar shown by default on a TTY; `-v`/`--verbose` (or piped output) falls back to the full log
 - **Batch Install (webwerk)**: `run_install_batch()` - `install -A`/`-a` install into each empty immediate subdirectory of the current dir (dir name = site/repo name); non-empty dirs skipped, never overwritten. Most long install options also have short aliases (`-H`/`-U`/`-P`/`-N`, `-u`/`-t`/`-e`, `-r`/`-g`/`-p`, `-w`/`-d`, `-X`/`-m`/`-s`)
 

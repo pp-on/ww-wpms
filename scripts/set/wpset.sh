@@ -193,16 +193,19 @@ show_site_help() {
 webwerk set site — view/change site config on selected sites
 
 Usage:
-  webwerk set site license [show [--values] | set <acf|wpmdb|akeeba|all>]
-  webwerk set site remote  [show | add NAME URL | set [URL]]
-  webwerk set site url     [show | set <home|siteurl|both> [URL]]
+  webwerk set site license  <acf|wpmdb|akeeba|all>
+  webwerk set site remote   [show | add NAME URL | URL | profile [NAME]]
+  webwerk set site url      [show | <home|siteurl|both> [URL]]
 
-No sub-action (or 'show') displays current values; 'set'/'add' change them.
-  license show   per-site: is each license applied? (--values also prints the
-                 configured keys from ~/.keys/.env)
-  license set    apply a license (acf=-f, wpmdb=-m, akeeba=-k, all)
-  remote set     set origin's URL; omit URL to edit the current value inline
-  url set        update home/siteurl; omit URL to edit the current value inline
+'set site' is write-only — to view current values use 'webwerk get license'
+/ 'webwerk get url' (remote's view is 'webwerk get remote', or 'site remote
+show' for a quick per-selection look).
+  license        apply a license (acf=-f, wpmdb=-m, akeeba=-k, all)
+  remote URL     set origin to that URL directly
+  remote profile [NAME]  build the URL from a git profile instead (omit NAME
+                 to use the default profile, like install without -G)
+  url <home|siteurl|both> [URL]  update it; omit URL to edit the current
+                 value inline; a bare http(s):// URL alone means "both"
 
 Site selection (may appear anywhere on the line; default: current directory):
   -s NAMES   comma-separated site names under the base dir
@@ -265,7 +268,7 @@ EOF
 # Per-WHAT help: webwerk set branch help
 show_branch_help() {
     cat << EOF
-webwerk set branch — create/switch and merge wp-content branches per site
+webwerk set branch — create/switch, rename and merge wp-content branches per site
 
 Usage:
   webwerk set branch NAME                work on branch NAME here — one command
@@ -286,22 +289,32 @@ Usage:
                                          'live', 'staging', … Nothing is checked
                                          out or pushed — you stay where you are.
                                          (at install time: install -B)
+  webwerk set branch rename [OLD] NEW    rename a branch and push the new name
+                                         -u origin. One name renames the branch
+                                         the site is on; two name it explicitly.
+                                         'no-push' keeps the rename local.
+                                         origin/OLD is left alone (see below).
   webwerk set branch merge [NAME]        merge the current branch into NAME
                                          (default: live), then switch back
 
 To LIST branches use 'webwerk get branch' (-l local / -r remote) — it refreshes
-from origin first, so a branch created after your clone is listed; for a repo
-overview (remote, tracking, ahead/behind, status) use 'webwerk get git'.
+from origin first, so a branch created after your clone is listed; for the
+wp-content remote URL(s) use 'webwerk get remote' (add fetch/push to see just
+one).
 
 The verb 'add' is optional — 'set branch live' and 'set branch add live' are the
 same command. Say 'add' when you mean several names at once ('set branch add a b')
-or a branch actually called 'all'/'merge'; a bare line with more than one name is
-refused, so a mistyped 'merge' cannot create and push branches by accident.
+or a branch actually called 'all'/'merge'/'rename'; a bare line with more than one
+name is refused, so a mistyped 'merge' cannot create and push branches by accident.
 
 'set branch NAME' pushes, so with -A/-a it publishes that branch on every selected
 site — use 'no-push' if you only want it locally. merge never pushes, and never
 leaves a repo half-done: sites with a dirty tree, detached HEAD or a missing
 target branch are skipped, and conflicting merges are aborted.
+
+rename never deletes anything on origin: it pushes the new name and then tells you
+the command to remove origin/OLD, because that is irreversible and breaks other
+clones. Sites without OLD, or that already have NEW, are skipped.
 
 Site selection (-s NAMES | -a | -A) may appear anywhere; default = current dir.
 EOF
@@ -348,13 +361,12 @@ INFORMATION & DISPLAY:
   (site health check moved to 'webwerk doctor sites')
 
   Read-only views live under 'webwerk get' (status, brief, plugins, themes,
-  core, git, url, db) — see 'webwerk get help'.
+  core, remote, url, license, branch, db, profiles) — see 'webwerk get help'.
 
 SITE CONFIG (webwerk set site help for details):
-  site license [show|set ...]  Show if ACF/WP-Migrate/Akeeba licenses are applied
-                               (--values reveals keys); set applies them
-  site remote  [show|add|set]  Show/add/set the wp-content git remote
-  site url     [show|set ...]  Show/set home & siteurl
+  site license <acf|wpmdb|akeeba|all>  Apply a license (view: 'get license')
+  site remote  [show|add|URL|profile]  Show/add/set the wp-content git remote
+  site url     [show|<home|siteurl|both> ...]  Show/set home & siteurl
 
 THEMES:
   theme [webwerk|NAME|NUM]     Activate a theme. No arg = list & pick. 'webwerk'
@@ -374,6 +386,9 @@ GIT OPERATIONS (webwerk set branch help for details):
                               ('add' is optional: branch add NAME does the same)
   branch all                  Bring in every remote branch that is not local yet
                               (no checkout, no push)
+  branch rename [OLD] NEW     Rename a branch (one name = the one you are on)
+                              and push the new name -u origin; 'no-push' keeps
+                              it local. origin/OLD is kept, not deleted
   branch merge [NAME]         Merge current branch into NAME (default live),
                               no push, switch back afterwards
                               (to LIST branches: webwerk get branch -l/-r)
@@ -567,37 +582,24 @@ parse_arguments() {
                 local _sub="${2:-}" a3="${3:-}" a4="${4:-}" a5="${5:-}"
                 case "$_sub" in
                     license)
-                        case "$a3" in
-                            ""|show)
-                                if [[ "$a4" == "--values" || "$a4" == "-x" ]]; then
-                                    site_license_status 1; else site_license_status 0; fi ;;
-                            --values|-x) site_license_status 1 ;;
-                            set)
-                                [[ -z "$a4" ]] && { log_error "site license set <acf|wpmdb|akeeba|all>"; exit 1; }
-                                site_license_set "$a4" ;;
-                            *) log_error "site license: use [show [--values]] | set <acf|wpmdb|akeeba|all>"; exit 1 ;;
-                        esac ;;
+                        [[ -z "$a3" ]] && { log_error "site license <acf|wpmdb|akeeba|all>  (to view: webwerk get license)"; exit 1; }
+                        site_license_set "$a3" ;;
                     remote)
                         case "$a3" in
                             ""|show) site_remote_show ;;
                             add)
                                 [[ -z "$a4" || -z "$a5" ]] && { log_error "site remote add NAME URL"; exit 1; }
                                 site_remote_add "$a4" "$a5" ;;
-                            set) site_remote_set "$a4" ;;
-                            *) log_error "site remote: use [show] | add NAME URL | set [URL]"; exit 1 ;;
+                            *) site_remote_set "$a3" "$a4" ;;
                         esac ;;
                     url)
                         case "$a3" in
-                            ""|show) site_url_show ;;
-                            set)
-                                case "$a4" in
-                                    home)         site_url_set home "$a5" ;;
-                                    siteurl|site) site_url_set siteurl "$a5" ;;
-                                    both)         site_url_set both "$a5" ;;
-                                    "") log_error "site url set <home|siteurl|both> [URL]"; exit 1 ;;
-                                    *)  site_url_set both "$a4" ;;
-                                esac ;;
-                            *) log_error "site url: use [show] | set <home|siteurl|both> [URL]"; exit 1 ;;
+                            ""|show)      site_url_show ;;
+                            home)         site_url_set home "$a4" ;;
+                            siteurl|site) site_url_set siteurl "$a4" ;;
+                            both)         site_url_set both "$a4" ;;
+                            http://*|https://*) site_url_set both "$a3" ;;
+                            *) log_error "site url: use [show] | <home|siteurl|both> [URL] | URL (sets both)"; exit 1 ;;
                         esac ;;
                     "") log_error "site: use license | remote | url"; exit 1 ;;
                     *) log_error "site: unknown target '$_sub'. Use: license, remote, url"; exit 1 ;;
@@ -632,13 +634,36 @@ parse_arguments() {
                 #            it) + switch to it + push -u origin; 'no-push' keeps it
                 #            local. No NAME -> pick from existing branches.
                 #            'all' -> every remote branch (no checkout, no push).
-                #   merge -> merge current branch into NAME (default live), no push
+                #   merge  -> merge current branch into NAME (default live), no push
+                #   rename -> git branch -m [OLD] NEW + push -u origin NEW; origin/OLD
+                #             is reported, never deleted ('no-push' stays local)
                 #   The verb 'add' is optional ('set branch live' == 'set branch add
                 #   live'); it stays accepted, and is *required* for more than one
                 #   name, so a mistyped 'merge' cannot silently create+push branches.
                 #   (listing branches is read-only -> 'webwerk get branch')
                 case "${2:-}" in
                     merge)  site_branch_merge "${3:-live}"; return 0 ;;
+                    rename|mv)
+                        # rename [OLD] NEW [no-push]: one name renames the branch
+                        # each site is currently on; two name it explicitly.
+                        shift 2                             # drop 'branch' 'rename'
+                        local rn_push=1 rn_names="" r
+                        for r in "$@"; do
+                            case "$r" in
+                                no-push|--no-push) rn_push=0 ;;
+                                push|--push) rn_push=1 ;;
+                                -*) : ;;
+                                *) [[ -z "$rn_names" ]] && rn_names="$r" || rn_names="$rn_names $r" ;;
+                            esac
+                        done
+                        local -a rn=(); read -ra rn <<< "$rn_names"
+                        case ${#rn[@]} in
+                            1) site_branch_rename "" "${rn[0]}" "$rn_push" || exit 1 ;;
+                            2) site_branch_rename "${rn[0]}" "${rn[1]}" "$rn_push" || exit 1 ;;
+                            0) log_error "set branch rename [OLD] NEW — no new name given."; exit 1 ;;
+                            *) log_error "set branch rename takes at most two names ('$rn_names')."; exit 1 ;;
+                        esac
+                        return 0 ;;
                     fetch)
                         log_error "'branch fetch' is now 'branch all' (or 'branch NAME' for one)."; exit 1 ;;
                     show|list)

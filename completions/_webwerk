@@ -53,6 +53,21 @@ _webwerk_site_names() {
     compadd -a names
 }
 
+# Git profile names — the GIT_PROFILE_<name> namespace gp_names() reads:
+# $WEBWERK_ENV_FILE, else the .env next to the webwerk script, else ~/.env
+_webwerk_profile_names() {
+    local f=${WEBWERK_ENV_FILE:-} bin
+    if [[ -z "$f" ]]; then
+        bin=${commands[webwerk]}
+        [[ -n "$bin" ]] && f=${${bin:A}:h}/.env
+        [[ -f "$f" ]] || f=$HOME/.env
+    fi
+    [[ -f "$f" ]] || return 0
+    local -a names
+    names=( ${(f)"$(sed -n 's/^GIT_PROFILE_\([A-Za-z0-9_]*\)=.*/\1/p' $f | sort -u)"} )
+    compadd -a names
+}
+
 # Installed plugin/theme names in the current dir's site(s); comma lists ok
 _webwerk_content_names() { # plugins|themes
     local kind=$1
@@ -95,9 +110,7 @@ _webwerk_install() {
         "--no-activate[Don't activate cloned plugins (default: activate all)]" \
         '(-B --all-branches)'{-B,--all-branches}'[Create a local branch for every remote branch]' \
         '(-r --repo-url)'{-r,--repo-url}'=[Repository URL to clone]:url' \
-        '(-g --git-user)'{-g,--git-user}'=[Git username]:user' \
-        '(-p --git-protocol)'{-p,--git-protocol}'=[Git protocol]:protocol:(https ssh)' \
-        '(-G --git-host)'{-G,--git-host}'=[SSH host alias from ~/.ssh/config]:host' \
+        '(-G --git-profile)'{-G,--git-profile}'=[Git profile to clone with (webwerk set profile add)]:profile:_webwerk_profile_names' \
         '(-w --wp-cli)'{-w,--wp-cli}'=[Path to WP-CLI executable]:path:_files' \
         '(-d --target-dir)'{-d,--target-dir}'=[Target installation directory]:dir:_files -/' \
         '(-n --nip-io)'{-n,--nip-io}'[Use nip.io DNS (DDEV only)]' \
@@ -202,6 +215,7 @@ _webwerk_get_targets() {
         'branch:List branches in each wp-content repo (-l/-r)'
         'url:siteurl / home per site'
         'db:Run a query per site (warns on non-SELECT)'
+        'profiles:List the git profiles (* marks the default)'
         'help:Show help (generic, or per-target)'
     )
     _describe 'target' targets
@@ -209,8 +223,9 @@ _webwerk_get_targets() {
 
 _webwerk_set() {
     _arguments \
-        '1:target:(local ddev theme plugin site config user branch)' \
-        '2::value:(webwerk install copy update activate deactivate remove license remote url debug errors indexing hardening https htaccess all add merge no-push help)' \
+        '1:target:(local ddev theme plugin site config user branch profile)' \
+        '2::value:_webwerk_set_arg' \
+        '3::value:_webwerk_set_arg3' \
         '--role[User role]:role:(admin editor author contributor subscriber)' \
         '--pass[User password]:password' \
         '--email[User email]:email' \
@@ -275,6 +290,26 @@ _webwerk_doctor() {
             'sites:Per-site health verdict (WordPress installed / DB reachable)'
         )
         _describe 'target' targets
+    fi
+}
+
+# Second positional for `set`: the WHAT's own actions.
+_webwerk_set_arg() {
+    case "${words[2]}" in
+        profile) _values 'action' 'add' 'edit' 'rm' 'default' 'help' ;;
+        branch)  _values 'action' 'add' 'all' 'merge' 'rename' 'no-push' 'help' ;;
+        *) _values 'value' webwerk install copy update activate deactivate remove \
+                   license remote url debug errors indexing hardening https htaccess \
+                   all add merge rename no-push help ;;
+    esac
+}
+
+# Third positional for `set`: a profile name after edit/rm/default.
+_webwerk_set_arg3() {
+    if [[ "${words[2]}" == profile ]]; then
+        case "${words[3]}" in
+            edit|rm|remove|delete|default|use) _webwerk_profile_names ;;
+        esac
     fi
 }
 

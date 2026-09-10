@@ -13,7 +13,7 @@ _webwerk() {
 
     local commands='install update set get remove doctor help'
     local update_targets='core plugins plugin themes theme'
-    local get_targets='plugins plugin themes core status brief git branch url db'
+    local get_targets='plugins plugin themes core status brief remote branch url license db profiles'
     local install_modes='local bare ddev'
 
     # Helper: check if a word exists in the command line
@@ -43,6 +43,19 @@ _webwerk() {
             [[ -d "${d}wp-content" ]] && names+=("$prefix${d%/}")
         done
         COMPREPLY=( $(compgen -W "${names[*]}" -- "$cur") )
+    }
+
+    # Helper: git profile names — the GIT_PROFILE_<name> namespace gp_names()
+    # reads: $WEBWERK_ENV_FILE, else the .env next to the webwerk script, else ~/.env
+    _webwerk_profiles() {
+        local f="${WEBWERK_ENV_FILE:-}" bin
+        if [[ -z "$f" ]]; then
+            bin="$(command -v webwerk 2>/dev/null)"
+            [[ -n "$bin" ]] && f="$(dirname "$(readlink -f "$bin")")/.env"
+            [[ -f "$f" ]] || f="$HOME/.env"
+        fi
+        [[ -f "$f" ]] || return 0
+        COMPREPLY=( $(compgen -W "$(sed -n 's/^GIT_PROFILE_\([A-Za-z0-9_]*\)=.*/\1/p' "$f" | sort -u)" -- "$cur") )
     }
 
     # Helper: git branch names across ./ or ./*/ wp-content repos
@@ -104,6 +117,9 @@ _webwerk() {
             ;;
 
         install)
+            case "$prev" in
+                -G|--git-profile) _webwerk_profiles; return 0 ;;
+            esac
             case "$cur" in
                 -*)
                     COMPREPLY=( $(compgen -W '
@@ -111,12 +127,12 @@ _webwerk() {
                         --db-host --db-user --db-password --db-name
                         --wp-url --base-url --wp-title
                         --wp-admin-user --wp-admin-pass --wp-admin-email --wpu --wpp --wpe --theme
-                        --repo-url --git-user --git-protocol --git-host
+                        --repo-url --git-profile
                         --wp-cli --target-dir
                         --nip-io --lemp --lamp --production --no-activate --all-branches
                         --multisite --subdomains -v --verbose --debug --help
                         -b -G -n -h
-                        -H -U -P -N -u -t -e -r -g -p -w -d -X -m -s -T -B
+                        -H -U -P -N -u -t -e -r -w -d -X -m -s -T -B
                     ' -- "$cur") )
                     ;;
                 *)
@@ -179,17 +195,33 @@ _webwerk() {
                 theme) COMPREPLY=( $(compgen -W 'webwerk help' -- "$cur") ); return 0 ;;
                 plugin) COMPREPLY=( $(compgen -W 'install copy update activate deactivate remove help' -- "$cur") ); return 0 ;;
                 site) COMPREPLY=( $(compgen -W 'license remote url help' -- "$cur") ); return 0 ;;
-                license) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
-                remote) COMPREPLY=( $(compgen -W 'show add set' -- "$cur") ); return 0 ;;
-                url) COMPREPLY=( $(compgen -W 'show set' -- "$cur") ); return 0 ;;
+                license) COMPREPLY=( $(compgen -W 'acf wpmdb akeeba all' -- "$cur") ); return 0 ;;
+                remote) COMPREPLY=( $(compgen -W 'show add profile' -- "$cur") ); return 0 ;;
+                url) COMPREPLY=( $(compgen -W 'show home siteurl both' -- "$cur") ); return 0 ;;
                 config) COMPREPLY=( $(compgen -W 'debug errors indexing hardening https htaccess help' -- "$cur") ); return 0 ;;
                 debug|indexing|hardening) COMPREPLY=( $(compgen -W 'on off' -- "$cur") ); return 0 ;;
                 errors) COMPREPLY=( $(compgen -W 'hide show' -- "$cur") ); return 0 ;;
                 user) COMPREPLY=( $(compgen -W 'add help' -- "$cur") ); return 0 ;;
                 branch) _webwerk_branches
                         COMPREPLY+=( $(_webwerk_branches_remote_words) )
-                        COMPREPLY+=( $(compgen -W 'all add merge help' -- "$cur") ); return 0 ;;
+                        COMPREPLY+=( $(compgen -W 'all add merge rename help' -- "$cur") ); return 0 ;;
                 merge) _webwerk_branches; return 0 ;;
+                rename) _webwerk_branches
+                        COMPREPLY+=( $(compgen -W 'no-push' -- "$cur") ); return 0 ;;
+                profile)
+                    # 'set site remote profile NAME' (a git profile name) vs
+                    # 'set profile <action>' (git-profile management) —
+                    # disambiguate by the two words before 'profile' being
+                    # exactly '... site remote', not a whole-line scan (a site
+                    # literally named 'remote', e.g. '-s remote profile', would
+                    # false-positive on just the immediately-preceding word).
+                    if [[ "${words[cword-2]:-}" == "remote" && "${words[cword-3]:-}" == "site" ]]; then
+                        _webwerk_profiles
+                    else
+                        COMPREPLY=( $(compgen -W 'add edit rm default help' -- "$cur") )
+                    fi
+                    return 0 ;;
+                edit|rm|default) _webwerk_profiles; return 0 ;;
                 add)   _webwerk_branches
                        COMPREPLY+=( $(_webwerk_branches_remote_words) )
                        COMPREPLY+=( $(compgen -W 'all no-push' -- "$cur") ); return 0 ;;
@@ -197,7 +229,7 @@ _webwerk() {
             esac
             COMPREPLY=( $(compgen -W '
                 local ddev
-                theme plugin site config user branch
+                theme plugin site config user branch profile
                 -a --all-sites
                 -A --all-sites-auto
                 -s --sites
@@ -231,15 +263,16 @@ _webwerk() {
             case "$prev" in
                 -s|--sites) _webwerk_sites; return 0 ;;
                 --format) return 0 ;;
+                remote) COMPREPLY=( $(compgen -W 'fetch push' -- "$cur") ); return 0 ;;
             esac
             case "$cur" in
                 -*)
-                    COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto -l --local -r --remote --no-fetch --format --errors --outdated -h --help' -- "$cur") )
+                    COMPREPLY=( $(compgen -W '-s --sites -a --all-sites -A --all-sites-auto -l --local -r --remote --no-fetch --format --errors --outdated -x --values -h --help' -- "$cur") )
                     ;;
                 *)
                     local has_target=false w
                     for w in "${words[@]}"; do
-                        case "$w" in plugins|plugin|themes|core|status|brief|git|branch|url|db) has_target=true; break ;; esac
+                        case "$w" in plugins|plugin|themes|core|status|brief|remote|branch|url|license|db|profiles) has_target=true; break ;; esac
                     done
                     if [[ "$has_target" == false ]]; then
                         COMPREPLY=( $(compgen -W "$get_targets help" -- "$cur") )
