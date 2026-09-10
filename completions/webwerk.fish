@@ -38,6 +38,17 @@ function __ww_after_word
     test "$toks[-1]" = "$argv[1]"
 end
 
+# True right after '... site remote profile' specifically — not just
+# 'remote' and 'profile' seen anywhere on the line (a site literally named
+# 'remote', e.g. '-s remote profile', would otherwise false-positive).
+function __ww_after_site_remote_profile
+    set -l toks (commandline -opc)
+    test (count $toks) -ge 3
+    and test "$toks[-1]" = profile
+    and test "$toks[-2]" = remote
+    and test "$toks[-3]" = site
+end
+
 # Site dirs (containing wp-content/) under the current dir; comma lists ok
 function __ww_site_names
     set -l prefix (string replace -r '[^,]*$' '' -- (commandline -ct))
@@ -269,7 +280,7 @@ complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from the
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from site; and not __fish_seen_subcommand_from license remote url' -a 'license remote url' -d 'site config target'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from license; and not __fish_seen_subcommand_from acf wpmdb akeeba all' -a 'acf wpmdb akeeba all' -d 'license to apply'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and not __fish_seen_subcommand_from show add profile' -a 'show add profile' -d 'remote action (or type a URL directly)'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from remote; and __fish_seen_subcommand_from profile' -a '(__ww_profile_names)' -d 'Git profile'
+complete -c webwerk -f -n '__ww_set_ctx; and __ww_after_site_remote_profile' -a '(__ww_profile_names)' -d 'Git profile'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from url; and not __fish_seen_subcommand_from show home siteurl both' -a 'show home siteurl both' -d 'url action (or type a URL directly for both)'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from theme plugin site config user branch profile' -a help -d 'Show help for this WHAT'
 complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a theme -d 'Activate a theme: theme [webwerk|NAME|NUM]'
@@ -296,10 +307,10 @@ complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch;
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from branch; and __fish_seen_subcommand_from add' -a no-push -d 'Keep it local (add pushes -u origin by default)'
 complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a user -d 'Users: user [add NAME --role ... --pass ... --email ...]'
 complete -c webwerk -f -n '__ww_set_env; and not __fish_seen_subcommand_from theme plugin site config user branch profile' -a profile -d 'Git profiles: profile <add|edit|rm|default> NAME (writes the .env)'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a add     -d 'Add a profile (asks for name, git user, host, protocol)'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a edit    -d 'Change an existing profile'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a rm      -d 'Remove a profile'
-complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a default -d 'Use this profile when install has no -G'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __ww_after_site_remote_profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a add     -d 'Add a profile (asks for name, git user, host, protocol)'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __ww_after_site_remote_profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a edit    -d 'Change an existing profile'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __ww_after_site_remote_profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a rm      -d 'Remove a profile'
+complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and not __ww_after_site_remote_profile; and not __fish_seen_subcommand_from add edit rm remove delete default use' -a default -d 'Use this profile when install has no -G'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from profile; and __fish_seen_subcommand_from edit rm remove delete default use' -a '(__ww_profile_names)' -d 'Git profile'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user; and not __fish_seen_subcommand_from add' -a add -d 'add a user'
 complete -c webwerk -f -n '__ww_set_ctx; and __fish_seen_subcommand_from user add' -l role -r -a 'admin editor author contributor subscriber' -d 'role (admin default)'

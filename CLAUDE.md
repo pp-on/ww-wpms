@@ -65,8 +65,9 @@ The CLI is **verb-first**: `webwerk VERB [MODE] [WHAT] [OPTIONS]`.
   look): `site license <acf|wpmdb|akeeba|all>` applies a license; `site
   remote [URL|profile [NAME]]` sets the wp-content git remote directly or
   builds it from a git profile the same way `install -G` does (no NAME uses
-  the default profile); `site url <home|siteurl|both> [URL]` (or a bare URL
-  for "both") updates home/siteurl. `set config` shows/toggles the WP
+  the default profile); `site url <home|siteurl|both> [URL]` (or a bare
+  `http(s)://` URL for "both" - anything else there is a hard error, not a
+  silent write) updates home/siteurl. `set config` shows/toggles the WP
   settings; `set user`
   lists/adds users (role defaults to administrator).
   `set` hoists config/selection flags (`-d`/`-w`/`-s`/`-a`/`-A`) to the front in

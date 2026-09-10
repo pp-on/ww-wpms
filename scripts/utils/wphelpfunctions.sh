@@ -542,6 +542,10 @@ wp_update() {
 
 #===============================================================================
 # LICENSE KEY MANAGEMENT
+#
+# The applied/not-applied checks below (ACF_PRO_LICENSE / WPMDB_LICENCE /
+# AKEEBA_DOWNLOAD_ID) are duplicated in get_license() (scripts/get/wpget.sh) —
+# keep both in sync if the constant names or detection logic change here.
 #===============================================================================
 
 # Setup license keys for plugins
@@ -727,7 +731,10 @@ site_remote_add() {
 }
 
 # set site remote URL | set site remote profile [NAME] — set origin to a
-# literal URL, or build it from a git profile.
+# literal URL, or build it from a git profile. Unlike site_url_set(), there is
+# no "omit the value to edit inline" prompt here: mode is always a real word
+# (the dispatch already filters out add/show/""), so it's never empty to
+# prompt for.
 site_remote_set() {
     local mode="${1:-}" arg2="${2:-}" url="" resolved_profile=""
     if [[ "$mode" == "profile" ]]; then

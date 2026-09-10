@@ -210,10 +210,12 @@ _webwerk() {
                         COMPREPLY+=( $(compgen -W 'no-push' -- "$cur") ); return 0 ;;
                 profile)
                     # 'set site remote profile NAME' (a git profile name) vs
-                    # 'set profile <action>' (git-profile management)
-                    local in_remote=false
-                    for w in "${words[@]}"; do [[ "$w" == "remote" ]] && in_remote=true; done
-                    if [[ "$in_remote" == true ]]; then
+                    # 'set profile <action>' (git-profile management) —
+                    # disambiguate by the two words before 'profile' being
+                    # exactly '... site remote', not a whole-line scan (a site
+                    # literally named 'remote', e.g. '-s remote profile', would
+                    # false-positive on just the immediately-preceding word).
+                    if [[ "${words[cword-2]:-}" == "remote" && "${words[cword-3]:-}" == "site" ]]; then
                         _webwerk_profiles
                     else
                         COMPREPLY=( $(compgen -W 'add edit rm default help' -- "$cur") )

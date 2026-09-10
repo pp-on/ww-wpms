@@ -205,7 +205,7 @@ show' for a quick per-selection look).
   remote profile [NAME]  build the URL from a git profile instead (omit NAME
                  to use the default profile, like install without -G)
   url <home|siteurl|both> [URL]  update it; omit URL to edit the current
-                 value inline; a bare URL alone means "both"
+                 value inline; a bare http(s):// URL alone means "both"
 
 Site selection (may appear anywhere on the line; default: current directory):
   -s NAMES   comma-separated site names under the base dir
@@ -361,7 +361,7 @@ INFORMATION & DISPLAY:
   (site health check moved to 'webwerk doctor sites')
 
   Read-only views live under 'webwerk get' (status, brief, plugins, themes,
-  core, git, url, db) — see 'webwerk get help'.
+  core, remote, url, license, branch, db, profiles) — see 'webwerk get help'.
 
 SITE CONFIG (webwerk set site help for details):
   site license <acf|wpmdb|akeeba|all>  Apply a license (view: 'get license')
@@ -598,7 +598,8 @@ parse_arguments() {
                             home)         site_url_set home "$a4" ;;
                             siteurl|site) site_url_set siteurl "$a4" ;;
                             both)         site_url_set both "$a4" ;;
-                            *)            site_url_set both "$a3" ;;
+                            http://*|https://*) site_url_set both "$a3" ;;
+                            *) log_error "site url: use [show] | <home|siteurl|both> [URL] | URL (sets both)"; exit 1 ;;
                         esac ;;
                     "") log_error "site: use license | remote | url"; exit 1 ;;
                     *) log_error "site: unknown target '$_sub'. Use: license, remote, url"; exit 1 ;;

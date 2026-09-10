@@ -214,6 +214,10 @@ get_url() {
 }
 
 # Per-site license applied-status. show_values=1 also reveals configured keys.
+# The ACF_PRO_LICENSE/WPMDB_LICENCE/AKEEBA_DOWNLOAD_ID checks here are
+# independent of (must be kept in sync with) the ones wp_license_plugins()
+# and wp_key_akeeba() use to decide whether to (re)write wp-config.php —
+# scripts/utils/wphelpfunctions.sh, LICENSE KEY MANAGEMENT section.
 get_license() {
     local show_values="${1:-0}"
     collect_site_dirs
@@ -369,16 +373,15 @@ get_remote() {
         else
             while read -r r; do
                 [[ -z "$r" ]] && continue
+                # Fetch each URL at most once, only for the filter(s) in play.
+                [[ "$filter" != "push" ]] && fetch=$(git -C "$repo" remote get-url "$r" 2>/dev/null || echo '?')
+                [[ "$filter" != "fetch" ]] && push=$(git -C "$repo" remote get-url --push "$r" 2>/dev/null || echo '?')
                 case "$filter" in
                     fetch)
-                        fetch=$(git -C "$repo" remote get-url "$r" 2>/dev/null || echo '?')
                         echo "  $r: $fetch" ;;
                     push)
-                        push=$(git -C "$repo" remote get-url --push "$r" 2>/dev/null || echo '?')
                         echo "  $r: $push" ;;
                     *)
-                        fetch=$(git -C "$repo" remote get-url "$r" 2>/dev/null || echo '?')
-                        push=$(git -C "$repo" remote get-url --push "$r" 2>/dev/null || echo '?')
                         if [[ "$fetch" == "$push" ]]; then
                             echo "  $r: $fetch"
                         else
@@ -712,6 +715,11 @@ main() {
     if (( want_help )); then
         show_help "$what"   # generic when no target, focused otherwise
         exit 0
+    fi
+
+    if [[ "$BRANCH_SCOPE" != "both" && "$what" != "branch" ]]; then
+        log_error "-l/--local and -r/--remote only apply to 'get branch'"
+        exit 1
     fi
 
     case "$what" in
